@@ -361,6 +361,64 @@ class StrideLengthTests(unittest.TestCase):
         self.assertIn("stride_length", declared["reward"]["formulas"])
 
 
+class HeadingTrackingTests(unittest.TestCase):
+    def test_pay_follows_the_heading_error_against_its_scale(self):
+        config = replace(CONFIG, heading_weight=.5)
+        commands = torch.tensor([[.05, 0., 0.], [.05, 0., 0.], [0., 0., .2], [.05, 0., 0.], [0., 0., 0.]])
+        error = torch.tensor([0., .125, -.25, 1., .3])
+        values = telemetry(commands, gate_yaw_rate_rad_s=commands[:, 2].clone(), heading_error_rad=error)
+        alive = torch.zeros(5, dtype=torch.bool)
+        v4_reward, _ = task_v4.measured_reward_v4(values, commands, alive, config, HEIGHT)
+        reward, parts = measured_reward_v4_yaw_gate(values, commands, alive, config, HEIGHT)
+        # On target pays the weight, half the scale 3/4 of it, the scale nothing, far off the floor; rest unpaid.
+        torch.testing.assert_close(parts["heading_tracking"], .5 * torch.tensor([1., .75, 0., -1., 0.]))
+        torch.testing.assert_close(reward - v4_reward - parts["schedule_yaw_gate"], parts["heading_tracking"])
+
+    def test_default_adds_nothing_and_the_option_needs_its_telemetry_and_fall_cost(self):
+        self.assertEqual((CONFIG.heading_weight, CONFIG.heading_scale_rad), (0., .25))
+        commands = torch.tensor([[.05, 0., 0.]])
+        values = telemetry(commands, gate_yaw_rate_rad_s=torch.zeros(1))
+        _, parts = measured_reward_v4_yaw_gate(values, commands, torch.zeros(1, dtype=torch.bool), CONFIG, HEIGHT)
+        self.assertNotIn("heading_tracking", parts)
+        with self.assertRaisesRegex(ValueError, "heading_error_rad"):
+            measured_reward_v4_yaw_gate(values, commands, torch.zeros(1, dtype=torch.bool), replace(CONFIG, heading_weight=.5), HEIGHT)
+        # Ceiling 1.5 + 0.5 = 2 reaches the default termination weight of 20; more needs a larger one.
+        self.assertEqual(gated.reward_config("heading_weight=0.5").heading_weight, .5)
+        for bad in ("heading_weight=0.6", "heading_weight=-1", "heading_scale_rad=0"):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                gated.reward_config(bad)
+
+    def test_task_tracks_the_heading_the_command_implies_and_restarts_with_each_command(self):
+        native = GaitDouble(2)
+        task = gated.variant("forward_draw_fraction=0,heading_weight=0.5")(native)
+        task.reset()
+        native.commands[:] = torch.tensor([[.05, 0., 0.], [0., 0., .2]])
+        task.remaining_controls[:] = 1000
+        heading = torch.zeros(2)
+        rate = torch.tensor([.05, .2])  # row 0 drifts while walking straight; row 1 turns as commanded
+        original = native.step
+        def turning(action):
+            output = original(action)
+            heading.add_(rate * .02)
+            pose = native.current["root"].clone()
+            pose[:, 3:] = torch.stack((torch.zeros(2), torch.zeros(2), torch.sin(heading / 2), torch.cos(heading / 2)), -1)
+            native.current["root"] = pose
+            native.telemetry["root_pose_xyzw"] = pose.clone()
+            return output
+        native.step = turning
+        for _ in range(100):
+            task.step(torch.zeros(2, 18))
+        self.assertAlmostEqual(float(task.heading_error[0]), .1, delta=.005)  # 0.05 rad/s for 2 s
+        self.assertAlmostEqual(float(task.heading_error[1]), 0., delta=.005)
+        self.assertLess(float(task.last_components["heading_tracking"][0]), float(task.last_components["heading_tracking"][1]))
+        native.commands[0] = torch.tensor([0., .05, 0.])  # a new command starts a new target heading
+        task.step(torch.zeros(2, 18))
+        self.assertAlmostEqual(float(task.heading_error[0]), .05 * .02, delta=1e-4)
+        with tempfile.TemporaryDirectory() as directory:
+            gated.variant("heading_weight=0.5")(GaitDouble(1), output_dir=directory)
+            declared = json.loads((Path(directory)/"task_definition.json").read_text())
+        self.assertIn("heading_tracking", declared["reward"]["formulas"])
+
 class NativeSelectionTests(unittest.TestCase):
     OPTIONS = "forward_draw_fraction=0,turn_draw_fraction=0.3,gate_window_controls=120,yaw_gate_bonus=0.25"
 

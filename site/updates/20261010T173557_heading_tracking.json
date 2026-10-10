@@ -1,0 +1,20 @@
+{
+  "id": "20261010T173557_heading_tracking",
+  "date": "2026-10-10T17:35:57+00:00",
+  "title": "Add an opt-in commanded-heading term to the experimental yaw-gated reward",
+  "summary": "locomotion.task_v4_yaw_gate gains heading_weight and heading_scale_rad (0.25 rad). The task accumulates (measured yaw rate - commanded yaw rate) * 0.02 s since the latest command change or reset, which is the gap between the body heading and the heading the command implies, and the term pays heading_weight * max(1 - (e / scale)^2, -floor) on moving commands. The learning probes check the yaw rate alone, and surrogate policies that passed them drifted 36 to 56 degrees on some translations. On nine stored replays the term ranks translations by their drift (+0.48 at 3 degrees, +0.37 at 16, -0.25 at 54); a 20-second held turn saturates its floor, so replays cannot rank turners. Its weight counts in the fall-cost ceiling. The default 0 adds nothing; it is untrained.",
+  "areas": [
+    "locomotion"
+  ],
+  "changes": [
+    "locomotion/task_v4_yaw_gate.py",
+    "locomotion/tests/test_task_v4_yaw_gate.py",
+    "site/updates/20261010T173557_heading_tracking.json"
+  ],
+  "evidence": [
+    "locomotion/tests/test_task_v4_yaw_gate.py"
+  ],
+  "next": "Train the stride-term configuration at 36 controls per update with and without the heading term on the surrogate, two seeds, and compare heading drift and probes.",
+  "no_project_impact": true,
+  "reason": "An opt-in option of an experimental task changes no native result, gate or default reward."
+}
