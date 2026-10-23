@@ -1,0 +1,2285 @@
+{
+ "schema": "hexapod_destination_full96_results_v1",
+ "scope": "The 96-case manifest on the destination_v9 checkpoint: native Isaac on Spark, one robot, the actor mean without sampling noise, one trial per case, thresholds unchanged. The checks and the pass/fail are the evaluator's; this file copies them.",
+ "attempt": "eval_full96_dest_v9_u600_seed20260917_20261023_002",
+ "spark_path": "/srv/cupi/hexapod/runs/julian/eval_full96_dest_v9_u600_seed20260917_20261023_002",
+ "binding_sha256": "4bca100c0daaf65b72ac39df9179029eed3b7d9010e3a8feed93779ad1d92eed",
+ "source_commit": "976344cb3405177954d8a223d88afbedce4417c2",
+ "source_freeze_sha256": "4e485f4021f95f91955f425c0627d0d2290d136e1a8e5b271ab23503d3e497ff",
+ "checkpoint_sha256": "16048b8f7b31c61ba6630742475f796e24c4bc43bd17bc61f9b40bb0d37b6d33",
+ "summary_sha256": "071277137964a95087cd9e996ac3ca97a6dead890af7a8251c45f711b4e24078",
+ "wall_hours": 3.12,
+ "allocation_limit_reached": false,
+ "missing_cases": [],
+ "stage2_complete": false,
+ "passed": 16,
+ "cases": 96,
+ "inside_training_range": {
+  "passed": 9,
+  "cases": 9
+ },
+ "groups": [
+  {
+   "group": "Stand, quiet and zero-speed cases",
+   "passed": 5,
+   "cases": 5
+  },
+  {
+   "group": "Turn in place, and stop after one",
+   "passed": 4,
+   "cases": 6
+  },
+  {
+   "group": "Walk 0.10 m/s, 16 directions",
+   "passed": 6,
+   "cases": 16
+  },
+  {
+   "group": "Walk 0.20 m/s, 16 directions",
+   "passed": 0,
+   "cases": 16
+  },
+  {
+   "group": "Combined walk and turn",
+   "passed": 0,
+   "cases": 8
+  },
+  {
+   "group": "Gentle arcs, 0.15 m/s",
+   "passed": 0,
+   "cases": 16
+  },
+  {
+   "group": "Tight arcs, 0.2 m/s and 0.4 rad/s",
+   "passed": 0,
+   "cases": 16
+  },
+  {
+   "group": "Stops after a moving command",
+   "passed": 1,
+   "cases": 9
+  },
+  {
+   "group": "Formal forward cases and the transition program",
+   "passed": 0,
+   "cases": 4
+  }
+ ],
+ "earlier_attempt": "eval_full96_dest_v9_u600_seed20260917_20261023_001 ran the same pack contents on a GPU shared with other Isaac jobs at about 1.1 s per control; it was stopped after its first case so the run could fit its 6 h allocation, and its folder stays on Spark.",
+ "case_results": [
+  {
+   "case_id": "static:stand",
+   "profile": "omni_static",
+   "command": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "inside_training_range": true,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0,
+    -0.0
+   ],
+   "mean_yaw_rate_rad_s": 0.001
+  },
+  {
+   "case_id": "static:translate_0.10_0deg",
+   "profile": "omni_static",
+   "command": [
+    0.1,
+    0.0,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 739,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0834,
+    -0.0012
+   ],
+   "mean_yaw_rate_rad_s": 0.001
+  },
+  {
+   "case_id": "static:translate_0.10_22.5deg",
+   "profile": "omni_static",
+   "command": [
+    0.09238795325112868,
+    0.03826834323650898,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0019,
+    -0.0001
+   ],
+   "mean_yaw_rate_rad_s": -0.0004
+  },
+  {
+   "case_id": "static:translate_0.10_45deg",
+   "profile": "omni_static",
+   "command": [
+    0.07071067811865477,
+    0.07071067811865475,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 506,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0078,
+    0.0121
+   ],
+   "mean_yaw_rate_rad_s": -0.0005
+  },
+  {
+   "case_id": "static:translate_0.10_67.5deg",
+   "profile": "omni_static",
+   "command": [
+    0.03826834323650899,
+    0.09238795325112868,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.04,
+    0.0922
+   ],
+   "mean_yaw_rate_rad_s": 0.0001
+  },
+  {
+   "case_id": "static:translate_0.10_90deg",
+   "profile": "omni_static",
+   "command": [
+    6.123233995736766e-18,
+    0.1,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0022,
+    0.1004
+   ],
+   "mean_yaw_rate_rad_s": 0.0003
+  },
+  {
+   "case_id": "static:translate_0.10_112.5deg",
+   "profile": "omni_static",
+   "command": [
+    -0.038268343236508975,
+    0.09238795325112868,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0365,
+    0.0934
+   ],
+   "mean_yaw_rate_rad_s": 0.0002
+  },
+  {
+   "case_id": "static:translate_0.10_135deg",
+   "profile": "omni_static",
+   "command": [
+    -0.07071067811865475,
+    0.07071067811865477,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0695,
+    0.0722
+   ],
+   "mean_yaw_rate_rad_s": 0.0008
+  },
+  {
+   "case_id": "static:translate_0.10_157.5deg",
+   "profile": "omni_static",
+   "command": [
+    -0.09238795325112868,
+    0.03826834323650899,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0921,
+    0.0399
+   ],
+   "mean_yaw_rate_rad_s": -0.0
+  },
+  {
+   "case_id": "static:translate_0.10_180deg",
+   "profile": "omni_static",
+   "command": [
+    -0.1,
+    1.2246467991473533e-17,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.1004,
+    0.0004
+   ],
+   "mean_yaw_rate_rad_s": 0.0003
+  },
+  {
+   "case_id": "static:translate_0.10_202.5deg",
+   "profile": "omni_static",
+   "command": [
+    -0.0923879532511287,
+    -0.03826834323650897,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0154,
+    -0.0049
+   ],
+   "mean_yaw_rate_rad_s": -0.0045
+  },
+  {
+   "case_id": "static:translate_0.10_225deg",
+   "profile": "omni_static",
+   "command": [
+    -0.07071067811865477,
+    -0.07071067811865475,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0091,
+    -0.0081
+   ],
+   "mean_yaw_rate_rad_s": -0.0046
+  },
+  {
+   "case_id": "static:translate_0.10_247.5deg",
+   "profile": "omni_static",
+   "command": [
+    -0.03826834323650904,
+    -0.09238795325112865,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 164,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0276,
+    -0.0772
+   ],
+   "mean_yaw_rate_rad_s": -0.0096
+  },
+  {
+   "case_id": "static:translate_0.10_270deg",
+   "profile": "omni_static",
+   "command": [
+    -1.8369701987210297e-17,
+    -0.1,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 53,
+   "requested_controls": 1000,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "static:translate_0.10_292.5deg",
+   "profile": "omni_static",
+   "command": [
+    0.038268343236509,
+    -0.09238795325112867,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 359,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0302,
+    -0.0687
+   ],
+   "mean_yaw_rate_rad_s": -0.0108
+  },
+  {
+   "case_id": "static:translate_0.10_315deg",
+   "profile": "omni_static",
+   "command": [
+    0.07071067811865474,
+    -0.07071067811865477,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0725,
+    -0.0694
+   ],
+   "mean_yaw_rate_rad_s": 0.0009
+  },
+  {
+   "case_id": "static:translate_0.10_337.5deg",
+   "profile": "omni_static",
+   "command": [
+    0.09238795325112865,
+    -0.038268343236509045,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0786,
+    -0.0292
+   ],
+   "mean_yaw_rate_rad_s": -0.0004
+  },
+  {
+   "case_id": "static:translate_0.20_0deg",
+   "profile": "omni_static",
+   "command": [
+    0.2,
+    0.0,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 86,
+   "requested_controls": 1000,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "static:translate_0.20_22.5deg",
+   "profile": "omni_static",
+   "command": [
+    0.18477590650225736,
+    0.07653668647301796,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0001,
+    0.0002
+   ],
+   "mean_yaw_rate_rad_s": -0.0009
+  },
+  {
+   "case_id": "static:translate_0.20_45deg",
+   "profile": "omni_static",
+   "command": [
+    0.14142135623730953,
+    0.1414213562373095,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0006,
+    0.0002
+   ],
+   "mean_yaw_rate_rad_s": 0.0004
+  },
+  {
+   "case_id": "static:translate_0.20_67.5deg",
+   "profile": "omni_static",
+   "command": [
+    0.07653668647301798,
+    0.18477590650225736,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0006,
+    0.0001
+   ],
+   "mean_yaw_rate_rad_s": -0.0004
+  },
+  {
+   "case_id": "static:translate_0.20_90deg",
+   "profile": "omni_static",
+   "command": [
+    1.2246467991473533e-17,
+    0.2,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0005,
+    -0.0001
+   ],
+   "mean_yaw_rate_rad_s": 0.0009
+  },
+  {
+   "case_id": "static:translate_0.20_112.5deg",
+   "profile": "omni_static",
+   "command": [
+    -0.07653668647301795,
+    0.18477590650225736,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 219,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0074,
+    0.0014
+   ],
+   "mean_yaw_rate_rad_s": -0.0096
+  },
+  {
+   "case_id": "static:translate_0.20_135deg",
+   "profile": "omni_static",
+   "command": [
+    -0.1414213562373095,
+    0.14142135623730953,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0004,
+    0.0007
+   ],
+   "mean_yaw_rate_rad_s": 0.0033
+  },
+  {
+   "case_id": "static:translate_0.20_157.5deg",
+   "profile": "omni_static",
+   "command": [
+    -0.18477590650225736,
+    0.07653668647301798,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0006,
+    0.0003
+   ],
+   "mean_yaw_rate_rad_s": -0.0
+  },
+  {
+   "case_id": "static:translate_0.20_180deg",
+   "profile": "omni_static",
+   "command": [
+    -0.2,
+    2.4492935982947065e-17,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 45,
+   "requested_controls": 1000,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "static:translate_0.20_202.5deg",
+   "profile": "omni_static",
+   "command": [
+    -0.1847759065022574,
+    -0.07653668647301794,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0011,
+    -0.0002
+   ],
+   "mean_yaw_rate_rad_s": -0.0027
+  },
+  {
+   "case_id": "static:translate_0.20_225deg",
+   "profile": "omni_static",
+   "command": [
+    -0.14142135623730953,
+    -0.1414213562373095,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0005,
+    -0.0002
+   ],
+   "mean_yaw_rate_rad_s": 0.0001
+  },
+  {
+   "case_id": "static:translate_0.20_247.5deg",
+   "profile": "omni_static",
+   "command": [
+    -0.07653668647301808,
+    -0.1847759065022573,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0013,
+    0.0001
+   ],
+   "mean_yaw_rate_rad_s": 0.0022
+  },
+  {
+   "case_id": "static:translate_0.20_270deg",
+   "profile": "omni_static",
+   "command": [
+    -3.6739403974420595e-17,
+    -0.2,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0008,
+    -0.0001
+   ],
+   "mean_yaw_rate_rad_s": -0.0014
+  },
+  {
+   "case_id": "static:translate_0.20_292.5deg",
+   "profile": "omni_static",
+   "command": [
+    0.076536686473018,
+    -0.18477590650225734,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0003,
+    -0.0009
+   ],
+   "mean_yaw_rate_rad_s": -0.0005
+  },
+  {
+   "case_id": "static:translate_0.20_315deg",
+   "profile": "omni_static",
+   "command": [
+    0.14142135623730948,
+    -0.14142135623730953,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0001,
+    -0.0003
+   ],
+   "mean_yaw_rate_rad_s": -0.0002
+  },
+  {
+   "case_id": "static:translate_0.20_337.5deg",
+   "profile": "omni_static",
+   "command": [
+    0.1847759065022573,
+    -0.07653668647301809,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0,
+    -0.0003
+   ],
+   "mean_yaw_rate_rad_s": 0.0003
+  },
+  {
+   "case_id": "static:turn_-0.40",
+   "profile": "omni_static",
+   "command": [
+    0.0,
+    0.0,
+    -0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0001,
+    -0.0003
+   ],
+   "mean_yaw_rate_rad_s": -0.0492
+  },
+  {
+   "case_id": "static:turn_-0.20",
+   "profile": "omni_static",
+   "command": [
+    0.0,
+    0.0,
+    -0.2
+   ],
+   "inside_training_range": true,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0001,
+    0.0002
+   ],
+   "mean_yaw_rate_rad_s": -0.2037
+  },
+  {
+   "case_id": "static:turn_+0.20",
+   "profile": "omni_static",
+   "command": [
+    0.0,
+    0.0,
+    0.2
+   ],
+   "inside_training_range": true,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0001,
+    -0.0001
+   ],
+   "mean_yaw_rate_rad_s": 0.2046
+  },
+  {
+   "case_id": "static:turn_+0.40",
+   "profile": "omni_static",
+   "command": [
+    0.0,
+    0.0,
+    0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 226,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0028,
+    -0.0138
+   ],
+   "mean_yaw_rate_rad_s": 0.2199
+  },
+  {
+   "case_id": "static:combined_0deg_-0.20",
+   "profile": "omni_static",
+   "command": [
+    0.1,
+    0.0,
+    -0.2
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 128,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0322,
+    -0.0325
+   ],
+   "mean_yaw_rate_rad_s": -0.0267
+  },
+  {
+   "case_id": "static:combined_0deg_+0.20",
+   "profile": "omni_static",
+   "command": [
+    0.1,
+    0.0,
+    0.2
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0378,
+    0.0056
+   ],
+   "mean_yaw_rate_rad_s": 0.0728
+  },
+  {
+   "case_id": "static:combined_90deg_-0.20",
+   "profile": "omni_static",
+   "command": [
+    6.123233995736766e-18,
+    0.1,
+    -0.2
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0026,
+    0.0062
+   ],
+   "mean_yaw_rate_rad_s": -0.0085
+  },
+  {
+   "case_id": "static:combined_90deg_+0.20",
+   "profile": "omni_static",
+   "command": [
+    6.123233995736766e-18,
+    0.1,
+    0.2
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0003,
+    0.1006
+   ],
+   "mean_yaw_rate_rad_s": 0.2034
+  },
+  {
+   "case_id": "static:combined_180deg_-0.20",
+   "profile": "omni_static",
+   "command": [
+    -0.1,
+    1.2246467991473533e-17,
+    -0.2
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.1004,
+    0.0048
+   ],
+   "mean_yaw_rate_rad_s": -0.2027
+  },
+  {
+   "case_id": "static:combined_180deg_+0.20",
+   "profile": "omni_static",
+   "command": [
+    -0.1,
+    1.2246467991473533e-17,
+    0.2
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0006,
+    -0.0025
+   ],
+   "mean_yaw_rate_rad_s": 0.0014
+  },
+  {
+   "case_id": "static:combined_270deg_-0.20",
+   "profile": "omni_static",
+   "command": [
+    -1.8369701987210297e-17,
+    -0.1,
+    -0.2
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0035,
+    -0.0004
+   ],
+   "mean_yaw_rate_rad_s": 0.0007
+  },
+  {
+   "case_id": "static:combined_270deg_+0.20",
+   "profile": "omni_static",
+   "command": [
+    -1.8369701987210297e-17,
+    -0.1,
+    0.2
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 50,
+   "requested_controls": 1000,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "static:gentle_arc_0deg_-0.05",
+   "profile": "omni_static",
+   "command": [
+    0.15,
+    0.0,
+    -0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 64,
+   "requested_controls": 1000,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "static:gentle_arc_0deg_+0.05",
+   "profile": "omni_static",
+   "command": [
+    0.15,
+    0.0,
+    0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 868,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0003,
+    0.0009
+   ],
+   "mean_yaw_rate_rad_s": -0.0
+  },
+  {
+   "case_id": "static:gentle_arc_45deg_-0.05",
+   "profile": "omni_static",
+   "command": [
+    0.10606601717798213,
+    0.10606601717798211,
+    -0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0003,
+    -0.0004
+   ],
+   "mean_yaw_rate_rad_s": -0.0001
+  },
+  {
+   "case_id": "static:gentle_arc_45deg_+0.05",
+   "profile": "omni_static",
+   "command": [
+    0.10606601717798213,
+    0.10606601717798211,
+    0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0,
+    0.0006
+   ],
+   "mean_yaw_rate_rad_s": 0.0002
+  },
+  {
+   "case_id": "static:gentle_arc_90deg_-0.05",
+   "profile": "omni_static",
+   "command": [
+    9.184850993605149e-18,
+    0.15,
+    -0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 113,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0064,
+    0.003
+   ],
+   "mean_yaw_rate_rad_s": -0.0123
+  },
+  {
+   "case_id": "static:gentle_arc_90deg_+0.05",
+   "profile": "omni_static",
+   "command": [
+    9.184850993605149e-18,
+    0.15,
+    0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0009,
+    0.0004
+   ],
+   "mean_yaw_rate_rad_s": -0.0024
+  },
+  {
+   "case_id": "static:gentle_arc_135deg_-0.05",
+   "profile": "omni_static",
+   "command": [
+    -0.10606601717798211,
+    0.10606601717798213,
+    -0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 139,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0189,
+    0.0151
+   ],
+   "mean_yaw_rate_rad_s": 0.0292
+  },
+  {
+   "case_id": "static:gentle_arc_135deg_+0.05",
+   "profile": "omni_static",
+   "command": [
+    -0.10606601717798211,
+    0.10606601717798213,
+    0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 702,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0025,
+    0.0018
+   ],
+   "mean_yaw_rate_rad_s": 0.001
+  },
+  {
+   "case_id": "static:gentle_arc_180deg_-0.05",
+   "profile": "omni_static",
+   "command": [
+    -0.15,
+    1.8369701987210297e-17,
+    -0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 100,
+   "requested_controls": 1000,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "static:gentle_arc_180deg_+0.05",
+   "profile": "omni_static",
+   "command": [
+    -0.15,
+    1.8369701987210297e-17,
+    0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "vertical_velocity_rms_mps",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 105,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0546,
+    0.0642
+   ],
+   "mean_yaw_rate_rad_s": 0.0494
+  },
+  {
+   "case_id": "static:gentle_arc_225deg_-0.05",
+   "profile": "omni_static",
+   "command": [
+    -0.10606601717798216,
+    -0.10606601717798211,
+    -0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.002,
+    -0.0001
+   ],
+   "mean_yaw_rate_rad_s": -0.004
+  },
+  {
+   "case_id": "static:gentle_arc_225deg_+0.05",
+   "profile": "omni_static",
+   "command": [
+    -0.10606601717798216,
+    -0.10606601717798211,
+    0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0007,
+    -0.001
+   ],
+   "mean_yaw_rate_rad_s": -0.0046
+  },
+  {
+   "case_id": "static:gentle_arc_270deg_-0.05",
+   "profile": "omni_static",
+   "command": [
+    -2.7554552980815445e-17,
+    -0.15,
+    -0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 41,
+   "requested_controls": 1000,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "static:gentle_arc_270deg_+0.05",
+   "profile": "omni_static",
+   "command": [
+    -2.7554552980815445e-17,
+    -0.15,
+    0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 40,
+   "requested_controls": 1000,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "static:gentle_arc_315deg_-0.05",
+   "profile": "omni_static",
+   "command": [
+    0.1060660171779821,
+    -0.10606601717798216,
+    -0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0003,
+    -0.0018
+   ],
+   "mean_yaw_rate_rad_s": -0.0014
+  },
+  {
+   "case_id": "static:gentle_arc_315deg_+0.05",
+   "profile": "omni_static",
+   "command": [
+    0.1060660171779821,
+    -0.10606601717798216,
+    0.05
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "computed_demand_over_rating_fraction"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.001,
+    0.0001
+   ],
+   "mean_yaw_rate_rad_s": -0.0003
+  },
+  {
+   "case_id": "static:tight_arc_0deg_-0.40",
+   "profile": "omni_static",
+   "command": [
+    0.2,
+    0.0,
+    -0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0003,
+    -0.0031
+   ],
+   "mean_yaw_rate_rad_s": -0.007
+  },
+  {
+   "case_id": "static:tight_arc_0deg_+0.40",
+   "profile": "omni_static",
+   "command": [
+    0.2,
+    0.0,
+    0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 554,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0126,
+    0.0059
+   ],
+   "mean_yaw_rate_rad_s": -0.0117
+  },
+  {
+   "case_id": "static:tight_arc_45deg_-0.40",
+   "profile": "omni_static",
+   "command": [
+    0.14142135623730953,
+    0.1414213562373095,
+    -0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.001,
+    -0.0007
+   ],
+   "mean_yaw_rate_rad_s": -0.0035
+  },
+  {
+   "case_id": "static:tight_arc_45deg_+0.40",
+   "profile": "omni_static",
+   "command": [
+    0.14142135623730953,
+    0.1414213562373095,
+    0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 406,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0135,
+    0.0006
+   ],
+   "mean_yaw_rate_rad_s": -0.0202
+  },
+  {
+   "case_id": "static:tight_arc_90deg_-0.40",
+   "profile": "omni_static",
+   "command": [
+    1.2246467991473533e-17,
+    0.2,
+    -0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 524,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0058,
+    -0.0102
+   ],
+   "mean_yaw_rate_rad_s": -0.003
+  },
+  {
+   "case_id": "static:tight_arc_90deg_+0.40",
+   "profile": "omni_static",
+   "command": [
+    1.2246467991473533e-17,
+    0.2,
+    0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 138,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0243,
+    -0.0022
+   ],
+   "mean_yaw_rate_rad_s": -0.0229
+  },
+  {
+   "case_id": "static:tight_arc_135deg_-0.40",
+   "profile": "omni_static",
+   "command": [
+    -0.1414213562373095,
+    0.14142135623730953,
+    -0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 353,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0089,
+    0.0011
+   ],
+   "mean_yaw_rate_rad_s": 0.0114
+  },
+  {
+   "case_id": "static:tight_arc_135deg_+0.40",
+   "profile": "omni_static",
+   "command": [
+    -0.1414213562373095,
+    0.14142135623730953,
+    0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 50,
+   "requested_controls": 1000,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "static:tight_arc_180deg_-0.40",
+   "profile": "omni_static",
+   "command": [
+    -0.2,
+    2.4492935982947065e-17,
+    -0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 64,
+   "requested_controls": 1000,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "static:tight_arc_180deg_+0.40",
+   "profile": "omni_static",
+   "command": [
+    -0.2,
+    2.4492935982947065e-17,
+    0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 53,
+   "requested_controls": 1000,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "static:tight_arc_225deg_-0.40",
+   "profile": "omni_static",
+   "command": [
+    -0.14142135623730953,
+    -0.1414213562373095,
+    -0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 547,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0016,
+    0.0092
+   ],
+   "mean_yaw_rate_rad_s": 0.0011
+  },
+  {
+   "case_id": "static:tight_arc_225deg_+0.40",
+   "profile": "omni_static",
+   "command": [
+    -0.14142135623730953,
+    -0.1414213562373095,
+    0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 477,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0081,
+    0.0024
+   ],
+   "mean_yaw_rate_rad_s": -0.017
+  },
+  {
+   "case_id": "static:tight_arc_270deg_-0.40",
+   "profile": "omni_static",
+   "command": [
+    -3.6739403974420595e-17,
+    -0.2,
+    -0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 474,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0052,
+    0.0086
+   ],
+   "mean_yaw_rate_rad_s": 0.011
+  },
+  {
+   "case_id": "static:tight_arc_270deg_+0.40",
+   "profile": "omni_static",
+   "command": [
+    -3.6739403974420595e-17,
+    -0.2,
+    0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 487,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    0.0019,
+    0.0037
+   ],
+   "mean_yaw_rate_rad_s": -0.0012
+  },
+  {
+   "case_id": "static:tight_arc_315deg_-0.40",
+   "profile": "omni_static",
+   "command": [
+    0.14142135623730948,
+    -0.14142135623730953,
+    -0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "tilt_rms_degrees",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 272,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0045,
+    -0.0047
+   ],
+   "mean_yaw_rate_rad_s": -0.0057
+  },
+  {
+   "case_id": "static:tight_arc_315deg_+0.40",
+   "profile": "omni_static",
+   "command": [
+    0.14142135623730948,
+    -0.14142135623730953,
+    0.4
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "planar_error_mps",
+    "yaw_error_rad_s",
+    "computed_demand_over_rating_fraction",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 754,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0075,
+    0.0026
+   ],
+   "mean_yaw_rate_rad_s": -0.0047
+  },
+  {
+   "case_id": "transition:full_program",
+   "profile": "transition",
+   "command": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_program",
+    "terminated",
+    "forward.last_second_planar_error_mps",
+    "right.last_second_planar_error_mps",
+    "reverse_diagonal_turn_right.last_second_planar_error_mps",
+    "reverse_diagonal_turn_right.last_second_yaw_error_rad_s",
+    "gentle_arc.complete_segment",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": null,
+   "requested_controls": 3500,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "quiet:stand",
+   "profile": "quiet_stand",
+   "command": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "inside_training_range": true,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1000,
+   "requested_controls": 1000,
+   "mean_velocity_mps": [
+    -0.0,
+    -0.0
+   ],
+   "mean_yaw_rate_rad_s": 0.0008
+  },
+  {
+   "case_id": "quiet:stage2_long",
+   "profile": "stage2_long_quiet",
+   "command": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "inside_training_range": true,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1600,
+   "requested_controls": 1600,
+   "mean_velocity_mps": [
+    -0.0,
+    0.0
+   ],
+   "mean_yaw_rate_rad_s": 0.0004
+  },
+  {
+   "case_id": "stop:stand",
+   "profile": "stop_to_stand",
+   "command": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "inside_training_range": true,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1050,
+   "requested_controls": 1050,
+   "mean_velocity_mps": [
+    -0.0,
+    0.0
+   ],
+   "mean_yaw_rate_rad_s": 0.0005
+  },
+  {
+   "case_id": "stop:forward",
+   "profile": "stop_to_stand",
+   "command": [
+    0.1,
+    0.0,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1050,
+   "requested_controls": 1050,
+   "mean_velocity_mps": [
+    -0.0,
+    0.0
+   ],
+   "mean_yaw_rate_rad_s": -0.0016
+  },
+  {
+   "case_id": "stop:reverse",
+   "profile": "stop_to_stand",
+   "command": [
+    -0.1,
+    0.0,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "max_joint_velocity_rms_rad_s",
+    "max_target_step_abs_p95_rad_per_20ms",
+    "missing_six_toe_count_400hz"
+   ],
+   "recorded_controls": 1050,
+   "requested_controls": 1050,
+   "mean_velocity_mps": [
+    -0.0,
+    0.0
+   ],
+   "mean_yaw_rate_rad_s": -0.0002
+  },
+  {
+   "case_id": "stop:left",
+   "profile": "stop_to_stand",
+   "command": [
+    0.0,
+    0.1,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "max_joint_velocity_rms_rad_s",
+    "max_target_step_abs_p95_rad_per_20ms"
+   ],
+   "recorded_controls": 1050,
+   "requested_controls": 1050,
+   "mean_velocity_mps": [
+    0.0,
+    0.0
+   ],
+   "mean_yaw_rate_rad_s": -0.0
+  },
+  {
+   "case_id": "stop:right",
+   "profile": "stop_to_stand",
+   "command": [
+    0.0,
+    -0.1,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "quiet_window_controls",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 53,
+   "requested_controls": 1050,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "stop:forward_fast",
+   "profile": "stop_to_stand",
+   "command": [
+    0.2,
+    0.0,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "quiet_window_controls",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 86,
+   "requested_controls": 1050,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "stop:turn_left",
+   "profile": "stop_to_stand",
+   "command": [
+    0.0,
+    0.0,
+    0.2
+   ],
+   "inside_training_range": true,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1050,
+   "requested_controls": 1050,
+   "mean_velocity_mps": [
+    -0.0,
+    -0.0
+   ],
+   "mean_yaw_rate_rad_s": 0.001
+  },
+  {
+   "case_id": "stop:turn_right",
+   "profile": "stop_to_stand",
+   "command": [
+    0.0,
+    0.0,
+    -0.2
+   ],
+   "inside_training_range": true,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 1050,
+   "requested_controls": 1050,
+   "mean_velocity_mps": [
+    -0.0,
+    0.0
+   ],
+   "mean_yaw_rate_rad_s": -0.0004
+  },
+  {
+   "case_id": "stop:arc_left",
+   "profile": "stop_to_stand",
+   "command": [
+    0.1,
+    0.0,
+    0.2
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "max_joint_velocity_rms_rad_s",
+    "max_joint_position_range_rad",
+    "max_target_step_abs_p95_rad_per_20ms",
+    "max_requested_torque_saturation_fraction",
+    "requested_saturation_400hz",
+    "missing_six_toe_count_400hz"
+   ],
+   "recorded_controls": 1050,
+   "requested_controls": 1050,
+   "mean_velocity_mps": [
+    -0.0001,
+    -0.0
+   ],
+   "mean_yaw_rate_rad_s": -0.0003
+  },
+  {
+   "case_id": "stop:arc_right",
+   "profile": "stop_to_stand",
+   "command": [
+    0.1,
+    0.0,
+    -0.2
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "quiet_window_controls",
+    "native_capture_or_original_physical_bounds",
+    "canonical_full_trial_400hz_nonfoot_fraction"
+   ],
+   "recorded_controls": 128,
+   "requested_controls": 1050,
+   "mean_velocity_mps": null,
+   "mean_yaw_rate_rad_s": null
+  },
+  {
+   "case_id": "stop:strafe_arc",
+   "profile": "stop_to_stand",
+   "command": [
+    0.0,
+    0.1,
+    0.2
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "max_joint_velocity_rms_rad_s",
+    "max_target_step_abs_p95_rad_per_20ms"
+   ],
+   "recorded_controls": 1050,
+   "requested_controls": 1050,
+   "mean_velocity_mps": [
+    0.0,
+    -0.0
+   ],
+   "mean_yaw_rate_rad_s": 0.0
+  },
+  {
+   "case_id": "stop:diagonal",
+   "profile": "stop_to_stand",
+   "command": [
+    0.071,
+    0.071,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "max_requested_torque_saturation_fraction",
+    "requested_saturation_400hz",
+    "requested_saturation_mean_400hz",
+    "missing_six_toe_count_400hz",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 1050,
+   "requested_controls": 1050,
+   "mean_velocity_mps": [
+    -0.0,
+    0.0
+   ],
+   "mean_yaw_rate_rad_s": -0.0009
+  },
+  {
+   "case_id": "formal:0.00",
+   "profile": "stage2c_formal",
+   "command": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "inside_training_range": true,
+   "pass": true,
+   "failed_bounds": [],
+   "recorded_controls": 500,
+   "requested_controls": 500,
+   "mean_velocity_mps": [
+    0.0,
+    0.0
+   ],
+   "mean_yaw_rate_rad_s": 0.0016
+  },
+  {
+   "case_id": "formal:0.16",
+   "profile": "stage2c_formal",
+   "command": [
+    0.16,
+    0.0,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "base_height_std_m",
+    "tilt_rms_degrees",
+    "base_height_peak_to_peak_m",
+    "tilt_p95_degrees",
+    "maximum_tilt_degrees",
+    "yaw_rate_rmse_radps",
+    "peak_abs_computed_nm",
+    "maximum_computed_over_rating_burst_s",
+    "max_per_joint_rms_applied_nm",
+    "maximum_per_joint_computed_demand_over_rating_fraction",
+    "planar_velocity_rmse_mps",
+    "forward_fraction_minimum",
+    "native_capture_or_original_physical_bounds",
+    "canonical_full_trial_400hz_nonfoot_fraction"
+   ],
+   "recorded_controls": 93,
+   "requested_controls": 500,
+   "mean_velocity_mps": [
+    0.029,
+    -0.0098
+   ],
+   "mean_yaw_rate_rad_s": -0.0188
+  },
+  {
+   "case_id": "formal:0.20",
+   "profile": "stage2c_formal",
+   "command": [
+    0.2,
+    0.0,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "base_height_std_m",
+    "tilt_rms_degrees",
+    "base_height_peak_to_peak_m",
+    "tilt_p95_degrees",
+    "maximum_tilt_degrees",
+    "peak_abs_computed_nm",
+    "maximum_computed_over_rating_burst_s",
+    "max_per_joint_rms_applied_nm",
+    "maximum_per_joint_computed_demand_over_rating_fraction",
+    "planar_velocity_rmse_mps",
+    "forward_fraction_minimum",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 86,
+   "requested_controls": 500,
+   "mean_velocity_mps": [
+    0.0193,
+    -0.0177
+   ],
+   "mean_yaw_rate_rad_s": -0.0461
+  },
+  {
+   "case_id": "formal:0.30",
+   "profile": "stage2c_formal",
+   "command": [
+    0.3,
+    0.0,
+    0.0
+   ],
+   "inside_training_range": false,
+   "pass": false,
+   "failed_bounds": [
+    "complete_requested_window",
+    "terminated",
+    "tilt_rms_degrees",
+    "tilt_p95_degrees",
+    "maximum_tilt_degrees",
+    "peak_abs_computed_nm",
+    "maximum_computed_over_rating_burst_s",
+    "max_per_joint_rms_applied_nm",
+    "maximum_per_joint_computed_demand_over_rating_fraction",
+    "planar_velocity_rmse_mps",
+    "forward_fraction_minimum",
+    "native_capture_or_original_physical_bounds"
+   ],
+   "recorded_controls": 315,
+   "requested_controls": 500,
+   "mean_velocity_mps": [
+    0.0035,
+    -0.0038
+   ],
+   "mean_yaw_rate_rad_s": -0.0084
+  }
+ ]
+}

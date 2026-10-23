@@ -1,0 +1,21 @@
+{
+  "id": "20261023T210702_destination_v9_full96",
+  "date": "2026-10-23T21:07:02.810208Z",
+  "title": "destination_v9 passes 16 of the 96 cases: it walks only at the speeds it trained",
+  "summary": "We ran the 96-case manifest on destination_v9 with unchanged thresholds. It passes 16 of 96: all 9 cases at speeds it trained on (standing, quiet, turning in place at 0.2 rad/s and stopping after a stand or a turn), 6 of the 16 walks at 0.10 m/s (left and backward) and 1 of 9 stops after a moving command, and none of the 0.20 m/s walks, faster turns, arcs, formal forward cases or the transition program. destination_v9 therefore does not pass the gate that the destination lineage record (20261020T232214) named as its next step, and is not proposed as the locomotion model. Training draws walks at 0.025 and 0.05 m/s and turns at 0.2 rad/s; apart from those turns, the manifest's moving cases ask for 0.10 to 0.30 m/s or turns up to 0.4 rad/s.",
+  "areas": [
+    "locomotion",
+    "verification"
+  ],
+  "next": "Widen the training command range to the manifest's speeds and turn rates and train the destination reward again before proposing a locomotion model; find why 0.10 m/s walks fail forward and right but pass left and backward.",
+  "changes": [
+    "site/assets/destination_v9_full96_20261023_001/*",
+    "site/updates/20261023T210702_destination_v9_full96.json"
+  ],
+  "evidence": [
+    "site/assets/destination_v9_full96_20261023_001/results.json",
+    "site/assets/destination_v9_full96_20261023_001/build_results.py",
+    "https://github.com/Cornell-Physical-Intelligence/hexapod-cupi/pull/88"
+  ],
+  "no_project_impact": false
+}
