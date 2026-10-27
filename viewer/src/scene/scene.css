@@ -30,11 +30,15 @@
 .scene-page .toggle button { border-radius: 0; }
 .scene-page .toggle button:first-child { border-radius: 8px 0 0 8px; }
 .scene-page .toggle button:last-child { border-radius: 0 8px 8px 0; }
-.scene-page canvas.scene-view { flex: 1; min-height: 240px; width: 100%; border-radius: 10px; touch-action: none; cursor: grab; display: block; margin-top: 8px; }
+.scene-page .scene-stage { position: relative; flex: 1; min-height: 240px; margin-top: 8px; border-radius: 10px; overflow: hidden; }
+.scene-page canvas.scene-view { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; display: block; }
+.scene-page .hud { position: absolute; top: 8px; left: 10px; font: 600 13px system-ui; color: #2a3138; background: rgba(255,255,255,0.6); padding: 2px 8px; border-radius: 6px; pointer-events: none; }
+.scene-page .loading { position: absolute; inset: 0; display: grid; place-items: center; font: 14px system-ui; color: #2a3138; background: rgba(219,226,232,0.85); }
+.scene-page .bar .check { display: inline-flex; gap: 4px; align-items: center; }
 .scene-page .record { border-bottom: 0; border-top: 1px solid var(--line); margin-top: 8px; }
 .scene-page .note { color: var(--muted); font-size: 12px; flex: 1; min-width: 200px; }
 @media (max-width: 800px) {
   .scene-page { grid-template-columns: 1fr; overflow: auto; }
   .scene-page .editor { border-right: 0; border-bottom: 1px solid var(--line); }
-  .scene-page canvas.scene-view { min-height: 360px; }
+  .scene-page .scene-stage { min-height: 360px; }
 }

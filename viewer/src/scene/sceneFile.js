@@ -1,7 +1,7 @@
 // Scene files: the scene a user edits (hexapod_scene_v1, what src/locomotion/surrogate/scene.py runs) and the
 // simulated result that viewer/scene_view.py writes (hexapod_scene_view_v1). A result holds one case per robot
 // in the run file's layout (leg points, contacts, command, ghost), all in the world's navigation axes, then the
-// terrain's simulated height grid as int16 millimetres.
+// terrain's simulated height grid as int16 millimetres, then each robot's body pose and joint angles.
 import { simulatedGrid } from './terrain.js';
 
 export const SCENE = 'hexapod_scene_v1';
@@ -92,6 +92,9 @@ export async function readSceneFile(value) {
     c.points = new Int16Array(buffer, c.points_offset, c.frames * 72);
     c.contacts = new Uint8Array(buffer, file.contacts_base + c.contacts_offset, c.frames);
     c.seconds = c.frames * file.frame_seconds;
+    // Body pose in MuJoCo's world (x, y, z, quaternion xyzw) and the 18 joint angles, every frame.
+    c.pose = new Float32Array(buffer, file.pose_base + c.pose_offset, c.frames * 7);
+    c.joints = new Float32Array(buffer, file.joints_base + c.joints_offset, c.frames * 18);
   }
   const t = file.terrain;
   file.grid = simulatedGrid(t, new Int16Array(buffer, t.base, t.nx * t.ny));

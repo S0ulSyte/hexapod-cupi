@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { VIEWS } from '../runs/draw.js';
-import { center } from '../runs/runFile.js';
-import { drawScene } from './drawScene.js';
+import { SceneRenderer, VIEWS, loadRobot } from './scene3d.js';
 import { FEATURES, bounds, featureGrid } from './terrain.js';
 import { exampleScene, plannedPath, readSceneFile, sceneSeconds } from './sceneFile.js';
 import '../runs/runs.css';
@@ -10,7 +8,9 @@ import './scene.css';
 const PREVIEW_STEP_M = 0.04;
 // locomotion.surrogate.scene refuses starts closer to the terrain's edge: the terrain is the whole floor.
 const EDGE_MARGIN_M = 0.35;
+const FOLLOW_DISTANCE_M = 1.4;
 const SIZES = { '1280×720': [1280, 720], '1920×1080': [1920, 1080], '1080×1080': [1080, 1080] };
+const PATH_COLOURS = ['#2f7fa6', '#c27a1c', '#2f9a78', '#c2477a'];
 const FIELD_LABELS = {
   center: ['centre forward', 'centre left'],
   size: ['length', 'width'],
@@ -53,8 +53,21 @@ function download(name, blob) {
 
 const slug = (text) => (text || 'scene').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
 
+// A simulated robot's pose at fractional frame f: world position, quaternion xyzw and joint angles.
+function simulatedPose(c, f) {
+  const i0 = Math.max(0, Math.min(c.frames - 1, Math.floor(f))), i1 = Math.min(c.frames - 1, i0 + 1), a = f - i0;
+  const p0 = c.pose.subarray(7 * i0, 7 * i0 + 7), p1 = c.pose.subarray(7 * i1, 7 * i1 + 7);
+  let dot = 0;
+  for (let k = 3; k < 7; k++) dot += p0[k] * p1[k];
+  const sign = dot < 0 ? -1 : 1;
+  const q = [3, 4, 5, 6].map((k) => p0[k] + (sign * p1[k] - p0[k]) * a);
+  const n = Math.hypot(...q) || 1;
+  const angles = Array.from({ length: 18 }, (_, k) => c.joints[18 * i0 + k] + (c.joints[18 * i1 + k] - c.joints[18 * i0 + k]) * a);
+  return [[0, 1, 2].map((k) => p0[k] + (p1[k] - p0[k]) * a), q.map((x) => x / n), angles];
+}
+
 // Build a scene (terrain features, robots, their starts and commands), save it for the surrogate to run, then
-// open the simulated result to play it and record it as a video.
+// open the simulated result to play it in the look of the Spark videos and record it.
 export default function SceneViewer() {
   const [scene, setScene] = useState(exampleScene);
   const [result, setResult] = useState(null);
@@ -64,11 +77,15 @@ export default function SceneViewer() {
   const [speed, setSpeed] = useState(1);
   const [viewName, setViewName] = useState('3d');
   const [follow, setFollow] = useState(-1);
+  const [paths, setPaths] = useState(false);
   const [recording, setRecording] = useState(null);
   const [videoSize, setVideoSize] = useState('1280×720');
   const [fps, setFps] = useState(25);
+  const [robot, setRobot] = useState(null);
+  const [loading, setLoading] = useState('Loading the robot’s CAD parts…');
   const canvas = useRef(null);
-  const state = useRef({ t: 0, view: { ...VIEWS['3d'] }, span: null, dirty: true });
+  const view = useRef(null);
+  const state = useRef({ t: 0, dirty: true, reaim: true });
   const slider = useRef(null);
   const clock = useRef(null);
 
@@ -86,6 +103,8 @@ export default function SceneViewer() {
     () => scene.robots.map((r) => ({ name: r.name, path: plannedPath(r, sceneSeconds(scene)) })),
     [scene],
   );
+  const shownGrid = live ? result.grid : grid;
+  const count = live ? result.cases.length : scene.robots.length;
 
   const open = useCallback(async (files) => {
     setError(null);
@@ -120,42 +139,84 @@ export default function SceneViewer() {
       .catch((e) => setError(String(e.message ?? e)));
   }, [open]);
 
-  // The camera: the whole terrain, or one robot followed at a closer span.
-  const camera = useCallback(
-    (t) => {
-      const s = state.current;
-      const [f0, f1, l0, l1] = bounds(scene.terrain);
-      let target = [(f0 + f1) / 2, (l0 + l1) / 2, 0];
-      let span = s.span ?? Math.max(f1 - f0, l1 - l0) * (s.view.el > 1.2 ? 1.05 : 0.95);
-      if (follow >= 0) {
-        if (live && result.cases[follow]) {
-          const c = result.cases[follow];
-          const [cf, cl] = center(c, Math.min(c.frames - 1, t / result.frame_seconds));
-          target = [cf, cl, live ? result.grid.at(cf, cl) : 0];
-        } else if (planned[follow]) {
-          const p = planned[follow].path[Math.min(planned[follow].path.length - 1, Math.round(t / 0.04))];
-          target = [p[0], p[1], grid ? grid.at(p[0], p[1]) : 0];
-        }
-        span = s.span ?? 1.8;
-      }
-      return { ...s.view, target, span };
-    },
-    [scene.terrain, follow, live, result, planned, grid],
-  );
+  // The renderer and the robot's CAD parts, once.
+  useEffect(() => {
+    view.current = new SceneRenderer(canvas.current);
+    view.current.controls.addEventListener('start', () => setViewName(null));
+    let cancelled = false;
+    loadRobot((done, total) => !cancelled && setLoading(`Loading the robot’s CAD parts… ${done} / ${total} meshes`))
+      .then((loaded) => {
+        if (cancelled) return;
+        setRobot(loaded);
+        setLoading(null);
+      })
+      .catch((e) => setError(`Could not load the robot model: ${e.message ?? e}`));
+    return () => {
+      cancelled = true;
+      view.current.dispose();
+    };
+  }, []);
 
-  const frame = useCallback(
-    (target, t, size) =>
-      drawScene(target, {
-        grid: live ? result.grid : grid,
-        robots: live ? result.cases : null,
-        planned: live ? null : planned,
-        t,
-        frameSeconds: live ? result.frame_seconds : 0.04,
-        camera: camera(t),
-        title: live ? result.name : `${scene.name} (plan — not simulated)`,
-        size,
-      }),
-    [live, result, grid, planned, camera, scene.name],
+  useEffect(() => {
+    if (!shownGrid) return;
+    view.current.setTerrain((x, y) => shownGrid.at(-y, x), [shownGrid.l0, shownGrid.l1, -shownGrid.f1, -shownGrid.f0]);
+    state.current.reaim = true;
+    state.current.dirty = true;
+  }, [shownGrid]);
+
+  useEffect(() => {
+    if (!robot) return;
+    view.current.setRobots(robot, count);
+    state.current.dirty = true;
+  }, [robot, count]);
+
+  // Paths on the ground: the plan's dashed command paths, or (when chosen) each robot's body path and ghost.
+  useEffect(() => {
+    if (!shownGrid) return;
+    const on = (f, l) => [l, -f, shownGrid.at(f, l) + 0.003];
+    const lines = [];
+    if (live && paths)
+      result.cases.forEach((c, k) => {
+        lines.push({ points: Array.from({ length: c.frames }, (_, i) => on(c.pose[7 * i + 1] * -1, c.pose[7 * i])), colour: PATH_COLOURS[k % 4] });
+        lines.push({ points: c.ghost_mm.map(([a, b]) => on(a / 1000, b / 1000)), colour: '#e0703f', dashed: true });
+      });
+    if (!live) planned.forEach((p) => lines.push({ points: p.path.map(([a, b]) => on(a, b)), colour: '#e0703f', dashed: true }));
+    view.current.setLines(lines);
+    state.current.dirty = true;
+  }, [live, result, paths, planned, shownGrid]);
+
+  // Pose every robot at time t and aim the camera.
+  const place = useCallback(
+    (t) => {
+      const v = view.current, s = state.current;
+      if (!robot || v.robots.length !== count) return;
+      const centres = [];
+      if (live) {
+        result.cases.forEach((c, k) => {
+          const [position, quaternion, angles] = simulatedPose(c, Math.min(c.frames - 1, t / result.frame_seconds));
+          v.pose(k, position, quaternion, angles);
+          centres.push(position);
+        });
+      } else {
+        scene.robots.forEach((r, k) => {
+          const path = planned[k].path, [f, l, h] = path[Math.min(path.length - 1, Math.round(t / 0.04))];
+          const position = [l, -f, (shownGrid?.at(f, l) ?? 0) + robot.stance.reset_root_height_m - 0.005];
+          v.pose(k, position, [0, 0, Math.sin(h / 2), Math.cos(h / 2)], robot.stance.nominal_joint_position_rad);
+          centres.push(position);
+        });
+      }
+      const [x0, x1, y0, y1] = v.bounds ?? [-1, 1, -1, 1];
+      const direction = VIEWS[viewName ?? '3d'];
+      if (follow >= 0 && centres[follow]) {
+        const [x, y, z] = centres[follow];
+        v.aim([x, y, z - 0.03], direction, FOLLOW_DISTANCE_M, !s.reaim);
+      } else if (s.reaim) {
+        const extent = Math.max(x1 - x0, y1 - y0);
+        v.aim([(x0 + x1) / 2, (y0 + y1) / 2, 0], direction, extent * (viewName === 'top' ? 1.6 : 1.1), false);
+      }
+      s.reaim = false;
+    },
+    [robot, count, live, result, scene.robots, planned, shownGrid, follow, viewName],
   );
 
   useEffect(() => {
@@ -165,56 +226,24 @@ export default function SceneViewer() {
       if (last != null && playing && !recording) {
         s.t += ((now - last) / 1000) * speed;
         if (s.t > seconds) s.t = 0;
-        s.dirty = true;
       }
       last = now;
-      if (s.dirty && canvas.current && !recording) {
-        s.dirty = false;
+      if (canvas.current && !recording) {
         if (slider.current) slider.current.value = s.t;
         if (clock.current) clock.current.textContent = `${s.t.toFixed(1)} s`;
-        frame(canvas.current, s.t);
+        place(s.t);
+        const r = canvas.current.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
+        view.current.render(Math.round(r.width * d), Math.round(r.height * d));
       }
       id = requestAnimationFrame(tick);
     };
     id = requestAnimationFrame(tick);
-    const redraw = () => (state.current.dirty = true);
-    window.addEventListener('resize', redraw);
-    state.current.dirty = true;
-    return () => {
-      cancelAnimationFrame(id);
-      window.removeEventListener('resize', redraw);
-    };
-  }, [playing, speed, seconds, frame, recording]);
+    return () => cancelAnimationFrame(id);
+  }, [playing, speed, seconds, place, recording]);
 
-  const rotate = (e) => {
-    const s = state.current;
-    const start = [e.clientX, e.clientY, s.view.az, s.view.el];
-    const move = (m) => {
-      s.view = {
-        az: start[2] - (m.clientX - start[0]) * 0.01,
-        el: Math.max(0.02, Math.min(Math.PI / 2 - 0.001, start[3] + (m.clientY - start[1]) * 0.01)),
-      };
-      s.dirty = true;
-      setViewName(null);
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-  };
-  const zoom = (e) => {
-    const s = state.current;
-    s.span = Math.max(0.3, Math.min(60, (s.span ?? camera(s.t).span) * Math.exp(e.deltaY * 0.001)));
-    s.dirty = true;
-  };
-
-  // Play the scene once at real time onto a fixed-size canvas and record it with the browser's MediaRecorder.
+  // Play the scene once at real time at the video size and record the canvas with the browser's MediaRecorder.
   const record = async () => {
-    const size = SIZES[videoSize];
-    const target = document.createElement('canvas');
-    [target.width, target.height] = size;
+    const [width, height] = SIZES[videoSize];
     const type = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'].find(
       (t) => window.MediaRecorder?.isTypeSupported?.(t),
     );
@@ -222,20 +251,24 @@ export default function SceneViewer() {
       setError('This browser cannot record canvas video (no MediaRecorder).');
       return;
     }
-    const stream = target.captureStream(fps);
-    const recorder = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: size[0] * size[1] * 6 });
+    const frames = Math.ceil((seconds / speed) * fps);
+    setRecording({ frame: 0, frames });
+    const stream = canvas.current.captureStream(fps);
+    const recorder = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: width * height * 6 });
     const chunks = [];
     recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
     const done = new Promise((resolve) => (recorder.onstop = resolve));
-    const frames = Math.ceil((seconds / speed) * fps);
-    setRecording({ frame: 0, frames });
-    frame(target, 0, size);
+    place(0);
+    view.current.render(width, height);
     recorder.start(1000);
     const started = performance.now();
     for (let k = 0; k <= frames; k++) {
       const wait = started + (k * 1000) / fps - performance.now();
       if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-      frame(target, Math.min(seconds, (k / fps) * speed), size);
+      const t = Math.min(seconds, (k / fps) * speed);
+      place(t);
+      view.current.render(width, height);
+      if (slider.current) slider.current.value = t;
       if (k % fps === 0) setRecording({ frame: k, frames });
     }
     recorder.stop();
@@ -243,13 +276,10 @@ export default function SceneViewer() {
     stream.getTracks().forEach((track) => track.stop());
     download(`${slug(live ? result.name : scene.name)}.${type.includes('mp4') ? 'mp4' : 'webm'}`, new Blob(chunks, { type }));
     setRecording(null);
-    state.current.dirty = true;
   };
 
   const setView = (name) => {
-    state.current.view = { ...VIEWS[name] };
-    state.current.span = null;
-    state.current.dirty = true;
+    state.current.reaim = true;
     setViewName(name);
   };
 
@@ -450,8 +480,7 @@ export default function SceneViewer() {
             value={follow}
             onChange={(e) => {
               setFollow(Number(e.target.value));
-              state.current.span = null;
-              state.current.dirty = true;
+              state.current.reaim = true;
             }}
             aria-label="Camera"
           >
@@ -467,14 +496,21 @@ export default function SceneViewer() {
             max={seconds}
             step="0.04"
             aria-label="Time"
-            onInput={(e) => {
-              state.current.t = Number(e.target.value);
-              state.current.dirty = true;
-            }}
+            onInput={(e) => (state.current.t = Number(e.target.value))}
           />
           <span ref={clock} className="clock">0.0 s</span>
+          {live && (
+            <label className="check">
+              <input type="checkbox" checked={paths} onChange={(e) => setPaths(e.target.checked)} />
+              paths
+            </label>
+          )}
         </div>
-        <canvas ref={canvas} className="scene-view" onPointerDown={rotate} onWheel={zoom} />
+        <div className="scene-stage">
+          <canvas ref={canvas} className="scene-view" />
+          <div className="hud">{live ? result.name : `${scene.name} — plan, not simulated`}</div>
+          {loading && <div className="loading">{loading}</div>}
+        </div>
         <div className="bar record">
           <select value={videoSize} onChange={(e) => setVideoSize(e.target.value)} aria-label="Video size">
             {Object.keys(SIZES).map((k) => <option key={k}>{k}</option>)}

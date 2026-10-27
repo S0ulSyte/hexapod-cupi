@@ -22,101 +22,6 @@ export function fit(canvas) {
   return [g, r.width, r.height];
 }
 
-// A polyline through projected points.
-function path(g, pts) {
-  g.beginPath();
-  pts.forEach((q, k) => (k ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])));
-}
-
-// The commanded direction (an arrow) or turn (an arc) at frame `f`, drawn at the body centre (cf, cl) and height z,
-// along the body's current axes from the front and rear coxa joints.
-export function drawCommand(g, c, f, i, proj, cf, cl, z) {
-  const front = [0, 3].map((leg) => point(c, f, leg, 0));
-  const rear = [2, 5].map((leg) => point(c, f, leg, 0));
-  let hf = (front[0][0] + front[1][0] - rear[0][0] - rear[1][0]) / 2;
-  let hl = (front[0][1] + front[1][1] - rear[0][1] - rear[1][1]) / 2;
-  const hn = Math.hypot(hf, hl) || 1;
-  hf /= hn;
-  hl /= hn;
-  const cmd = c.command[i];
-  g.strokeStyle = g.fillStyle = css('--cmd');
-  g.lineWidth = 3;
-  if (Math.hypot(cmd[0], cmd[1]) > 1e-6) {
-    const vf = cmd[0] * hf - cmd[1] * hl, vl = cmd[0] * hl + cmd[1] * hf;
-    const a = proj(cf, cl, z), b = proj(cf + vf * 3.2, cl + vl * 3.2, z);
-    path(g, [a, b]);
-    g.stroke();
-    const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
-    path(g, [b, [b[0] - 10 * Math.cos(ang - 0.4), b[1] - 10 * Math.sin(ang - 0.4)], [b[0] - 10 * Math.cos(ang + 0.4), b[1] - 10 * Math.sin(ang + 0.4)]]);
-    g.fill();
-  }
-  if (Math.abs(cmd[2]) > 1e-6) {
-    const a = proj(cf, cl, z), r = 48, end = -Math.PI / 2 + (cmd[2] > 0 ? -0.9 : 0.9);
-    g.beginPath();
-    g.arc(a[0], a[1], r, -Math.PI / 2 - 0.9, -Math.PI / 2 + 0.9);
-    g.stroke();
-    g.beginPath();
-    g.arc(a[0] + r * Math.cos(end), a[1] + r * Math.sin(end), 5, 0, 7);
-    g.fill();
-  }
-}
-
-// The body plate and the six legs at frame `f` as depth-tagged drawing items, to sort back to front.
-export function robotItems(g, c, f, proj) {
-  const items = [];
-  const plate = [0, 1, 2, 5, 4, 3].map((leg) => proj(...point(c, f, leg, 0)));
-  items.push({
-    depth: plate.reduce((s, q) => s + q[2], 0) / 6,
-    draw() {
-      g.fillStyle = css('--body') + '55';
-      g.strokeStyle = css('--body');
-      g.lineWidth = 2;
-      path(g, plate);
-      g.closePath();
-      g.fill();
-      g.stroke();
-      const a = point(c, f, 0, 0), b = point(c, f, 3, 0);
-      const m = proj((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
-      g.fillStyle = css('--ink');
-      g.beginPath();
-      g.arc(m[0], m[1], 4, 0, 7);
-      g.fill();
-      g.font = '12px system-ui';
-      g.fillText('front', m[0] + 6, m[1] - 6);
-    },
-  });
-  for (let leg = 0; leg < 6; leg++) {
-    const s = [0, 1, 2, 3].map((k) => proj(...point(c, f, leg, k)));
-    const colour = css(TRIPOD_A[leg] ? '--legA' : '--legB');
-    const on = touching(c, f, leg);
-    items.push({
-      depth: (s[1][2] + s[2][2] + s[3][2]) / 3,
-      draw() {
-        g.strokeStyle = g.fillStyle = colour;
-        g.lineWidth = 4;
-        g.lineCap = g.lineJoin = 'round';
-        path(g, s);
-        g.stroke();
-        for (let k = 0; k < 3; k++) {
-          g.beginPath();
-          g.arc(s[k][0], s[k][1], 3.5, 0, 7);
-          g.fill();
-        }
-        g.beginPath();
-        g.arc(s[3][0], s[3][1], 6, 0, 7);
-        g.lineWidth = 2.5;
-        if (on) g.fill();
-        else {
-          g.fillStyle = css('--card');
-          g.fill();
-          g.stroke();
-        }
-      },
-    });
-  }
-  return items;
-}
-
 // The robot at time `t` seen from `view`, following the body: floor grid, body path, ghost path and dot,
 // commanded direction or turn, then the body plate and legs drawn back to front.
 export function drawRobot(canvas, c, t, view, frameSeconds) {
@@ -163,8 +68,86 @@ export function drawRobot(canvas, c, t, view, frameSeconds) {
   g.arc(dot[0], dot[1], 5, 0, 7);
   g.fill();
 
-  drawCommand(g, c, f, i, proj, cf, cl, 0);
-  const items = robotItems(g, c, f, proj);
+  // The command arrow uses the body's current axes from the front and rear coxa joints.
+  const front = [0, 3].map((leg) => point(c, f, leg, 0));
+  const rear = [2, 5].map((leg) => point(c, f, leg, 0));
+  let hf = (front[0][0] + front[1][0] - rear[0][0] - rear[1][0]) / 2;
+  let hl = (front[0][1] + front[1][1] - rear[0][1] - rear[1][1]) / 2;
+  const hn = Math.hypot(hf, hl) || 1;
+  hf /= hn;
+  hl /= hn;
+  const cmd = c.command[i];
+  g.lineWidth = 3;
+  if (Math.hypot(cmd[0], cmd[1]) > 1e-6) {
+    const vf = cmd[0] * hf - cmd[1] * hl, vl = cmd[0] * hl + cmd[1] * hf;
+    const a = proj(cf, cl, 0), b = proj(cf + vf * 3.2, cl + vl * 3.2, 0);
+    line([a, b]);
+    g.stroke();
+    const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+    line([b, [b[0] - 10 * Math.cos(ang - 0.4), b[1] - 10 * Math.sin(ang - 0.4)], [b[0] - 10 * Math.cos(ang + 0.4), b[1] - 10 * Math.sin(ang + 0.4)]]);
+    g.fill();
+  }
+  if (Math.abs(cmd[2]) > 1e-6) {
+    const a = proj(cf, cl, 0), r = 48, end = -Math.PI / 2 + (cmd[2] > 0 ? -0.9 : 0.9);
+    g.beginPath();
+    g.arc(a[0], a[1], r, -Math.PI / 2 - 0.9, -Math.PI / 2 + 0.9);
+    g.stroke();
+    g.beginPath();
+    g.arc(a[0] + r * Math.cos(end), a[1] + r * Math.sin(end), 5, 0, 7);
+    g.fill();
+  }
+
+  const items = [];
+  const plate = [0, 1, 2, 5, 4, 3].map((leg) => proj(...point(c, f, leg, 0)));
+  items.push({
+    depth: plate.reduce((s, q) => s + q[2], 0) / 6,
+    draw() {
+      g.fillStyle = css('--body') + '55';
+      g.strokeStyle = css('--body');
+      g.lineWidth = 2;
+      line(plate);
+      g.closePath();
+      g.fill();
+      g.stroke();
+      const a = point(c, f, 0, 0), b = point(c, f, 3, 0);
+      const m = proj((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+      g.fillStyle = css('--ink');
+      g.beginPath();
+      g.arc(m[0], m[1], 4, 0, 7);
+      g.fill();
+      g.font = '12px system-ui';
+      g.fillText('front', m[0] + 6, m[1] - 6);
+    },
+  });
+  for (let leg = 0; leg < 6; leg++) {
+    const s = [0, 1, 2, 3].map((k) => proj(...point(c, f, leg, k)));
+    const colour = css(TRIPOD_A[leg] ? '--legA' : '--legB');
+    const on = touching(c, f, leg);
+    items.push({
+      depth: (s[1][2] + s[2][2] + s[3][2]) / 3,
+      draw() {
+        g.strokeStyle = g.fillStyle = colour;
+        g.lineWidth = 4;
+        g.lineCap = g.lineJoin = 'round';
+        line(s);
+        g.stroke();
+        for (let k = 0; k < 3; k++) {
+          g.beginPath();
+          g.arc(s[k][0], s[k][1], 3.5, 0, 7);
+          g.fill();
+        }
+        g.beginPath();
+        g.arc(s[3][0], s[3][1], 6, 0, 7);
+        g.lineWidth = 2.5;
+        if (on) g.fill();
+        else {
+          g.fillStyle = css('--card');
+          g.fill();
+          g.stroke();
+        }
+      },
+    });
+  }
   items.sort((a, b) => b.depth - a.depth).forEach((x) => x.draw());
   g.font = '13px system-ui';
   g.fillStyle = css('--ink');

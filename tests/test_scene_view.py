@@ -112,13 +112,27 @@ class SceneViewTests(unittest.TestCase):
         self.assertAlmostEqual(b["commanded_heading_deg"][0], 90, places=1)
         blob = gzip.decompress(base64.b64decode(value["data"]))
         t = value["terrain"]
-        grid = np.frombuffer(blob[t["base"] :], dtype="<i2").reshape(t["ny"], t["nx"])
+        cells = t["ny"] * t["nx"]
+        grid = np.frombuffer(blob[t["base"] : t["base"] + 2 * cells], dtype="<i2").reshape(
+            t["ny"], t["nx"]
+        )
         expected = np.round(Terrain(SCENE["terrain"]).heights * 1000)
         np.testing.assert_array_equal(grid, expected)
         # Robot a stands on the 20 mm box and b on the floor: their toe points sit 20 mm apart in height.
         points = np.frombuffer(blob[: value["contacts_base"]], dtype="<i2").reshape(-1, 6, 4, 3)
         toes_a, toes_b = points[a["frames"] - 1, :, 3, 2], points[-1, :, 3, 2]
         self.assertTrue(np.all(np.abs(toes_a - toes_b - 20) <= 2))
+        # Each robot's body pose (world x, y, z and quaternion) and joint angles follow, every second control.
+        pose = np.frombuffer(blob, "<f4", 5 * 7, value["pose_base"] + b["pose_offset"]).reshape(
+            5, 7
+        )
+        np.testing.assert_allclose(pose[0, :2], [-0.3, 0.4], atol=0.01)
+        self.assertAlmostEqual(2 * np.arctan2(pose[0, 5], pose[0, 6]), np.pi / 2, places=2)
+        angles = np.frombuffer(
+            blob, "<f4", 5 * 18, value["joints_base"] + a["joints_offset"]
+        ).reshape(5, 18)
+        stance = json.loads((ROOT / "robot/hexapod_mkii_updated_v1/stance.json").read_text())
+        np.testing.assert_allclose(angles[-1], stance["nominal_joint_position_rad"], atol=0.05)
         # The node test's fixture is this file; its physics may differ in the last digits between builds.
         fixture = json.loads((FIXTURES / "sample_scene_view.json").read_text())
         for key in ("schema", "scene", "terrain", "contacts_base", "frame_seconds"):

@@ -4,7 +4,9 @@
 Every robot becomes one case in the run file's layout (``run_view.py``): leg points in millimetres every second
 control, foot contacts, heading, command and the ghost. Here all robots share the world's navigation axes
 (forward, left) instead of each starting at the origin, each ghost starts at its robot's start pose, and the
-file adds the terrain's height grid (int16 millimetres) after the leg points and contacts.
+file adds the terrain's height grid (int16 millimetres) after the leg points and contacts, then each robot's
+body pose in MuJoCo's world (x, y, z, quaternion xyzw) and 18 joint angles per frame (float32), from which the
+Scene page poses the robot's CAD parts.
 
 Usage: uv run python viewer/scene_view.py <scene output folder> --output scene_view.json
 """
@@ -82,6 +84,8 @@ def robot_case(trace, row, joints):
         ).tolist(),
         "_points": np.round(nav[index] * 1000).astype("<i2"),
         "_contacts": (trace["toe_contact"][index] * (1 << np.arange(6))).sum(-1).astype("u1"),
+        "_pose": pose[index].astype("<f4"),
+        "_joints": trace["joint_position_rad"][index].astype("<f4"),
     }
 
 
@@ -91,21 +95,29 @@ def build(folder, model=None):
     active = json.loads((ROOT / "robot/active_model.json").read_text())
     model = Path(model) if model else ROOT / active["model"]["path"]
     joints = {j["name"]: j for j in json.loads(model.read_text())["joints"]}
-    cases, blocks, contacts = [], [], []
+    cases, blocks, contacts, poses, angles = [], [], [], [], []
     for row in summary["robots"]:
         with np.load(folder / row["trace"]) as trace:
             case = robot_case(trace, row, joints)
         case["points_offset"] = sum(len(b) for b in blocks)
         case["contacts_offset"] = sum(len(c) for c in contacts)
+        case["pose_offset"] = sum(len(b) for b in poses)
+        case["joints_offset"] = sum(len(b) for b in angles)
         blocks.append(case.pop("_points").tobytes())
         contacts.append(case.pop("_contacts").tobytes())
+        poses.append(case.pop("_pose").tobytes())
+        angles.append(case.pop("_joints").tobytes())
         cases.append(case)
     points, contact_bytes = b"".join(blocks), b"".join(contacts)
     with np.load(folder / "terrain.npz") as grid:
         heights, xs, ys = grid["heights"], grid["xs"], grid["ys"]
     terrain_bytes = np.round(heights * 1000).astype("<i2").tobytes()
-    # Even offsets keep the terrain's int16 view aligned.
+    # Padding keeps the terrain's int16 view and the float32 views aligned.
     pad = b"\0" * ((len(points) + len(contact_bytes)) % 2)
+    terrain_base = len(points) + len(contact_bytes) + len(pad)
+    pad4 = b"\0" * (-(terrain_base + len(terrain_bytes)) % 4)
+    pose_base = terrain_base + len(terrain_bytes) + len(pad4)
+    pose_bytes, joint_bytes = b"".join(poses), b"".join(angles)
     return {
         "schema": SCHEMA,
         "name": summary["scene"].get("name", folder.name),
@@ -115,15 +127,19 @@ def build(folder, model=None):
         "frame_seconds": STEP * CONTROL_SECONDS,
         "legs": list(LEGS),
         "contacts_base": len(points),
+        "pose_base": pose_base,
+        "joints_base": pose_base + len(pose_bytes),
         "terrain": {
-            "base": len(points) + len(contact_bytes) + len(pad),
+            "base": terrain_base,
             "nx": len(xs),
             "ny": len(ys),
             "x0_m": float(xs[0]),
             "y0_m": float(ys[0]),
             "resolution_m": float(xs[1] - xs[0]),
         },
-        "data": base64.b64encode(compress(points + contact_bytes + pad + terrain_bytes)).decode(),
+        "data": base64.b64encode(
+            compress(points + contact_bytes + pad + terrain_bytes + pad4 + pose_bytes + joint_bytes)
+        ).decode(),
         "cases": cases,
     }
 

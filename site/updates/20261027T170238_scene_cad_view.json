@@ -1,0 +1,25 @@
+{
+  "id": "20261027T170238_scene_cad_view",
+  "date": "2026-10-27T17:02:38.000000Z",
+  "title": "Scene page: robots drawn from their CAD parts in the look of the Spark videos",
+  "summary": "The Scene page now renders in 3D like the native Spark (Isaac) videos: the robot's 1,753 CAD parts in white on a pale floor with a 0.5 m grid, soft light and shadows, posed from each robot's simulated body pose and joint angles, which viewer/scene_view.py now adds to the scene file. The page merges each mesh's vertices on a grid a fraction of the part's size (0.25 to 2 mm), so several robots play and record in real time; the full meshes hold about 22 million triangles per robot. Body paths and ghosts are an option. The Runs page's drawing is unchanged.",
+  "areas": [
+    "verification"
+  ],
+  "next": "Record videos of the destination_v29 model on terrain scenes.",
+  "changes": [
+    "tests/test_scene_view.py",
+    "viewer/README.md",
+    "viewer/scene_view.py",
+    "viewer/src/runs/draw.js",
+    "viewer/src/scene/*",
+    "viewer/test/fixtures/sample_scene_view.json",
+    "site/updates/20261027T170238_scene_cad_view.json"
+  ],
+  "evidence": [
+    "tests/test_scene_view.py",
+    "viewer/test/scene.test.mjs"
+  ],
+  "no_project_impact": true,
+  "reason": "A viewer page for videos; training, the canonical task, reward and evaluator are unchanged."
+}
