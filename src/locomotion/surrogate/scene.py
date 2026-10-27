@@ -24,11 +24,11 @@ flat floor, and the policies were trained on flat ground.
 (lf or rf) and a rear leg (lr or rr) touch the ground, the height difference between their toes over the
 distance between them gives the robot's tilt along the slope (smoothed over about 0.1 s, held while no front and
 rear leg touch at once, limited to 20 degrees; the trace records it). With ``"gravity"`` (or ``true``) the gravity
-inputs become gravity relative to that sloped ground. With ``"joints"`` the gravity inputs stay and each femur
+inputs become gravity relative to that sloped ground. With ``"femurs"`` the gravity inputs stay and each femur
 pitch input becomes its measured angle plus the tilt about that joint's axis: nearly the whole tilt, with
 opposite signs, for the front and rear femurs, which reach forward and back, and almost none for the middle
-ones, whose axes lie across a pitch. The tibia inputs stay, since a tibia's angle is measured from its femur.
-Both change all five history frames.
+ones, whose axes lie across a pitch. ``"joints"`` adds the tilt about each tibia's axis to the tibia inputs too,
+although a tibia's angle is measured from its femur. Every mode changes all five history frames.
 
 The output folder holds ``scene.json`` (the scene with resolved checkpoint paths), ``terrain.npz`` and one
 ``robot_<k>.npz`` trace per robot; ``viewer/scene_view.py`` turns it into a file for the viewer's Scene page.
@@ -60,7 +60,7 @@ SLOPE_SMOOTHING = 0.2
 GRAVITY = slice(3, 6)
 JOINTS = slice(6, 24)
 FEMURS = (1, 4, 7, 10, 13, 16)
-SLOPE_MODES = (True, "gravity", "joints")
+SLOPE_MODES = (True, "gravity", "femurs", "joints")
 
 
 def _quaternion(xyzw):
@@ -82,7 +82,8 @@ def _multiply(a, b):
 
 class SlopeInputs:
     """The robot's tilt along a slope from its front and rear toes, and the policy inputs it corrects:
-    gravity relative to the sloped ground (``gravity``) or the femur angles plus the tilt (``joints``)."""
+    gravity relative to the sloped ground (``gravity``), or the femur angles (``femurs``) or femur and tibia
+    angles (``joints``) plus the tilt about each joint's axis."""
 
     def __init__(self, mode=True, joints=None):
         if mode not in SLOPE_MODES:
@@ -90,13 +91,13 @@ class SlopeInputs:
         self.mode = "gravity" if mode is True else mode
         self.pitch, self.direction = 0.0, np.array([0.0, 0.0])
         self.frames = None
-        # Each leg's coxa and femur joint frames, for the femur's pitch axis in the body.
+        # Each leg's joint frames, for the femur and tibia pitch axes in the body.
         named = {j["name"]: j for j in joints or []}
         self.legs = (
             [
-                (
-                    _quaternion(named[f"{leg}_coxa_yaw"]["quaternion_xyzw"]),
-                    _quaternion(named[f"{leg}_femur_pitch"]["quaternion_xyzw"]),
+                tuple(
+                    _quaternion(named[f"{leg}_{part}"]["quaternion_xyzw"])
+                    for part in ("coxa_yaw", "femur_pitch", "tibia_pitch")
                 )
                 for leg in ("lf", "lm", "lr", "rf", "rm", "rr")
             ]
@@ -129,30 +130,36 @@ class SlopeInputs:
         )
         return navigation(inverse_rotate(quaternion.to(torch.float64), down)).to(torch.float32)[0]
 
-    def femur_offsets(self, quaternion, q):
-        """The tilt about each femur's pitch axis (rad), in JOINT_NAMES order (zero for coxas and tibias)."""
+    def joint_offsets(self, quaternion, q):
+        """The tilt about each femur's (and, for ``joints``, each tibia's) pitch axis (rad), in JOINT_NAMES order;
+        zero for the coxas."""
         from locomotion.omniwalk.mdp.frames import inverse_rotate, rotate
 
         # Rising ground turns the body about the horizontal axis across the rise: direction x up.
         across = torch.tensor([[self.direction[1], -self.direction[0], 0.0]], dtype=torch.float64)
         tilt = inverse_rotate(quaternion.to(torch.float64), self.pitch * across)[0]
         out = torch.zeros(18)
-        for leg, (coxa, femur) in enumerate(self.legs):
-            angle = float(q[3 * leg])
-            turn = torch.tensor(
-                [0.0, 0.0, math.sin(angle / 2), math.cos(angle / 2)], dtype=torch.float64
-            )
-            frame = _multiply(_multiply(coxa, turn), femur)
-            axis = rotate(frame[None], torch.tensor([[0.0, 0.0, 1.0]], dtype=torch.float64))[0]
-            out[3 * leg + 1] = float(tilt @ axis)
+        up = torch.tensor([[0.0, 0.0, 1.0]], dtype=torch.float64)
+        for leg, frames in enumerate(self.legs):
+            frame = torch.tensor([0.0, 0.0, 0.0, 1.0], dtype=torch.float64)
+            for part, joint in enumerate(frames):
+                frame = _multiply(frame, joint)
+                if part and (part == 1 or self.mode == "joints"):
+                    axis = rotate(frame[None], up)[0]
+                    out[3 * leg + part] = float(tilt @ axis)
+                angle = float(q[3 * leg + part])
+                turn = torch.tensor(
+                    [0.0, 0.0, math.sin(angle / 2), math.cos(angle / 2)], dtype=torch.float64
+                )
+                frame = _multiply(frame, turn)
         return out
 
     def push(self, quaternion, q=None):
-        """Add this control's corrected inputs (gravity, or the femur offsets) to the five-frame history."""
+        """Add this control's corrected inputs (gravity, or the joint offsets) to the five-frame history."""
         value = (
             self.gravity(quaternion)
             if self.mode == "gravity"
-            else self.femur_offsets(quaternion, q)
+            else self.joint_offsets(quaternion, q)
         )
         self.frames = (
             value.repeat(5, 1) if self.frames is None else torch.cat((self.frames[1:], value[None]))
@@ -211,7 +218,9 @@ def validate(scene):
     (cf, cl), (length, width) = scene["terrain"].get("center_m", [0, 0]), scene["terrain"]["size_m"]
     for robot in robots:
         if robot.get("slope_inputs", False) not in (False, None, *SLOPE_MODES):
-            raise ValueError(f"{robot['name']}: slope_inputs is false, true, 'gravity' or 'joints'")
+            raise ValueError(
+                f"{robot['name']}: slope_inputs is false, true, 'gravity', 'femurs' or 'joints'"
+            )
         if ("checkpoint" in robot) == (robot.get("policy") == "stand"):
             raise ValueError(f"{robot['name']}: give a checkpoint or policy 'stand', not both")
         start = robot.get("start", {})

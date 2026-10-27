@@ -72,8 +72,8 @@ The page loads the CAD meshes once (about 15 s) and merges their vertices on a g
 
 A robot's **slope inputs** option changes what its policy feels on a slope. Whenever a front leg and a rear leg
 touch the ground, their height difference over their distance gives the robot's tilt along the slope; then either
-the gravity inputs become gravity relative to that ground, or each femur's angle input gains the tilt about that
-joint's axis (`SlopeInputs` in `surrogate/scene.py`).
+the gravity inputs become gravity relative to that ground, or each femur's (or each femur's and tibia's) angle
+input gains the tilt about that joint's axis (`SlopeInputs` in `surrogate/scene.py`).
 
 Each robot runs alone on its own copy of the terrain, so robots pass through each other. The terrain is the
 whole floor: robots start at least 0.35 m inside it, and one that walks off its edge falls. The policies were

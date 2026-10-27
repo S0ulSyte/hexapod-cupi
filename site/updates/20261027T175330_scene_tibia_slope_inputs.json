@@ -1,0 +1,22 @@
+{
+  "id": "20261027T175330_scene_tibia_slope_inputs",
+  "date": "2026-10-27T17:53:30.000000Z",
+  "title": "Scenes: slope inputs that add the robot's tilt to its femur and tibia angle inputs",
+  "summary": "slope_inputs 'femurs' (the former 'joints') adds the robot's tilt from its front and rear toes to each femur angle input; 'joints' now adds it to each tibia input as well, about that tibia's own axis, which lies along its femur's. With destination_v29 at 0.1 m/s on a 9.5 degree ramp, from six slightly different starts per setting, the uncorrected robot reaches the top 3 times in 6 and stalls at the foot otherwise; with the tilt added to the femurs, or to the femurs and tibias, with either sign, it reaches the top 0 times in 6, stalling within 0.4 to 0.8 m of its start. Single runs on this ramp turn on small differences in start position, so one trial per setting does not compare settings.",
+  "areas": [
+    "locomotion"
+  ],
+  "next": "Look at foot clearance at a ramp's foot and crest before training on slopes.",
+  "changes": [
+    "src/locomotion/surrogate/scene.py",
+    "src/locomotion/surrogate/tests/test_scene.py",
+    "viewer/README.md",
+    "viewer/src/scene/*",
+    "site/updates/20261027T175330_scene_tibia_slope_inputs.json"
+  ],
+  "evidence": [
+    "src/locomotion/surrogate/tests/test_scene.py"
+  ],
+  "no_project_impact": true,
+  "reason": "Scene tooling only; training, the canonical task, reward and evaluator are unchanged."
+}

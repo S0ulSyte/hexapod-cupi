@@ -147,7 +147,7 @@ class SceneTests(unittest.TestCase):
         )
         self.assertEqual(int((corrected != 0).sum()), 5 * 2)
 
-    def test_the_joints_mode_adds_the_tilt_about_each_femur_axis(self):
+    def test_the_joint_modes_add_the_tilt_about_each_pitch_axis(self):
         root = Path(__file__).resolve().parents[4]
         model = json.loads(
             (root / "robot/hexapod_mkii_updated_v1/model_rs05_mass_corrected.json").read_text()
@@ -155,11 +155,11 @@ class SceneTests(unittest.TestCase):
         stance = json.loads((root / "robot/hexapod_mkii_updated_v1/stance.json").read_text())
         with self.assertRaises(ValueError):
             SlopeInputs("knees", model["joints"])
-        slope = SlopeInputs("joints", model["joints"])
+        slope = SlopeInputs("femurs", model["joints"])
         slope.pitch, slope.direction = math.radians(5), np.array([0.0, -1.0])
         q = torch.tensor(stance["nominal_joint_position_rad"])
         identity = torch.tensor([[0.0, 0.0, 0.0, 1.0]])
-        offsets = slope.femur_offsets(identity, q)
+        offsets = slope.joint_offsets(identity, q)
         femurs = [math.degrees(float(offsets[i])) for i in (1, 4, 7, 10, 13, 16)]
         # Ground rising 5 degrees forward: the front femurs (lf, rf) gain about 3.9 degrees, the rear ones
         # (lr, rr) lose as much, and the middle ones, whose axes point forward, almost nothing.
@@ -176,6 +176,13 @@ class SceneTests(unittest.TestCase):
         corrected = slope.apply(observation)
         self.assertEqual(corrected[0, 42 * 2 + 6 + 1].item(), offsets[1].item())
         self.assertEqual(int((corrected[0, :210] != 0).sum()), 5 * 6)
+        # The joints mode gives each tibia the tilt about its own axis, which lies along its femur's.
+        both = SlopeInputs("joints", model["joints"])
+        both.pitch, both.direction = slope.pitch, slope.direction
+        all_offsets = both.joint_offsets(identity, q)
+        torch.testing.assert_close(all_offsets[1::3], offsets[1::3])
+        torch.testing.assert_close(all_offsets[2::3], offsets[1::3], atol=1e-6, rtol=0)
+        self.assertEqual(float(all_offsets[0::3].abs().sum()), 0.0)
 
     def test_a_robot_stands_on_a_height_field_box_at_its_start(self):
         terrain = Terrain(

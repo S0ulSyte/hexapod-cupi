@@ -449,7 +449,7 @@ export default function SceneViewer() {
               stand still (no checkpoint)
             </label>
             {r.policy !== 'stand' && (
-              <label className="text" title="When a front and a rear leg touch the ground, their height difference over their distance gives the robot's tilt along the slope. Gravity: the gravity inputs become gravity relative to the sloped ground. Femur angles: each femur's angle input gains the tilt about its axis.">
+              <label className="text" title="When a front and a rear leg touch the ground, their height difference over their distance gives the robot's tilt along the slope. Gravity: the gravity inputs become gravity relative to the sloped ground. Femur (and tibia) angles: each of those joints' angle inputs gains the tilt about its axis.">
                 <span>slope inputs (tilt from the front and rear feet)</span>
                 <select
                   value={r.slope_inputs === true ? 'gravity' : r.slope_inputs || 'off'}
@@ -463,7 +463,8 @@ export default function SceneViewer() {
                 >
                   <option value="off">off</option>
                   <option value="gravity">gravity relative to the slope</option>
-                  <option value="joints">femur angles plus the tilt</option>
+                  <option value="femurs">femur angles plus the tilt</option>
+                  <option value="joints">femur and tibia angles plus the tilt</option>
                 </select>
               </label>
             )}
