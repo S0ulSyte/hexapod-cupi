@@ -20,15 +20,10 @@ robot that walks off its edge falls. The policy path is the surrogate evaluation
 actor mean, no noise). A scene is design evidence only: the touchdown model is off, because it assumes the
 flat floor, and the policies were trained on flat ground.
 
-``"slope_inputs"`` on a robot corrects what the policy feels for a slope it walks along. Whenever a front leg
-(lf or rf) and a rear leg (lr or rr) touch the ground, the height difference between their toes over the
-distance between them gives the robot's tilt along the slope (smoothed over about 0.1 s, held while no front and
-rear leg touch at once, limited to 20 degrees; the trace records it). With ``"gravity"`` (or ``true``) the gravity
-inputs become gravity relative to that sloped ground. With ``"femurs"`` the gravity inputs stay and each femur
-pitch input becomes its measured angle plus the tilt about that joint's axis: nearly the whole tilt, with
-opposite signs, for the front and rear femurs, which reach forward and back, and almost none for the middle
-ones, whose axes lie across a pitch. ``"joints"`` adds the tilt about each tibia's axis to the tibia inputs too,
-although a tibia's angle is measured from its femur. Every mode changes all five history frames.
+``"slope_inputs"`` on a robot (``"gravity"`` or ``true``, ``"femurs"`` or ``"joints"``) corrects what the policy
+feels for a slope it walks along, as ``locomotion/omniwalk/mdp/slope.py`` describes and as training with the
+same option does; the trace records the tilt estimate. A checkpoint trained with slope inputs records its mode
+in its reward configuration, and a robot without ``slope_inputs`` then uses it.
 
 The output folder holds ``scene.json`` (the scene with resolved checkpoint paths), ``terrain.npz`` and one
 ``robot_<k>.npz`` trace per robot; ``viewer/scene_view.py`` turns it into a file for the viewer's Scene page.
@@ -49,130 +44,14 @@ from types import SimpleNamespace
 import numpy as np
 import torch
 
+from locomotion.omniwalk.mdp.slope import SlopeTracker
+
 SCHEMA = "hexapod_scene_v1"
 CONTROL_SECONDS = 0.02
 START_RADIUS_M = 0.25
 EDGE_MARGIN_M = 0.35
 FALL_TILT_RAD = 0.85
-FRONT_LEGS, REAR_LEGS = (0, 3), (2, 5)
-SLOPE_LIMIT_RAD = math.radians(20)
-SLOPE_SMOOTHING = 0.2
-GRAVITY = slice(3, 6)
-JOINTS = slice(6, 24)
-FEMURS = (1, 4, 7, 10, 13, 16)
 SLOPE_MODES = (True, "gravity", "femurs", "joints")
-
-
-def _quaternion(xyzw):
-    return torch.tensor(xyzw, dtype=torch.float64)
-
-
-def _multiply(a, b):
-    ax, ay, az, aw = a
-    bx, by, bz, bw = b
-    return torch.stack(
-        (
-            aw * bx + ax * bw + ay * bz - az * by,
-            aw * by - ax * bz + ay * bw + az * bx,
-            aw * bz + ax * by - ay * bx + az * bw,
-            aw * bw - ax * bx - ay * by - az * bz,
-        )
-    )
-
-
-class SlopeInputs:
-    """The robot's tilt along a slope from its front and rear toes, and the policy inputs it corrects:
-    gravity relative to the sloped ground (``gravity``), or the femur angles (``femurs``) or femur and tibia
-    angles (``joints``) plus the tilt about each joint's axis."""
-
-    def __init__(self, mode=True, joints=None):
-        if mode not in SLOPE_MODES:
-            raise ValueError(f"slope_inputs is one of {SLOPE_MODES}")
-        self.mode = "gravity" if mode is True else mode
-        self.pitch, self.direction = 0.0, np.array([0.0, 0.0])
-        self.frames = None
-        # Each leg's joint frames, for the femur and tibia pitch axes in the body.
-        named = {j["name"]: j for j in joints or []}
-        self.legs = (
-            [
-                tuple(
-                    _quaternion(named[f"{leg}_{part}"]["quaternion_xyzw"])
-                    for part in ("coxa_yaw", "femur_pitch", "tibia_pitch")
-                )
-                for leg in ("lf", "lm", "lr", "rf", "rm", "rr")
-            ]
-            if joints
-            else []
-        )
-
-    def update(self, toes, contact):
-        """Refresh the pitch estimate from the toes (world metres) that touch the ground."""
-        front = [i for i in FRONT_LEGS if contact[i]]
-        rear = [i for i in REAR_LEGS if contact[i]]
-        if not front or not rear:
-            return
-        span = toes[front].mean(0) - toes[rear].mean(0)
-        distance = float(np.hypot(span[0], span[1]))
-        if distance < 0.1:
-            return
-        measured = float(np.clip(math.atan2(span[2], distance), -SLOPE_LIMIT_RAD, SLOPE_LIMIT_RAD))
-        self.pitch += SLOPE_SMOOTHING * (measured - self.pitch)
-        self.direction = span[:2] / distance
-
-    def gravity(self, quaternion):
-        """Gravity relative to the sloped ground, in the body's navigation axes (the policy's inputs 3 to 5)."""
-        from locomotion.omniwalk.mdp.frames import inverse_rotate, navigation
-
-        # The ground's downward normal leans away from the rise: rising forward, it points down and forward.
-        c, s = math.cos(self.pitch), math.sin(self.pitch)
-        down = torch.tensor(
-            [[s * self.direction[0], s * self.direction[1], -c]], dtype=torch.float64
-        )
-        return navigation(inverse_rotate(quaternion.to(torch.float64), down)).to(torch.float32)[0]
-
-    def joint_offsets(self, quaternion, q):
-        """The tilt about each femur's (and, for ``joints``, each tibia's) pitch axis (rad), in JOINT_NAMES order;
-        zero for the coxas."""
-        from locomotion.omniwalk.mdp.frames import inverse_rotate, rotate
-
-        # Rising ground turns the body about the horizontal axis across the rise: direction x up.
-        across = torch.tensor([[self.direction[1], -self.direction[0], 0.0]], dtype=torch.float64)
-        tilt = inverse_rotate(quaternion.to(torch.float64), self.pitch * across)[0]
-        out = torch.zeros(18)
-        up = torch.tensor([[0.0, 0.0, 1.0]], dtype=torch.float64)
-        for leg, frames in enumerate(self.legs):
-            frame = torch.tensor([0.0, 0.0, 0.0, 1.0], dtype=torch.float64)
-            for part, joint in enumerate(frames):
-                frame = _multiply(frame, joint)
-                if part and (part == 1 or self.mode == "joints"):
-                    axis = rotate(frame[None], up)[0]
-                    out[3 * leg + part] = float(tilt @ axis)
-                angle = float(q[3 * leg + part])
-                turn = torch.tensor(
-                    [0.0, 0.0, math.sin(angle / 2), math.cos(angle / 2)], dtype=torch.float64
-                )
-                frame = _multiply(frame, turn)
-        return out
-
-    def push(self, quaternion, q=None):
-        """Add this control's corrected inputs (gravity, or the joint offsets) to the five-frame history."""
-        value = (
-            self.gravity(quaternion)
-            if self.mode == "gravity"
-            else self.joint_offsets(quaternion, q)
-        )
-        self.frames = (
-            value.repeat(5, 1) if self.frames is None else torch.cat((self.frames[1:], value[None]))
-        )
-
-    def apply(self, observation):
-        out = observation.clone()
-        for k in range(5):
-            if self.mode == "gravity":
-                out[0, 42 * k + GRAVITY.start : 42 * k + GRAVITY.stop] = self.frames[k]
-            else:
-                out[0, 42 * k + JOINTS.start : 42 * k + JOINTS.stop] += self.frames[k]
-        return out
 
 
 def schedule(robot, controls):
@@ -256,13 +135,15 @@ class Robot:
             terrain=None if terrain.flat else terrain,
             start=self.start,
         )
-        mode = robot.get("slope_inputs")
-        self.slope = SlopeInputs(mode, self.env.model["joints"]) if mode else None
-        self.policy, self.checkpoint_sha256 = None, None
+        self.policy, self.checkpoint_sha256, trained = None, None, None
         if "checkpoint" in robot:
-            self.policy, self.checkpoint_sha256 = self._policy(
+            self.policy, self.checkpoint_sha256, trained = self._policy(
                 Path(robot["checkpoint"]), task_module, seed
             )
+        mode = robot.get("slope_inputs", trained)
+        mode = "gravity" if mode is True else mode
+        self.slope_mode = mode or None
+        self.slope = SlopeTracker(1, self.env.model["joints"], mode) if mode else None
 
     def _policy(self, path, task_module, seed):
         import locomotion.rl.ppo as algorithms
@@ -291,7 +172,7 @@ class Robot:
         policy = DeterministicPolicy(
             actor, self.env, options, adapter=getattr(wrapped, "policy_for_evaluation", None)
         )
-        return policy, digest
+        return policy, digest, getattr(task.reward_config, "slope_inputs", None)
 
     def run(self, commands):
         """Step through ``commands`` from the start pose: the trace the viewer draws."""
@@ -308,7 +189,7 @@ class Robot:
         env.commands.zero_()
         env.reset()
         if self.slope is not None:
-            self.slope.push(env.current["root"][:, 3:7], env.current["q"][0])
+            self.slope.push(env.current["root"][:, 3:7], env.current["q"], rows=[0])
         for k in range(n):
             env.commands.copy_(torch.as_tensor(commands[k : k + 1], dtype=torch.float32))
             observation = env.observations(env.current)["obs"]
@@ -327,9 +208,12 @@ class Robot:
             trace["toe_contact"][k] = (torch.linalg.vector_norm(force, dim=-1) > 1.0).numpy()
             trace["fallen"][k] = bool(state["gravity"][0, 2] > -math.cos(FALL_TILT_RAD))
             if self.slope is not None:
-                self.slope.update(trace["toe_xyz_world_m"][k], trace["toe_contact"][k])
-                self.slope.push(state["root"][:, 3:7], state["q"][0])
-                trace["slope_pitch_rad"][k] = self.slope.pitch
+                self.slope.update(
+                    torch.as_tensor(trace["toe_xyz_world_m"][k : k + 1]),
+                    torch.as_tensor(trace["toe_contact"][k : k + 1]),
+                )
+                self.slope.push(state["root"][:, 3:7], state["q"])
+                trace["slope_pitch_rad"][k] = float(self.slope.pitch[0])
         return trace
 
 
@@ -362,7 +246,7 @@ def run_scene(path, output, seed=20260917):
                 "trace": f"robot_{k}.npz",
                 "checkpoint": spec.get("checkpoint"),
                 "checkpoint_sha256": robot.checkpoint_sha256,
-                "slope_inputs": spec.get("slope_inputs") or None,
+                "slope_inputs": robot.slope_mode,
                 "start_world_xy_ground_yaw": list(robot.start),
                 "fell_at_s": None if not len(fallen) else round(fallen[0] * CONTROL_SECONDS, 2),
                 "wall_seconds": round(time.monotonic() - started, 1),

@@ -135,6 +135,8 @@ class DestinationRewardConfig(RewardConfig):
     end_destination_floor: float | None = None
     run_mix: tuple | None = None
     long_stand_controls: int | None = None
+    walk_forward_only: bool | None = None
+    slope_inputs: str | None = None
     command_controls: int = 0
 
     def validate(self):
@@ -344,6 +346,12 @@ class DestinationRewardConfig(RewardConfig):
             )
         if self.long_stand_controls is not None and mix is None:
             raise ValueError("Long stands need a run mix")
+        if self.walk_forward_only is not None and (
+            self.walk_forward_only is not True or self.walk_speed_min_mps is None
+        ):
+            raise ValueError("Forward-only walks are True or None and need uniform walk speeds")
+        if self.slope_inputs not in (None, "gravity", "femurs", "joints"):
+            raise ValueError("slope_inputs is None, gravity, femurs or joints (mdp/slope.py)")
         ceiling = (
             (self.linear_tracking_weight + self.yaw_tracking_weight)
             * (1 + self.stride_tracking_weight)
@@ -710,6 +718,22 @@ EXPERIMENTS["destination_v29"] = {
         end_destination_floor=1.0,
     ),
 }
+# destination_v32 fine-tunes destination_v29 to walk forward over terrain: every run is a 20 s walk straight
+# ahead at 0.05 to 0.15 m/s (no turns, stands or stops), and the policy's femur and tibia inputs gain the tilt
+# that its front and rear toes measure (slope_inputs "joints", mdp/slope.py). The surrogate trains it on a
+# terrain of hills, steps and bumps (locomotion.surrogate.train --terrain), each run from a random place and
+# heading. destination_v29 with these inputs added at run time stalls at the foot of a 9.5 degree ramp in 6
+# starts of 6, where without them it reaches the top in 3.
+EXPERIMENTS["destination_v32"] = {
+    **EXPERIMENTS["destination_v29"],
+    "reward": replace(
+        EXPERIMENTS["destination_v29"]["reward"],
+        run_mix=(0.0, 0.0, 0.0, 1.0),
+        walk_forward_only=True,
+        slope_inputs="joints",
+    ),
+    "episode_seconds": 20.0,
+}
 # destination_v30 is destination_v25's speed curriculum (walks only, a fifth stopping, judged by drift and
 # the evaluator's checks, to 0.15 m/s) with destination_v29's linear run-end pay, share * max(1 - d / 25 mm,
 # -1), over each 20 s run. Fine-tuned from v9, destination_v29 tracked the ghost to 1-2 mm at 0.05 to
@@ -791,6 +815,12 @@ class DestinationTrainingTask(TrainingTask):
             (env.num_envs,), chosen.command_controls, dtype=torch.long, device=env.device
         )
         self.run_elapsed = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
+        # The tilt from the front and rear toes, and the inputs it corrects (mdp/slope.py).
+        self.slope, self.slope_resets = None, None
+        if chosen.slope_inputs is not None:
+            from locomotion.omniwalk.mdp.slope import SlopeTracker
+
+            self.slope = SlopeTracker(env.num_envs, env.model["joints"], chosen.slope_inputs)
         # The root pose before the latest control, for the ghost_v10 velocity input.
         self.control_start_pose = env.current["root"].detach().clone()
         self.gait = (
@@ -853,6 +883,9 @@ class DestinationTrainingTask(TrainingTask):
         # A reset draws a fresh command; a stop scheduled for the ended episode lapses.
         self.stop_pending[self._indices(indices)] = False
         self.run_elapsed[self._indices(indices)] = 0
+        if self.slope is not None:
+            self.slope_resets = self._indices(indices).cpu()
+            self.slope.reset(self.slope_resets)
         if self.gait is not None:
             self.gait.reset(self._indices(indices))
         output = super().reset(indices)
@@ -871,6 +904,21 @@ class DestinationTrainingTask(TrainingTask):
             telemetry["scheduled_swing"] = swing.to(device)
             telemetry["schedule_period_s"] = period.to(device, torch.float32)
         return telemetry
+
+    def _next_command_observation(self, output):
+        output = super()._next_command_observation(output)
+        if self.slope is None:
+            return output
+        if self.slope_resets is not None:
+            current = self.env.current
+            self.slope.push(
+                current["root"][:, 3:7].cpu(), current["q"].cpu(), rows=self.slope_resets
+            )
+            self.slope_resets = None
+        obs = self.slope.apply(output["obs"])
+        critic = output["critic"].clone()
+        critic[:, : obs.shape[1]] = obs
+        return {**output, "obs": obs, "critic": critic}
 
     def step(self, action):
         result = super().step(action)
@@ -919,6 +967,8 @@ class DestinationTrainingTask(TrainingTask):
             + (config.walk_speed_max_mps - config.walk_speed_min_mps) * draws[:, 0]
         )
         angle = draws[:, 1] * 2 * math.pi
+        if config.walk_forward_only:
+            angle = torch.zeros_like(angle)
         self.env.commands[indices, 0] = speed * torch.cos(angle)
         self.env.commands[indices, 1] = speed * torch.sin(angle)
         self.env.commands[indices, 2] = 0
@@ -1268,6 +1318,11 @@ class DestinationTrainingTask(TrainingTask):
         self.control_start_pose = self.previous_pose.detach().clone().to(self.control_start_pose)
         self._advance_destination(command)
         self.run_elapsed += 1
+        if self.slope is not None:
+            t, current = self.env.telemetry, self.env.current
+            force = torch.linalg.vector_norm(t["tibia_floor_force_world_n"], dim=-1)
+            self.slope.update(t["toe_xyz_world"].cpu(), (force > 1.0).cpu())
+            self.slope.push(current["root"][:, 3:7].cpu(), current["q"].cpu())
         reward, components, telemetry = super()._reward(command, terminated)
         if self.gait is not None:
             self.gait.advance(command)

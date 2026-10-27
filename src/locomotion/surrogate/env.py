@@ -413,6 +413,7 @@ class SurrogateEnv:
         substep_state=True,
         terrain=None,
         start=None,
+        spawn=None,
     ):
         """The constructor ignores ``asset`` (the native USD). ``reference_metadata``
         defaults to the repository stance.json, which native training passes.
@@ -420,7 +421,9 @@ class SurrogateEnv:
         ``terrain`` (a ``terrain.Terrain``) replaces the flat floor with its height field, and ``start``
         (x, y, ground height, yaw) places every reset there instead of at the origin. Both serve scenes
         (``surrogate/scene.py``): the touchdown model assumes the flat floor at z = 0, so a terrain needs
-        ``touchdown_overshoot=False``, and the fall check still reads the root height above z = 0."""
+        ``touchdown_overshoot=False``, and the fall check still reads the root height above z = 0. ``spawn``
+        (rows -> [len(rows), 4] of x, y, ground height, yaw) instead places each reset row, for training on a
+        terrain from random starts."""
         self.cfg = SurrogateConfig() if cfg is None else cfg
         cfg = self.cfg
         self.device, self.num_envs = cfg.device, cfg.num_envs
@@ -444,6 +447,7 @@ class SurrogateEnv:
             reference_metadata = json.loads(DEFAULT_STANCE.read_text())
         self.reference_metadata = reference_metadata
         self.contact_model = ContactModel() if contact is None else contact
+        self.spawn = spawn
         if terrain is not None and self.contact_model.touchdown_overshoot:
             raise ValueError(
                 "A terrain needs touchdown_overshoot=False: the model assumes a flat floor"
@@ -877,6 +881,12 @@ class SurrogateEnv:
         if len(indices):
             rows = indices.numpy()
             self._state[rows, 1:26] = self._qpos0
+            if self.spawn is not None:
+                x, y, ground, heading = np.asarray(self.spawn(rows), dtype=float).T
+                self._state[rows, 1:4] = np.stack((x, y, ground + self.reset_height), -1)
+                self._state[rows, 4:8] = np.stack(
+                    (np.cos(heading / 2), 0 * heading, 0 * heading, np.sin(heading / 2)), -1
+                )
             self._state[rows, 26:] = 0.0
             self._warmstart[rows] = 0.0
             self._forces[indices] = 0.0

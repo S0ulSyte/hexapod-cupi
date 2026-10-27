@@ -220,6 +220,13 @@
       "purpose": "Follow a speed-scaled gait phase per replica and read the tripod swing schedule from it, for experiment destination_v16."
     },
     {
+      "path": "src/locomotion/omniwalk/mdp/slope.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Estimate each replica's tilt along a slope from its front and rear toes and correct the policy's gravity or joint inputs for it, for experiment destination_v32 and surrogate scenes."
+    },
+    {
       "path": "src/locomotion/omniwalk/destination_task.py",
       "previous_path": null,
       "classification": "prototype",

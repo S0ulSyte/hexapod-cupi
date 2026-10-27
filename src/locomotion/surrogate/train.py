@@ -15,7 +15,7 @@ import os
 import sys
 import time
 import traceback
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 from locomotion.omniwalk.mdp.commands import GAIT_CLOCK_CONTROLS
@@ -370,6 +370,18 @@ def build_parser():
         help="Physics and torch threads for this process (1 to 6).",
     )
     parser.add_argument("--episode-seconds", type=float, default=20.0)
+    parser.add_argument(
+        "--terrain",
+        type=Path,
+        help="Terrain spec (JSON, surrogate/terrain.py) to train on: the floor becomes its height field, the "
+        "touchdown model is off, and every reset starts at a random place and heading on it.",
+    )
+    parser.add_argument(
+        "--spawn-margin",
+        type=float,
+        default=3.5,
+        help="With --terrain, the least distance from a start to the terrain's edge, in metres.",
+    )
     parser.add_argument("--checkpoint-interval", type=int, default=50)
     parser.add_argument("--max-wall-seconds", type=float, default=86400.0)
     parser.add_argument(
@@ -447,6 +459,13 @@ def run(args, argv=None):
         Path(overrides[1:]).read_text() if overrides.startswith("@") else overrides
     )
     contact = contact_overrides(args.contact)
+    terrain = None
+    if args.terrain is not None:
+        from locomotion.surrogate.terrain import Terrain
+
+        terrain = Terrain(json.loads(args.terrain.read_text()))
+        # The touchdown model assumes the flat floor.
+        contact = replace(contact, touchdown_overshoot=False)
     task_class, wrapper_class = resolve(args.task), resolve(args.wrapper)
     config = learner_configuration(
         ppo_cfg,
@@ -485,6 +504,13 @@ def run(args, argv=None):
         "geometry_sha256": sha(DEFAULT_GEOMETRY),
         "config": cfg.declaration(),
         "contact_model": asdict(contact),
+        "terrain": None
+        if terrain is None
+        else {
+            "spec": terrain.spec,
+            "spec_sha256": sha(args.terrain),
+            "spawn_margin_m": args.spawn_margin,
+        },
         "seed": args.seed,
         "task": args.task,
         "wrapper": args.wrapper,
@@ -537,6 +563,8 @@ def run(args, argv=None):
             threads=args.threads,
             contact=contact,
             substep_state=False,
+            terrain=terrain,
+            spawn=None if terrain is None else terrain.spawner(args.spawn_margin, args.seed),
         )
         task = task_class(env, task_module.TaskConfig(seed=args.seed), args.output / "task")
         # A task class outside TrainingTask may report its own status.

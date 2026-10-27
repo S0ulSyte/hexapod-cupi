@@ -1,0 +1,30 @@
+{
+  "id": "20261027T181603_destination_v32_terrain_training",
+  "date": "2026-10-27T18:16:03.000000Z",
+  "title": "Add destination_v32 and terrain training on the surrogate: forward walks with slope inputs",
+  "summary": "mdp/slope.py estimates each replica's tilt along a slope from its front and rear toes and corrects the policy's gravity inputs or its femur and tibia angle inputs for it; training (DestinationTrainingTask, reward field slope_inputs) and surrogate scenes share it. destination_v32 is destination_v29 with every run a 20 s walk straight ahead at 0.05 to 0.15 m/s and the tilt added to the femur and tibia inputs. locomotion.surrogate.train --terrain trains on a terrain spec's height field, with the touchdown model off and every reset at a random place and heading at least --spawn-margin from the terrain's edge (SurrogateEnv spawn). A scene robot whose checkpoint trained with slope inputs uses them.",
+  "areas": [
+    "locomotion"
+  ],
+  "next": "Fine-tune destination_v32 on a mixed terrain of hills, steps and bumps from the destination_v29 update-600 checkpoint and compare it with destination_v29 on ramp, step and bump scenes.",
+  "changes": [
+    "configs/source_inventory.json",
+    "src/locomotion/omniwalk/agents/rsl_rl_ppo_cfg.py",
+    "src/locomotion/omniwalk/destination_task.py",
+    "src/locomotion/omniwalk/mdp/slope.py",
+    "src/locomotion/surrogate/env.py",
+    "src/locomotion/surrogate/scene.py",
+    "src/locomotion/surrogate/terrain.py",
+    "src/locomotion/surrogate/train.py",
+    "src/locomotion/surrogate/tests/test_scene.py",
+    "src/locomotion/tests/test_destination.py",
+    "src/locomotion/tests/test_slope.py",
+    "site/updates/20261027T181603_destination_v32_terrain_training.json"
+  ],
+  "evidence": [
+    "src/locomotion/tests/test_slope.py",
+    "src/locomotion/tests/test_destination.py"
+  ],
+  "no_project_impact": true,
+  "reason": "A named experiment and surrogate options; native training, the canonical task, reward and evaluator are unchanged, and SurrogateEnv without a terrain, start or spawn is unchanged."
+}

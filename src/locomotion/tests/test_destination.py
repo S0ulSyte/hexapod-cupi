@@ -1334,6 +1334,43 @@ class DriftTests(unittest.TestCase):
         task.step(torch.zeros(64, 18))
         self.assertIn("end_destination", task.last_components)
 
+    def test_destination_v32_walks_forward_and_feels_the_slope_in_its_joint_inputs(self):
+        settings = EXPERIMENTS["destination_v32"]
+        two = settings["reward"]
+        self.assertEqual(
+            (two.slope_inputs, two.walk_forward_only, settings["episode_seconds"]),
+            ("joints", True, 20.0),
+        )
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v32"], "ghost_v11")
+        with self.assertRaises(ValueError):
+            replace(two, slope_inputs="knees").validate()
+        native = GaitDouble(64)
+        native.cfg.episode_seconds, native.cfg.declaration = 20.0, dict
+        native.current["q"] = torch.zeros(64, 18)
+        task = DestinationTrainingTask(native, TaskConfig(), None, two)
+        first = task.reset()
+        # Every run walks straight ahead at 0.05 to 0.15 m/s; nothing is tilted yet.
+        command = native.commands
+        self.assertTrue(bool((command[:, 1:] == 0).all() and (command[:, 0] >= 0.05 - 1e-6).all()))
+        self.assertTrue(bool((command[:, 0] <= 0.15 + 1e-6).all()))
+        self.assertTrue(torch.equal(first["critic"][:, :231], first["obs"]))
+        # Front toes (lf, rf) 30 mm above the rear ones (lr, rr), 0.3 m apart along forward (world -y).
+        native.world[:, :, 1] = torch.tensor([-0.15, 0.0, 0.15, -0.15, 0.0, 0.15])
+        native.world[:, [0, 3], 2] = 0.03
+        native.current["root_velocity"] = torch.zeros(64, 6)
+        for _ in range(40):
+            result = task.step(torch.zeros(64, 18))
+        tilt = math.degrees(float(task.slope.pitch[0]))
+        self.assertAlmostEqual(tilt, math.degrees(math.atan2(0.03, 0.3)), delta=0.05)
+        raw = native.last_result["obs"]
+        offset = (result["obs"] - raw)[:, 42 * 4 + 6 : 42 * 4 + 24]
+        # Front femur and tibia inputs gain the tilt, rear ones lose it; coxas and the rest stay.
+        self.assertGreater(float(offset[0, 1]), 0.05)
+        self.assertLess(float(offset[0, 7]), -0.05)
+        self.assertAlmostEqual(float(offset[0, 2]), float(offset[0, 1]), places=4)
+        self.assertEqual(float(offset[:, 0::3].abs().sum()), 0.0)
+        self.assertTrue(torch.equal(result["critic"][:, :231], result["obs"]))
+
     def test_the_capped_rate_learner_can_hold_a_learning_rate_floor(self):
         from locomotion.rl.ppo import CappedRatePPO
 

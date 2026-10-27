@@ -154,6 +154,30 @@ class Terrain:
     def highest_under(self, forward, left, radius):
         """The highest grid point within ``radius`` of a navigation-frame point."""
         x, y = left, -forward
-        gx, gy = np.meshgrid(self.xs, self.ys)
+        i0, i1 = np.searchsorted(self.xs, [x - radius, x + radius + 1e-12])
+        j0, j1 = np.searchsorted(self.ys, [y - radius, y + radius + 1e-12])
+        gx, gy = np.meshgrid(self.xs[i0:i1], self.ys[j0:j1])
         near = (gx - x) ** 2 + (gy - y) ** 2 <= radius**2
-        return float(self.heights[near].max()) if near.any() else self.height_at(forward, left)
+        if not near.any():
+            return self.height_at(forward, left)
+        return float(self.heights[j0:j1, i0:i1][near].max())
+
+    def spawner(self, margin, seed):
+        """Random starts at least ``margin`` metres inside the terrain, facing any way: rows -> [n, 4] of world
+        x, y, the highest ground within 0.25 m, and yaw (for ``SurrogateEnv(spawn=...)``)."""
+        rng = np.random.default_rng(seed)
+        (x0, x1), (y0, y1) = (
+            (self.xs[0] + margin, self.xs[-1] - margin),
+            (self.ys[0] + margin, self.ys[-1] - margin),
+        )
+        if x0 >= x1 or y0 >= y1:
+            raise ValueError("The spawn margin leaves no room on the terrain")
+
+        def spawn(rows):
+            out = np.zeros((len(rows), 4))
+            for k in range(len(rows)):
+                x, y = rng.uniform(x0, x1), rng.uniform(y0, y1)
+                out[k] = (x, y, self.highest_under(-y, x, 0.25), rng.uniform(-np.pi, np.pi))
+            return out
+
+        return spawn
