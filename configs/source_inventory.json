@@ -486,6 +486,20 @@
       "purpose": "Replay actions open loop on the surrogate and score stored telemetry under any reward."
     },
     {
+      "path": "src/locomotion/surrogate/scene.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Run robots through a terrain scene on the surrogate (checkpoints, starts and command lists) for the viewer's Scene page."
+    },
+    {
+      "path": "src/locomotion/surrogate/terrain.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Build scene height maps from terrain features for the surrogate's height-field floor."
+    },
+    {
       "path": "src/locomotion/surrogate/train.py",
       "previous_path": null,
       "classification": "prototype",

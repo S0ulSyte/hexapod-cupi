@@ -1,0 +1,40 @@
+:root { --terrain-low: #23262c; --terrain-high: #5a606c; }
+.scene-page { display: grid; grid-template-columns: minmax(300px, 400px) 1fr; grid-template-rows: 100%; overflow: hidden; }
+.scene-page main.stage { max-width: none; margin: 0; min-height: 0; }
+.scene-page .editor { overflow-y: auto; overflow-x: hidden; padding: 14px 14px 40px; border-right: 1px solid var(--line); }
+.scene-page .warn { color: var(--fail); font-size: 12px; margin: 4px 0; }
+.scene-page .editor h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+.scene-page .editor h2 { font-size: 14px; font-weight: 600; margin: 18px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.scene-page button { font: inherit; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.scene-page button:disabled { opacity: 0.6; cursor: default; }
+.scene-page .row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; align-items: center; }
+.scene-page .howto { margin: 8px 0; color: var(--muted); }
+.scene-page .howto code { display: block; background: var(--card); padding: 6px 8px; border-radius: 6px; margin: 4px 0; white-space: pre-wrap; word-break: break-all; color: var(--ink); }
+.scene-page .howto p { margin: 6px 0; }
+.scene-page .card { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 10px; padding: 8px; margin: 6px 0; }
+.scene-page .card .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+.scene-page .card .name { font: 600 14px system-ui; flex: 1; }
+.scene-page .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; }
+.scene-page .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 8px; }
+.scene-page .num, .scene-page .text { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); }
+.scene-page .text { margin: 4px 0; }
+.scene-page input:not([type=checkbox]):not([type=range]) { font: 13px system-ui; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); min-width: 0; width: 100%; box-sizing: border-box; }
+.scene-page .check { display: flex; gap: 6px; align-items: center; font-size: 13px; margin: 4px 0; }
+.scene-page .commands { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 12px; }
+.scene-page .commands th { color: var(--muted); font-weight: 500; text-align: left; padding: 0 2px; }
+.scene-page .commands td { padding: 1px 2px; }
+.scene-page .commands .num span { display: none; }
+.scene-page .stage { display: flex; flex-direction: column; min-width: 0; padding: 0 12px 12px; }
+.scene-page .stage .bar { position: static; }
+.scene-page .toggle { display: inline-flex; gap: 0; }
+.scene-page .toggle button { border-radius: 0; }
+.scene-page .toggle button:first-child { border-radius: 8px 0 0 8px; }
+.scene-page .toggle button:last-child { border-radius: 0 8px 8px 0; }
+.scene-page canvas.scene-view { flex: 1; min-height: 240px; width: 100%; border-radius: 10px; touch-action: none; cursor: grab; display: block; margin-top: 8px; }
+.scene-page .record { border-bottom: 0; border-top: 1px solid var(--line); margin-top: 8px; }
+.scene-page .note { color: var(--muted); font-size: 12px; flex: 1; min-width: 200px; }
+@media (max-width: 800px) {
+  .scene-page { grid-template-columns: 1fr; overflow: auto; }
+  .scene-page .editor { border-right: 0; border-bottom: 1px solid var(--line); }
+  .scene-page canvas.scene-view { min-height: 360px; }
+}

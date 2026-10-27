@@ -1,0 +1,36 @@
+{
+  "id": "20261027T164622_scene_videos",
+  "date": "2026-10-27T16:46:22.000000Z",
+  "title": "Scenes: robots on editable terrain with long command lists, simulated on the surrogate and recorded as video",
+  "summary": "The viewer gains a Scene page. A scene is a terrain built from features (box, ramp, steps, bump, noise) and one or more robots, each with a checkpoint, a start and a command list of any length. The page edits a scene and shows where each robot's commands lead; locomotion.surrogate.scene runs every robot on the surrogate with the terrain as a MuJoCo height field; viewer/scene_view.py writes the result; and the page plays it, drawing each robot as the Runs page does, and records it as a WebM video. SurrogateEnv takes an optional terrain and start pose for this; without them it is unchanged. Robots run on separate copies of the terrain and pass through each other, the touchdown model is off on terrain because it assumes a flat floor, and the policies were trained on flat ground, so a scene is a design tool, not evidence.",
+  "areas": [
+    "locomotion",
+    "verification"
+  ],
+  "next": "Use scenes to film the destination_v29 model on terrain and to look for where blind walking fails.",
+  "changes": [
+    "configs/source_inventory.json",
+    "src/locomotion/surrogate/env.py",
+    "src/locomotion/surrogate/scene.py",
+    "src/locomotion/surrogate/terrain.py",
+    "src/locomotion/surrogate/tests/test_scene.py",
+    "tests/test_scene_view.py",
+    "viewer/README.md",
+    "viewer/package.json",
+    "viewer/scene_view.py",
+    "viewer/src/App.jsx",
+    "viewer/src/runs/draw.js",
+    "viewer/src/scene/*",
+    "viewer/test/fixtures/sample_scene_view.json",
+    "viewer/test/fixtures/sample_terrain.json",
+    "viewer/test/scene.test.mjs",
+    "site/updates/20261027T164622_scene_videos.json"
+  ],
+  "evidence": [
+    "src/locomotion/surrogate/tests/test_scene.py",
+    "tests/test_scene_view.py",
+    "viewer/test/scene.test.mjs"
+  ],
+  "no_project_impact": true,
+  "reason": "A viewer page and surrogate tooling for videos; training, the canonical task, reward and evaluator are unchanged, and SurrogateEnv without a terrain or start is unchanged."
+}

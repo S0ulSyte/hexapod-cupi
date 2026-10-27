@@ -1,14 +1,16 @@
 # Viewer
 
-The viewer has two pages. **Robot** is the joint inspector for the active robot model. **Runs** replays
-evaluation runs from native Spark attempts and from the surrogate side by side on one clock.
+The viewer has three pages. **Robot** is the joint inspector for the active robot model. **Runs** replays
+evaluation runs from native Spark attempts and from the surrogate side by side on one clock. **Scene** builds
+terrain scenes with several robots and long command lists, plays their surrogate simulation and records it as
+a video.
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Open the address Vite prints. Add `#runs` for the Runs page.
+Open the address Vite prints. Add `#runs` for the Runs page and `#scene` for the Scene page.
 
 ## Runs
 
@@ -40,3 +42,31 @@ with `run` repeated for more files.
 
 `npm test` reads `test/fixtures/sample_run.json`. `tests/test_run_view.py` checks that `run_view.py` writes
 the same file from its synthetic attempt.
+
+## Scene
+
+A scene is a terrain, one or more robots and each robot's start and command list. On the Scene page:
+
+1. Shape the terrain from features (box, ramp, steps, bump, noise) and set each robot's checkpoint, start
+   (forward and left in metres, heading in degrees, turning left) and commands ([forward m/s, left m/s,
+   turn rad/s] for a number of seconds, as many as you like). The view shows the terrain, each start and the
+   path its commands lead along. **Save scene** downloads the scene file.
+2. Simulate it on the surrogate, with checkpoint paths relative to the scene file:
+
+   ```sh
+   uv run python -m locomotion.surrogate.scene scene.json --output scene_out
+   uv run python viewer/scene_view.py scene_out --output scene_view.json
+   ```
+
+3. Open `scene_view.json` on the page (or `?scene=scene_view.json#scene` from a server that serves it). It plays
+   every robot on the simulated terrain, drawn as the Runs page draws one robot, with its body path, ghost and
+   command. Pick the camera (whole terrain or follow a robot; top, 3D or side; drag to rotate, scroll to zoom),
+   then **Record video** plays the whole scene once at the chosen speed and downloads a WebM at the chosen size.
+
+Each robot runs alone on its own copy of the terrain, so robots pass through each other. The terrain is the
+whole floor: robots start at least 0.35 m inside it, and one that walks off its edge falls. The policies were
+trained on flat ground and see no terrain, and the surrogate's touchdown model is off on terrain because it
+assumes a flat floor; a scene is a design tool, not evidence.
+
+`src/locomotion/surrogate/terrain.py` and `src/scene/terrain.js` compute the same heights;
+`tests/test_scene_view.py` writes the fixtures `npm test` compares them on.

@@ -209,8 +209,11 @@ def _hull_vertices(points):
     return points[ConvexHull(points).vertices]
 
 
-def build_mjcf(model, clouds, contact=ContactModel(), *, reset_height=0.1028):
-    """MJCF with the exact ledger masses, inertias, joint frames and limits."""
+def build_mjcf(model, clouds, contact=ContactModel(), *, reset_height=0.1028, terrain=None):
+    """MJCF with the exact ledger masses, inertias, joint frames and limits.
+
+    ``terrain`` (a ``terrain.Terrain``) makes the floor a height field over its grid; SurrogateEnv writes the
+    heights after compiling. The floor keeps its name, so its contact sensors read the terrain."""
     links = {link["name"]: link for link in model["links"]}
     children = {}
     for joint in model["joints"]:
@@ -272,6 +275,17 @@ def build_mjcf(model, clouds, contact=ContactModel(), *, reset_height=0.1028):
         f'<motor name="motor_{name}" joint="{name}" gear="1"/>' for name in JOINT_NAMES
     )
     c = contact
+    floor, field = 'type="plane" size="0 0 0.5"', ""
+    if terrain is not None:
+        low, top = float(terrain.heights.min()), max(1e-6, float(np.ptp(terrain.heights)))
+        field = (
+            f'<hfield name="terrain" nrow="{terrain.ny}" ncol="{terrain.nx}" '
+            f'size="{terrain.half[0]!r} {terrain.half[1]!r} {top!r} 0.1"/>'
+        )
+        floor = (
+            f'type="hfield" hfield="terrain" '
+            f'pos="{terrain.center_xy[0]!r} {terrain.center_xy[1]!r} {low!r}"'
+        )
     # Robot geoms collide with the floor alone: contype 2 meets the floor's conaffinity 2.
     return f"""<mujoco model="hexapod_surrogate">
  <compiler angle="radian" autolimits="false"/>
@@ -292,10 +306,11 @@ def build_mjcf(model, clouds, contact=ContactModel(), *, reset_height=0.1028):
   <texture name="grid" type="2d" builtin="checker" rgb1="0.82 0.82 0.8" rgb2="0.7 0.7 0.68" width="256" height="256"/>
   <material name="grid" texture="grid" texrepeat="10 10" texuniform="true" reflectance="0"/>
   {"".join(meshes)}
+  {field}
  </asset>
  <worldbody>
   <light pos="0 0 3" dir="0 0 -1" directional="true" diffuse="0.8 0.8 0.8"/>
-  <geom name="floor" type="plane" size="0 0 0.5" contype="1" conaffinity="2" material="grid" condim="{c.condim}"
+  <geom name="floor" {floor} contype="1" conaffinity="2" material="grid" condim="{c.condim}"
         friction="{_numbers(c.friction)}" solref="{_numbers(c.solref)}" solimp="{_numbers(c.solimp)}"/>
 {chr(10).join(bodies)}
  </worldbody>
@@ -396,9 +411,16 @@ class SurrogateEnv:
         threads=2,
         contact=None,
         substep_state=True,
+        terrain=None,
+        start=None,
     ):
         """The constructor ignores ``asset`` (the native USD). ``reference_metadata``
-        defaults to the repository stance.json, which native training passes."""
+        defaults to the repository stance.json, which native training passes.
+
+        ``terrain`` (a ``terrain.Terrain``) replaces the flat floor with its height field, and ``start``
+        (x, y, ground height, yaw) places every reset there instead of at the origin. Both serve scenes
+        (``surrogate/scene.py``): the touchdown model assumes the flat floor at z = 0, so a terrain needs
+        ``touchdown_overshoot=False``, and the fall check still reads the root height above z = 0."""
         self.cfg = SurrogateConfig() if cfg is None else cfg
         cfg = self.cfg
         self.device, self.num_envs = cfg.device, cfg.num_envs
@@ -422,6 +444,10 @@ class SurrogateEnv:
             reference_metadata = json.loads(DEFAULT_STANCE.read_text())
         self.reference_metadata = reference_metadata
         self.contact_model = ContactModel() if contact is None else contact
+        if terrain is not None and self.contact_model.touchdown_overshoot:
+            raise ValueError(
+                "A terrain needs touchdown_overshoot=False: the model assumes a flat floor"
+            )
         self.torch = lambda x: torch.as_tensor(x, dtype=torch.float32, device=self.device)
         self.joint_names = list(JOINT_NAMES)
         self.body_names = list(BODY_NAMES)
@@ -437,10 +463,19 @@ class SurrogateEnv:
             raise ValueError("Invalid named neutral reference")
         with np.load(self.geometry_extrema_path, allow_pickle=False) as clouds:
             self.mjcf = build_mjcf(
-                self.model, clouds, self.contact_model, reset_height=self.reset_height
+                self.model,
+                clouds,
+                self.contact_model,
+                reset_height=self.reset_height,
+                terrain=terrain,
             )
         self.mj_model = mujoco.MjModel.from_xml_string(self.mjcf)
         m = self.mj_model
+        if terrain is not None:
+            low = terrain.heights.min()
+            m.hfield_data[:] = (
+                (terrain.heights - low) / max(1e-6, np.ptp(terrain.heights))
+            ).ravel()
         if m.nq != 25 or m.nv != 24 or m.nu != 18 or abs(float(m.body_mass.sum()) - MASS_KG) > 1e-9:
             raise ValueError("MuJoCo model differs from the canonical ledger")
         if (
@@ -523,6 +558,10 @@ class SurrogateEnv:
         self._qpos0 = np.zeros(25)
         self._qpos0[2] = self.reset_height
         self._qpos0[3] = 1.0
+        if start is not None:
+            x, y, ground, heading = (float(value) for value in start)
+            self._qpos0[:3] = (x, y, ground + self.reset_height)
+            self._qpos0[3:7] = (math.cos(heading / 2), 0.0, 0.0, math.sin(heading / 2))
         self._qpos0[self._qpos_columns] = self.neutral.numpy().astype(np.float64)
         self.physics_steps = 0
         self.speed_clamp_events = 0
