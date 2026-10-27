@@ -61,12 +61,18 @@ A scene is a terrain, one or more robots and each robot's start and command list
 3. Open `scene_view.json` on the page (or `?scene=scene_view.json#scene` from a server that serves it). It plays
    every robot on the simulated terrain in the look of the native Spark videos: the robot's 1,753 CAD parts in
    white on a pale floor with a 0.5 m grid, soft light and shadows, posed from each robot's simulated body pose and
-   joint angles. **paths** adds each body path and its ghost. Pick the camera (whole terrain or follow a robot;
-   3D, top or side; drag to orbit, scroll to zoom), then **Record video** plays the whole scene once in real time
-   at the chosen speed and downloads a WebM at the chosen size. Keep the page visible while it records.
+   joint angles. **paths** adds each body path and its ghost. The style shows this CAD view, the Runs page's
+   line drawing (legs, toes on the ground, body path, ghost and command), or both side by side. Pick the camera
+   (whole terrain or follow a robot; 3D, top or side; drag to orbit, scroll to zoom), then **Record video** plays
+   the whole scene once in real time at the chosen speed and downloads a WebM at the chosen size, with both
+   views side by side when both are shown. Keep the page visible while it records.
 
 The page loads the CAD meshes once (about 15 s) and merges their vertices on a grid a fraction of each part's size
 (0.25 to 2 mm), so several robots play in real time; the full meshes hold about 22 million triangles per robot.
+
+A robot's **slope inputs** option corrects what its policy feels for a slope: whenever a front leg and a rear leg
+touch the ground, their height difference over their distance gives the ground's pitch along the robot, and the
+policy's gravity inputs become gravity relative to that ground (`SlopeInputs` in `surrogate/scene.py`).
 
 Each robot runs alone on its own copy of the terrain, so robots pass through each other. The terrain is the
 whole floor: robots start at least 0.35 m inside it, and one that walks off its edge falls. The policies were

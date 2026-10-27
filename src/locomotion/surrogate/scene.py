@@ -20,6 +20,13 @@ robot that walks off its edge falls. The policy path is the surrogate evaluation
 actor mean, no noise). A scene is design evidence only: the touchdown model is off, because it assumes the
 flat floor, and the policies were trained on flat ground.
 
+``"slope_inputs": true`` on a robot corrects what the policy feels for a slope it walks along: whenever a front
+leg (lf or rf) and a rear leg (lr or rr) touch the ground, the height difference between their toes over the
+distance between them gives the ground's pitch along the robot, and the gravity inputs (in all five history
+frames) become gravity relative to that sloped ground instead of the vertical, so a ramp feels like flat ground.
+The estimate is smoothed over about 0.1 s, held while no front and rear leg touch at once, and limited to 20
+degrees; the trace records it.
+
 The output folder holds ``scene.json`` (the scene with resolved checkpoint paths), ``terrain.npz`` and one
 ``robot_<k>.npz`` trace per robot; ``viewer/scene_view.py`` turns it into a file for the viewer's Scene page.
 
@@ -44,6 +51,56 @@ CONTROL_SECONDS = 0.02
 START_RADIUS_M = 0.25
 EDGE_MARGIN_M = 0.35
 FALL_TILT_RAD = 0.85
+FRONT_LEGS, REAR_LEGS = (0, 3), (2, 5)
+SLOPE_LIMIT_RAD = math.radians(20)
+SLOPE_SMOOTHING = 0.2
+GRAVITY = slice(3, 6)
+
+
+class SlopeInputs:
+    """Ground pitch along the robot from its front and rear toes, and gravity inputs relative to that ground."""
+
+    def __init__(self):
+        self.pitch, self.direction = 0.0, np.array([0.0, 0.0])
+        self.frames = None
+
+    def update(self, toes, contact):
+        """Refresh the pitch estimate from the toes (world metres) that touch the ground."""
+        front = [i for i in FRONT_LEGS if contact[i]]
+        rear = [i for i in REAR_LEGS if contact[i]]
+        if not front or not rear:
+            return
+        span = toes[front].mean(0) - toes[rear].mean(0)
+        distance = float(np.hypot(span[0], span[1]))
+        if distance < 0.1:
+            return
+        measured = float(np.clip(math.atan2(span[2], distance), -SLOPE_LIMIT_RAD, SLOPE_LIMIT_RAD))
+        self.pitch += SLOPE_SMOOTHING * (measured - self.pitch)
+        self.direction = span[:2] / distance
+
+    def gravity(self, quaternion):
+        """Gravity relative to the sloped ground, in the body's navigation axes (the policy's inputs 3 to 5)."""
+        from locomotion.omniwalk.mdp.frames import inverse_rotate, navigation
+
+        # The ground's downward normal leans away from the rise: rising forward, it points down and forward.
+        c, s = math.cos(self.pitch), math.sin(self.pitch)
+        down = torch.tensor(
+            [[s * self.direction[0], s * self.direction[1], -c]], dtype=torch.float64
+        )
+        return navigation(inverse_rotate(quaternion.to(torch.float64), down)).to(torch.float32)[0]
+
+    def push(self, quaternion):
+        """Add this control's corrected gravity to the five-frame history the policy reads."""
+        value = self.gravity(quaternion)
+        self.frames = (
+            value.repeat(5, 1) if self.frames is None else torch.cat((self.frames[1:], value[None]))
+        )
+
+    def apply(self, observation):
+        out = observation.clone()
+        for k in range(5):
+            out[0, 42 * k + GRAVITY.start : 42 * k + GRAVITY.stop] = self.frames[k]
+        return out
 
 
 def schedule(robot, controls):
@@ -123,6 +180,7 @@ class Robot:
             terrain=None if terrain.flat else terrain,
             start=self.start,
         )
+        self.slope = SlopeInputs() if robot.get("slope_inputs") else None
         self.policy, self.checkpoint_sha256 = None, None
         if "checkpoint" in robot:
             self.policy, self.checkpoint_sha256 = self._policy(
@@ -168,16 +226,21 @@ class Robot:
             "toe_contact": np.zeros((n, 6), bool),
             "command": commands.astype(np.float32),
             "fallen": np.zeros(n, bool),
+            "slope_pitch_rad": np.zeros(n, np.float32),
         }
         env.commands.zero_()
         env.reset()
+        if self.slope is not None:
+            self.slope.push(env.current["root"][:, 3:7])
         for k in range(n):
             env.commands.copy_(torch.as_tensor(commands[k : k + 1], dtype=torch.float32))
-            observation = env.observations(env.current)
+            observation = env.observations(env.current)["obs"]
+            if self.slope is not None:
+                observation = self.slope.apply(observation)
             if self.policy is None:
                 action = torch.zeros(1, 18)
             else:
-                action = self.policy(observation["obs"])
+                action = self.policy(observation)
             env.step(action)
             state, telemetry = env.current, env.telemetry
             trace["root_pose_xyzw"][k] = state["root"][0].numpy()
@@ -186,6 +249,10 @@ class Robot:
             force = telemetry["tibia_floor_force_world_n"][0]
             trace["toe_contact"][k] = (torch.linalg.vector_norm(force, dim=-1) > 1.0).numpy()
             trace["fallen"][k] = bool(state["gravity"][0, 2] > -math.cos(FALL_TILT_RAD))
+            if self.slope is not None:
+                self.slope.update(trace["toe_xyz_world_m"][k], trace["toe_contact"][k])
+                self.slope.push(state["root"][:, 3:7])
+                trace["slope_pitch_rad"][k] = self.slope.pitch
         return trace
 
 
@@ -218,6 +285,7 @@ def run_scene(path, output, seed=20260917):
                 "trace": f"robot_{k}.npz",
                 "checkpoint": spec.get("checkpoint"),
                 "checkpoint_sha256": robot.checkpoint_sha256,
+                "slope_inputs": bool(spec.get("slope_inputs")),
                 "start_world_xy_ground_yaw": list(robot.start),
                 "fell_at_s": None if not len(fallen) else round(fallen[0] * CONTROL_SECONDS, 2),
                 "wall_seconds": round(time.monotonic() - started, 1),

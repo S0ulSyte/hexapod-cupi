@@ -10,7 +10,7 @@ import numpy as np
 import torch
 
 from locomotion.surrogate.env import ContactModel, SurrogateConfig, SurrogateEnv
-from locomotion.surrogate.scene import run_scene, schedule
+from locomotion.surrogate.scene import SlopeInputs, run_scene, schedule
 from locomotion.surrogate.terrain import Terrain, feature_height, validate
 
 
@@ -105,6 +105,47 @@ class SceneTests(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             schedule({"name": "r", "commands": [{"seconds": 1, "command": [0.1, 0]}]}, 5)
+
+    def test_front_and_rear_toes_tilt_the_gravity_inputs_to_the_ground(self):
+        slope = SlopeInputs()
+        identity = torch.tensor([[0.0, 0.0, 0.0, 1.0]])
+        # Toes lf, lm, lr, rf, rm, rr; forward is world -y. Flat ground leaves gravity straight down.
+        toes = np.array(
+            [
+                [x, y, 0.01]
+                for x, y in (
+                    (0.1, -0.15),
+                    (0.2, 0),
+                    (0.1, 0.15),
+                    (-0.1, -0.15),
+                    (-0.2, 0),
+                    (-0.1, 0.15),
+                )
+            ]
+        )
+        slope.update(toes, [True] * 6)
+        torch.testing.assert_close(slope.gravity(identity), torch.tensor([0.0, 0.0, -1.0]))
+        # Front toes 30 mm above the rear ones over 300 mm: a 5.7 degree rise, reached as the estimate settles.
+        toes[[0, 3], 2] += 0.03
+        for _ in range(60):
+            slope.update(toes, [True, False, True, True, False, True])
+        self.assertAlmostEqual(slope.pitch, math.atan2(0.03, 0.3), places=6)
+        # A body pitched nose-up with the ramp feels gravity as on flat ground.
+        half = slope.pitch / 2
+        nose_up = torch.tensor([[-math.sin(half), 0.0, 0.0, math.cos(half)]])
+        torch.testing.assert_close(
+            slope.gravity(nose_up), torch.tensor([0.0, 0.0, -1.0]), atol=1e-6, rtol=0
+        )
+        # Without a front and a rear toe down, the estimate holds.
+        slope.update(toes * 0, [True, True, False, False, True, False])
+        self.assertAlmostEqual(slope.pitch, math.atan2(0.03, 0.3), places=6)
+        observation = torch.zeros(1, 231)
+        slope.push(identity)
+        corrected = slope.apply(observation)
+        self.assertEqual(
+            corrected[0, 42 * 4 + 3 : 42 * 4 + 6].tolist(), slope.gravity(identity).tolist()
+        )
+        self.assertEqual(int((corrected != 0).sum()), 5 * 2)
 
     def test_a_robot_stands_on_a_height_field_box_at_its_start(self):
         terrain = Terrain(

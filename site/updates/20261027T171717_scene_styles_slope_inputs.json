@@ -1,0 +1,25 @@
+{
+  "id": "20261027T171717_scene_styles_slope_inputs",
+  "date": "2026-10-27T17:17:17.000000Z",
+  "title": "Scenes: CAD and line views side by side, and slope-corrected gravity inputs",
+  "summary": "The Scene page shows the CAD view, the Runs page's line drawing, or both side by side, and records whichever it shows. A scene robot's slope_inputs option estimates the ground's pitch along the robot whenever a front and a rear leg touch the ground (their toes' height difference over their distance, smoothed over about 0.1 s and limited to 20 degrees) and gives the policy gravity relative to that ground in all five history frames. With destination_v29 on the surrogate, the estimate matches 3.8, 6.7 and 9.5 degree ramps, but the correction changes no outcome: at 0.1 m/s both versions climb 4 and 7 degree ramps on schedule and stall at the crest of a 9 degree ramp, and at 0.15 m/s both stall at the foot of 9 and 14 degree ramps.",
+  "areas": [
+    "locomotion",
+    "verification"
+  ],
+  "next": "Look at foot clearance and the swing height at a ramp's foot and crest, where the blind policy stalls, before training on slopes.",
+  "changes": [
+    "src/locomotion/surrogate/scene.py",
+    "src/locomotion/surrogate/tests/test_scene.py",
+    "viewer/README.md",
+    "viewer/src/runs/draw.js",
+    "viewer/src/scene/*",
+    "site/updates/20261027T171717_scene_styles_slope_inputs.json"
+  ],
+  "evidence": [
+    "src/locomotion/surrogate/tests/test_scene.py",
+    "viewer/test/scene.test.mjs"
+  ],
+  "no_project_impact": true,
+  "reason": "Scene tooling only; training, the canonical task, reward and evaluator are unchanged."
+}

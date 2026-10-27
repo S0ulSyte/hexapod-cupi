@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { VIEWS as LINE_VIEWS } from '../runs/draw.js';
+import { drawScene } from './drawScene.js';
 import { SceneRenderer, VIEWS, loadRobot } from './scene3d.js';
 import { FEATURES, bounds, featureGrid } from './terrain.js';
 import { exampleScene, plannedPath, readSceneFile, sceneSeconds } from './sceneFile.js';
@@ -11,6 +13,8 @@ const EDGE_MARGIN_M = 0.35;
 const FOLLOW_DISTANCE_M = 1.4;
 const SIZES = { '1280×720': [1280, 720], '1920×1080': [1920, 1080], '1080×1080': [1080, 1080] };
 const PATH_COLOURS = ['#2f7fa6', '#c27a1c', '#2f9a78', '#c2477a'];
+// The CAD view (the Spark videos' look), the Runs page's line drawing, or both side by side.
+const STYLES = { both: 'CAD + lines', cad: 'CAD', lines: 'Lines' };
 const FIELD_LABELS = {
   center: ['centre forward', 'centre left'],
   size: ['length', 'width'],
@@ -78,12 +82,14 @@ export default function SceneViewer() {
   const [viewName, setViewName] = useState('3d');
   const [follow, setFollow] = useState(-1);
   const [paths, setPaths] = useState(false);
+  const [style, setStyle] = useState('both');
   const [recording, setRecording] = useState(null);
   const [videoSize, setVideoSize] = useState('1280×720');
   const [fps, setFps] = useState(25);
   const [robot, setRobot] = useState(null);
   const [loading, setLoading] = useState('Loading the robot’s CAD parts…');
   const canvas = useRef(null);
+  const lineCanvas = useRef(null);
   const view = useRef(null);
   const state = useRef({ t: 0, dirty: true, reaim: true });
   const slider = useRef(null);
@@ -219,6 +225,24 @@ export default function SceneViewer() {
     [robot, count, live, result, scene.robots, planned, shownGrid, follow, viewName],
   );
 
+  // The line drawing looks where the 3D camera looks, from the matching preset view.
+  const drawLines = useCallback(
+    (target, t, size) => {
+      const v = view.current, c = v.controls.target;
+      drawScene(target, {
+        grid: shownGrid,
+        robots: live ? result.cases : null,
+        planned: live ? null : planned,
+        t,
+        frameSeconds: live ? result.frame_seconds : 0.04,
+        camera: { ...LINE_VIEWS[viewName ?? '3d'], target: [-c.y, c.x, c.z], span: v.camera.position.distanceTo(c) * 0.75 },
+        title: live ? result.name : `${scene.name} (plan)`,
+        size,
+      });
+    },
+    [shownGrid, live, result, planned, viewName, scene.name],
+  );
+
   useEffect(() => {
     let last = null, id = 0;
     const tick = (now) => {
@@ -232,16 +256,20 @@ export default function SceneViewer() {
         if (slider.current) slider.current.value = s.t;
         if (clock.current) clock.current.textContent = `${s.t.toFixed(1)} s`;
         place(s.t);
-        const r = canvas.current.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
-        view.current.render(Math.round(r.width * d), Math.round(r.height * d));
+        if (style !== 'lines') {
+          const r = canvas.current.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
+          view.current.render(Math.round(r.width * d), Math.round(r.height * d));
+        }
+        if (style !== 'cad' && lineCanvas.current && shownGrid) drawLines(lineCanvas.current, s.t);
       }
       id = requestAnimationFrame(tick);
     };
     id = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(id);
-  }, [playing, speed, seconds, place, recording]);
+  }, [playing, speed, seconds, place, recording, style, drawLines, shownGrid]);
 
-  // Play the scene once at real time at the video size and record the canvas with the browser's MediaRecorder.
+  // Play the scene once at real time at the video size and record it with the browser's MediaRecorder; with
+  // both styles the CAD view fills the left half and the line drawing the right.
   const record = async () => {
     const [width, height] = SIZES[videoSize];
     const type = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'].find(
@@ -251,23 +279,36 @@ export default function SceneViewer() {
       setError('This browser cannot record canvas video (no MediaRecorder).');
       return;
     }
+    const split = style === 'both' ? Math.round(width / 2) : style === 'cad' ? width : 0;
+    const video = document.createElement('canvas'), lines = document.createElement('canvas');
+    [video.width, video.height] = [width, height];
+    const g = video.getContext('2d');
+    const draw = (t) => {
+      place(t);
+      if (split > 0) {
+        view.current.render(split, height);
+        g.drawImage(canvas.current, 0, 0, split, height);
+      }
+      if (split < width) {
+        drawLines(lines, t, [width - split, height]);
+        g.drawImage(lines, split, 0);
+      }
+    };
     const frames = Math.ceil((seconds / speed) * fps);
     setRecording({ frame: 0, frames });
-    const stream = canvas.current.captureStream(fps);
+    const stream = video.captureStream(fps);
     const recorder = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: width * height * 6 });
     const chunks = [];
     recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
     const done = new Promise((resolve) => (recorder.onstop = resolve));
-    place(0);
-    view.current.render(width, height);
+    draw(0);
     recorder.start(1000);
     const started = performance.now();
     for (let k = 0; k <= frames; k++) {
       const wait = started + (k * 1000) / fps - performance.now();
       if (wait > 0) await new Promise((r) => setTimeout(r, wait));
       const t = Math.min(seconds, (k / fps) * speed);
-      place(t);
-      view.current.render(width, height);
+      draw(t);
       if (slider.current) slider.current.value = t;
       if (k % fps === 0) setRecording({ frame: k, frames });
     }
@@ -408,6 +449,16 @@ export default function SceneViewer() {
               stand still (no checkpoint)
             </label>
             {r.policy !== 'stand' && (
+              <label className="check" title="When a front and a rear leg touch the ground, the height difference between them sets the ground's pitch, and the policy's gravity inputs are taken relative to that ground.">
+                <input
+                  type="checkbox"
+                  checked={!!r.slope_inputs}
+                  onChange={(e) => update((s) => ((s.robots[k].slope_inputs = e.target.checked), s))}
+                />
+                slope inputs (gravity relative to the ground under its front and rear feet)
+              </label>
+            )}
+            {r.policy !== 'stand' && (
               <label className="text">
                 <span>checkpoint (relative to the scene file)</span>
                 <input value={r.checkpoint ?? ''} onChange={(e) => update((s) => ((s.robots[k].checkpoint = e.target.value), s))} />
@@ -499,6 +550,9 @@ export default function SceneViewer() {
             onInput={(e) => (state.current.t = Number(e.target.value))}
           />
           <span ref={clock} className="clock">0.0 s</span>
+          <select value={style} onChange={(e) => setStyle(e.target.value)} aria-label="Style">
+            {Object.entries(STYLES).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+          </select>
           {live && (
             <label className="check">
               <input type="checkbox" checked={paths} onChange={(e) => setPaths(e.target.checked)} />
@@ -506,10 +560,15 @@ export default function SceneViewer() {
             </label>
           )}
         </div>
-        <div className="scene-stage">
-          <canvas ref={canvas} className="scene-view" />
-          <div className="hud">{live ? result.name : `${scene.name} — plan, not simulated`}</div>
-          {loading && <div className="loading">{loading}</div>}
+        <div className={`scene-stage ${style}`}>
+          <div className="pane cad">
+            <canvas ref={canvas} className="scene-view" />
+            <div className="hud">{live ? result.name : `${scene.name} — plan, not simulated`}</div>
+            {loading && <div className="loading">{loading}</div>}
+          </div>
+          <div className="pane lines">
+            <canvas ref={lineCanvas} className="scene-view" />
+          </div>
         </div>
         <div className="bar record">
           <select value={videoSize} onChange={(e) => setVideoSize(e.target.value)} aria-label="Video size">
