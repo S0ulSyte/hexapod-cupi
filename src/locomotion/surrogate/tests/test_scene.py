@@ -147,6 +147,36 @@ class SceneTests(unittest.TestCase):
         )
         self.assertEqual(int((corrected != 0).sum()), 5 * 2)
 
+    def test_the_joints_mode_adds_the_tilt_about_each_femur_axis(self):
+        root = Path(__file__).resolve().parents[4]
+        model = json.loads(
+            (root / "robot/hexapod_mkii_updated_v1/model_rs05_mass_corrected.json").read_text()
+        )
+        stance = json.loads((root / "robot/hexapod_mkii_updated_v1/stance.json").read_text())
+        with self.assertRaises(ValueError):
+            SlopeInputs("knees", model["joints"])
+        slope = SlopeInputs("joints", model["joints"])
+        slope.pitch, slope.direction = math.radians(5), np.array([0.0, -1.0])
+        q = torch.tensor(stance["nominal_joint_position_rad"])
+        identity = torch.tensor([[0.0, 0.0, 0.0, 1.0]])
+        offsets = slope.femur_offsets(identity, q)
+        femurs = [math.degrees(float(offsets[i])) for i in (1, 4, 7, 10, 13, 16)]
+        # Ground rising 5 degrees forward: the front femurs (lf, rf) gain about 3.9 degrees, the rear ones
+        # (lr, rr) lose as much, and the middle ones, whose axes point forward, almost nothing.
+        for front, middle, rear in (
+            (femurs[0], femurs[1], femurs[2]),
+            (femurs[3], femurs[4], femurs[5]),
+        ):
+            self.assertAlmostEqual(front, 3.86, delta=0.05)
+            self.assertAlmostEqual(rear, -3.86, delta=0.05)
+            self.assertLess(abs(middle), 0.1)
+        self.assertEqual(float(offsets[[0, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17]].abs().sum()), 0.0)
+        slope.push(identity, q)
+        observation = torch.zeros(1, 231)
+        corrected = slope.apply(observation)
+        self.assertEqual(corrected[0, 42 * 2 + 6 + 1].item(), offsets[1].item())
+        self.assertEqual(int((corrected[0, :210] != 0).sum()), 5 * 6)
+
     def test_a_robot_stands_on_a_height_field_box_at_its_start(self):
         terrain = Terrain(
             {

@@ -1,0 +1,22 @@
+{
+  "id": "20261027T172631_scene_femur_slope_inputs",
+  "date": "2026-10-27T17:26:31.000000Z",
+  "title": "Scenes: slope inputs that add the robot's tilt to its femur angle inputs",
+  "summary": "A scene robot's slope_inputs can now be 'joints': the gravity inputs stay, and each femur pitch input becomes its measured angle plus the tilt (from the front and rear toes) about that joint's axis, about 3.9 degrees for the front and rear femurs on a 5 degree slope, with opposite signs, and almost none for the middle ones; tibia inputs stay, since a tibia's angle is measured from its femur. With destination_v29 on a 9.5 degree ramp at 0.1 m/s, the robot without correction climbs to the crest (1.68 m) and the femur correction stalls it at the foot (0.57 m with the tilt added, 0.60 m subtracted); at 0.15 m/s all three stall at the foot.",
+  "areas": [
+    "locomotion"
+  ],
+  "next": "Look at foot clearance at a ramp's foot and crest before training on slopes.",
+  "changes": [
+    "src/locomotion/surrogate/scene.py",
+    "src/locomotion/surrogate/tests/test_scene.py",
+    "viewer/README.md",
+    "viewer/src/scene/*",
+    "site/updates/20261027T172631_scene_femur_slope_inputs.json"
+  ],
+  "evidence": [
+    "src/locomotion/surrogate/tests/test_scene.py"
+  ],
+  "no_project_impact": true,
+  "reason": "Scene tooling only; training, the canonical task, reward and evaluator are unchanged."
+}

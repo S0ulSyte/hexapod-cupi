@@ -449,13 +449,22 @@ export default function SceneViewer() {
               stand still (no checkpoint)
             </label>
             {r.policy !== 'stand' && (
-              <label className="check" title="When a front and a rear leg touch the ground, the height difference between them sets the ground's pitch, and the policy's gravity inputs are taken relative to that ground.">
-                <input
-                  type="checkbox"
-                  checked={!!r.slope_inputs}
-                  onChange={(e) => update((s) => ((s.robots[k].slope_inputs = e.target.checked), s))}
-                />
-                slope inputs (gravity relative to the ground under its front and rear feet)
+              <label className="text" title="When a front and a rear leg touch the ground, their height difference over their distance gives the robot's tilt along the slope. Gravity: the gravity inputs become gravity relative to the sloped ground. Femur angles: each femur's angle input gains the tilt about its axis.">
+                <span>slope inputs (tilt from the front and rear feet)</span>
+                <select
+                  value={r.slope_inputs === true ? 'gravity' : r.slope_inputs || 'off'}
+                  onChange={(e) =>
+                    update((s) => {
+                      if (e.target.value === 'off') delete s.robots[k].slope_inputs;
+                      else s.robots[k].slope_inputs = e.target.value;
+                      return s;
+                    })
+                  }
+                >
+                  <option value="off">off</option>
+                  <option value="gravity">gravity relative to the slope</option>
+                  <option value="joints">femur angles plus the tilt</option>
+                </select>
               </label>
             )}
             {r.policy !== 'stand' && (

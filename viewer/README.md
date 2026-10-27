@@ -70,9 +70,10 @@ A scene is a terrain, one or more robots and each robot's start and command list
 The page loads the CAD meshes once (about 15 s) and merges their vertices on a grid a fraction of each part's size
 (0.25 to 2 mm), so several robots play in real time; the full meshes hold about 22 million triangles per robot.
 
-A robot's **slope inputs** option corrects what its policy feels for a slope: whenever a front leg and a rear leg
-touch the ground, their height difference over their distance gives the ground's pitch along the robot, and the
-policy's gravity inputs become gravity relative to that ground (`SlopeInputs` in `surrogate/scene.py`).
+A robot's **slope inputs** option changes what its policy feels on a slope. Whenever a front leg and a rear leg
+touch the ground, their height difference over their distance gives the robot's tilt along the slope; then either
+the gravity inputs become gravity relative to that ground, or each femur's angle input gains the tilt about that
+joint's axis (`SlopeInputs` in `surrogate/scene.py`).
 
 Each robot runs alone on its own copy of the terrain, so robots pass through each other. The terrain is the
 whole floor: robots start at least 0.35 m inside it, and one that walks off its edge falls. The policies were
