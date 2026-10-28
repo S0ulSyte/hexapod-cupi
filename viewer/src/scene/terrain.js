@@ -7,6 +7,7 @@ export const FEATURES = {
   ramp: { center: [0, 0], size: [1, 0.8], rise: 0.04, heading_deg: 0 },
   steps: { center: [0, 0], size: [1.2, 0.8], rise: 0.03, count: 3, heading_deg: 0 },
   bump: { center: [0, 0], radius: 0.3, height: 0.02 },
+  hill: { center: [0, 0], radius: 1.5, top_radius: 0.5, height: 0.14 },
   noise: { amplitude: 0.005, wavelength: 0.3, seed: 1 },
 };
 
@@ -45,6 +46,11 @@ export function featureHeight(feature, forward, left) {
     case 'bump': {
       const r = Math.hypot(forward - feature.center[0], left - feature.center[1]);
       return r < feature.radius ? feature.height * 0.5 * (1 + Math.cos((Math.PI * r) / feature.radius)) : 0;
+    }
+    case 'hill': {
+      const r = Math.hypot(forward - feature.center[0], left - feature.center[1]);
+      const share = (feature.radius - r) / (feature.radius - feature.top_radius);
+      return feature.height * Math.min(1, Math.max(0, share));
     }
     default: {
       const [u, v] = local(feature, forward, left);

@@ -8,6 +8,8 @@ y = -forward, so a robot with the identity orientation faces forward. Heights ad
 - ``ramp``: ``center``, ``size``, ``rise``, ``heading_deg``; 0 at the back edge, ``rise`` at the front edge;
 - ``steps``: ``center``, ``size``, ``rise``, ``count``, ``heading_deg``; ``count`` equal steps up to ``rise``;
 - ``bump``: ``center``, ``radius``, ``height``; a raised cosine;
+- ``hill``: ``center``, ``radius``, ``top_radius``, ``height``; a round hill with a flat top of ``top_radius``
+  and an even slope down to ``radius``;
 - ``noise``: ``amplitude``, ``wavelength``, ``seed``; smooth value noise in [-amplitude, amplitude] over the
   whole terrain.
 
@@ -24,6 +26,7 @@ FEATURES = {
     "ramp": ("center", "size", "rise"),
     "steps": ("center", "size", "rise", "count"),
     "bump": ("center", "radius", "height"),
+    "hill": ("center", "radius", "top_radius", "height"),
     "noise": ("amplitude", "wavelength", "seed"),
 }
 
@@ -71,6 +74,10 @@ def feature_height(feature, forward, left):
             feature["height"] * 0.5 * (1 + np.cos(np.pi * r / feature["radius"])),
             0.0,
         )
+    if kind == "hill":
+        r = np.hypot(forward - feature["center"][0], left - feature["center"][1])
+        top, radius = feature["top_radius"], feature["radius"]
+        return feature["height"] * np.clip((radius - r) / (radius - top), 0.0, 1.0)
     u, v = _local(feature, forward, left)
     length, width = feature["size"]
     inside = (np.abs(u) <= length / 2) & (np.abs(v) <= width / 2)
@@ -109,6 +116,8 @@ def validate(spec):
             raise ValueError("Steps need a whole count of at least 1")
         if kind in ("bump", "noise") and feature.get("radius", feature.get("wavelength")) <= 0:
             raise ValueError("A bump radius or noise wavelength is positive")
+        if kind == "hill" and not 0 <= feature["top_radius"] < feature["radius"]:
+            raise ValueError("A hill's top_radius is from 0 to below its radius")
         if kind == "noise" and (int(feature["seed"]) != feature["seed"] or feature["seed"] < 0):
             raise ValueError("A noise seed is a whole number of at least 0")
 

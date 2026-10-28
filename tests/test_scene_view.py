@@ -37,6 +37,7 @@ TERRAIN = {
             "heading_deg": 90,
         },
         {"type": "bump", "center": [1.4, 0.4], "radius": 0.3, "height": 0.025},
+        {"type": "hill", "center": [0.8, -0.5], "radius": 0.5, "top_radius": 0.15, "height": 0.04},
         {"type": "noise", "amplitude": 0.006, "wavelength": 0.23, "seed": 12345},
     ],
 }

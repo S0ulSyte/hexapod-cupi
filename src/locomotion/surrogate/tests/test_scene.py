@@ -10,7 +10,18 @@ import numpy as np
 import torch
 
 from locomotion.surrogate.env import ContactModel, SurrogateConfig, SurrogateEnv
-from locomotion.surrogate.scene import run_scene, schedule
+from locomotion.surrogate.scene import (
+    HOLD_STAND,
+    HOLD_UPSIDE_DOWN,
+    POLICY,
+    STAND_UP_STEP_GROUPS,
+    UPSIDE_DOWN,
+    UpsideDown,
+    plan,
+    run_scene,
+    schedule,
+    stand_up_keyframes,
+)
 from locomotion.surrogate.terrain import Terrain, feature_height, validate
 
 
@@ -37,6 +48,11 @@ class TerrainTests(unittest.TestCase):
         )
         bump = {"type": "bump", "center": [0, 0], "radius": 0.2, "height": 0.02}
         self.assertEqual(heights(bump, [(0, 0), (0.1, 0), (0, 0.2)]), [0.02, 0.01, 0])
+        hill = {"type": "hill", "center": [1, 0], "radius": 1.5, "top_radius": 0.5, "height": 0.2}
+        self.assertEqual(
+            heights(hill, [(1, 0), (1, 0.5), (2, 0), (1, -1.25), (2.6, 0)]),
+            [0.2, 0.2, 0.1, 0.05, 0],
+        )
         noise = {"type": "noise", "amplitude": 0.01, "wavelength": 0.25, "seed": 3}
         grid = feature_height(noise, *np.meshgrid(np.linspace(-2, 2, 81), np.linspace(-2, 2, 81)))
         self.assertLessEqual(float(np.abs(grid).max()), 0.01)
@@ -54,7 +70,13 @@ class TerrainTests(unittest.TestCase):
         for bad in (
             {"size_m": [0.1, 2]},
             {"size_m": [2, 2], "resolution_m": 0.5},
-            {"size_m": [2, 2], "features": [{"type": "hill"}]},
+            {"size_m": [2, 2], "features": [{"type": "crater"}]},
+            {
+                "size_m": [2, 2],
+                "features": [
+                    {"type": "hill", "center": [0, 0], "radius": 1, "top_radius": 1, "height": 0.1}
+                ],
+            },
             {"size_m": [2, 2], "features": [{"type": "box", "center": [0, 0], "size": [1, 1]}]},
             {
                 "size_m": [2, 2],
@@ -193,6 +215,105 @@ class SceneTests(unittest.TestCase):
             self.assertFalse(first["fallen"].any())
             grid = np.load(Path(folder, "out", "terrain.npz"))
             self.assertEqual(grid["heights"].shape, (61, 61))
+
+
+class UpsideDownTests(unittest.TestCase):
+    def setUp(self):
+        self.env = SurrogateEnv(SurrogateConfig(num_envs=1), threads=0)
+
+    def test_the_policy_reads_a_robot_on_its_back_as_an_upright_one(self):
+        for flip in ("roll", "pitch"):
+            view = UpsideDown(self.env.neutral, flip)
+            # A target the policy asks for lands where the policy then reads it.
+            asked = torch.linspace(-1, 1, 18)[None]
+            held = view.neutral + 0.35 * view.action(asked)
+            self.assertTrue(torch.allclose(view.joints(held - view.neutral) / 0.35, asked))
+            # On its back, gravity points out of the body's top; the policy feels it below.
+            observation = torch.zeros(1, 231)
+            observation[:, 5] = 1.0
+            self.assertEqual(view.observation(observation)[0, 3:6].tolist(), [0.0, 0.0, -1.0])
+            # The turned root stands upright: its body z is the world's up.
+            on_back = {"roll": [0.0, 1.0, 0.0, 0.0], "pitch": [1.0, 0.0, 0.0, 0.0]}[flip]
+            root = torch.tensor([[0.0, 0.0, 0.2, *on_back]])
+            x, y, z, w = view.root(root)[0, 3:7].tolist()
+            self.assertAlmostEqual(1 - 2 * (x * x + y * y), 1.0, places=6)
+            # The legs swap sides (roll) or ends (pitch): the policy's lf leg is the robot's rf or lr.
+            self.assertEqual(int(view.index[0]), {"roll": 9, "pitch": 6}[flip])
+
+    def test_entries_hold_poses_turn_over_and_push(self):
+        robot = {
+            "name": "r",
+            "commands": [
+                {"seconds": 0.04, "hold": "stand", "push": {"force": [80, 0, 0]}},
+                {"seconds": 0.04, "hold": "upside_down"},
+                {"seconds": 0.04, "command": [0.1, 0, 0], "upside_down": "pitch"},
+            ],
+        }
+        steps = plan(robot, 8)
+        self.assertEqual(
+            steps["phase"].tolist(),
+            [HOLD_STAND] * 2 + [HOLD_UPSIDE_DOWN] * 2 + [UPSIDE_DOWN] * 2 + [POLICY] * 2,
+        )
+        self.assertEqual(steps["flip"], [None] * 4 + ["pitch"] * 2 + [None] * 2)
+        self.assertEqual(steps["push"][:, 0].tolist(), [80, 80, 0, 0, 0, 0, 0, 0])
+        np.testing.assert_allclose(steps["elapsed"][:4], [0.02, 0.04, 0.02, 0.04])
+        self.assertEqual(schedule(robot, 8)[4:6, 0].tolist(), [0.1, 0.1])
+        for bad in (
+            {"seconds": 1, "hold": "sit"},
+            {"seconds": 1, "command": [0, 0, 0], "upside_down": "yaw"},
+            {"seconds": 1, "command": [0, 0, 0], "push": {"force": [1, 2]}},
+            {"seconds": 1, "command": [0, 0, 0], "push": {"spin": [1, 2, 3]}},
+        ):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                schedule({"name": "r", "commands": [bad]}, 50)
+
+    def test_getting_up_ends_with_every_leg_in_the_upside_down_standing_pose(self):
+        standing = (0.0, 2.79)
+        legs = stand_up_keyframes((-0.3, 0.4), standing)
+        for keys in legs:
+            times = [at for at, _ in keys]
+            self.assertEqual(times, sorted(times))
+            self.assertEqual(keys[-1][1], standing)
+            # No move outruns the 2 rad/s target slew.
+            for (a, before), (b, after) in zip(keys, keys[1:]):
+                travel = max(abs(u - v) for u, v in zip(before, after))
+                self.assertGreaterEqual(b - a + 1e-9, travel / 2.0)
+        self.assertLess(max(keys[-1][0] for keys in legs), 5.0)
+        # Every leg swings to its grip and pushes up at once.
+        self.assertEqual(len({tuple(keys[:3]) for keys in legs}), 1)
+        # The outer legs step into the standing pose together, then the middle two.
+        outer, middle = STAND_UP_STEP_GROUPS
+        self.assertEqual(sorted(outer + middle), list(range(6)))
+        self.assertEqual(len({tuple(legs[leg][-4:]) for leg in outer}), 1)
+        self.assertEqual(legs[middle[0]], legs[middle[1]])
+        self.assertGreaterEqual(legs[middle[0]][-4][0], legs[outer[0]][-1][0])
+
+    def test_a_hold_too_short_to_get_up_is_refused(self):
+        scene = {
+            "schema": "hexapod_scene_v1",
+            "name": "short",
+            "seconds": 2,
+            "terrain": {"size_m": [2, 2], "features": []},
+            "robots": [
+                {
+                    "name": "r",
+                    "policy": "stand",
+                    "commands": [{"seconds": 2, "hold": "upside_down"}],
+                }
+            ],
+        }
+        with tempfile.TemporaryDirectory() as folder:
+            Path(folder, "s.json").write_text(json.dumps(scene))
+            with self.assertRaises(ValueError):
+                run_scene(Path(folder, "s.json"), Path(folder, "out"))
+
+    def test_an_applied_force_lifts_the_body(self):
+        self.env.reset()
+        start = float(self.env.current["root"][0, 2])
+        self.env.applied_wrench = np.array([[0.0, 0.0, 300.0, 0.0, 0.0, 0.0]])
+        for _ in range(10):
+            self.env.step(torch.zeros(1, 18))
+        self.assertGreater(float(self.env.current["root"][0, 2]), start + 0.05)
 
 
 if __name__ == "__main__":

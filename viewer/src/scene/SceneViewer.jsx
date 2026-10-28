@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { VIEWS as LINE_VIEWS } from '../runs/draw.js';
 import { drawScene } from './drawScene.js';
 import { SceneRenderer, VIEWS, loadRobot } from './scene3d.js';
@@ -23,6 +23,7 @@ const FIELD_LABELS = {
   count: 'steps',
   heading_deg: 'heading °',
   radius: 'radius',
+  top_radius: 'top radius',
   amplitude: 'amplitude',
   wavelength: 'wavelength',
   seed: 'seed',
@@ -163,12 +164,14 @@ export default function SceneViewer() {
     };
   }, []);
 
+  const features = scene?.terrain?.features;
   useEffect(() => {
     if (!shownGrid) return;
-    view.current.setTerrain((x, y) => shownGrid.at(-y, x), [shownGrid.l0, shownGrid.l1, -shownGrid.f1, -shownGrid.f0]);
+    const boxes = (features ?? []).filter((f) => f.type === 'box' && f.color);
+    view.current.setTerrain((x, y) => shownGrid.at(-y, x), [shownGrid.l0, shownGrid.l1, -shownGrid.f1, -shownGrid.f0], boxes);
     state.current.reaim = true;
     state.current.dirty = true;
-  }, [shownGrid]);
+  }, [shownGrid, features]);
 
   useEffect(() => {
     if (!robot) return;
@@ -485,13 +488,26 @@ export default function SceneViewer() {
               </thead>
               <tbody>
                 {(r.commands ?? []).map((c, j) => (
-                  <tr key={j}>
-                    <td><Num step={1} value={c.seconds} onChange={(x) => update((s) => ((s.robots[k].commands[j].seconds = x), s))} /></td>
-                    {[0, 1, 2].map((d) => (
-                      <td key={d}><Num step={0.01} value={c.command[d]} onChange={(x) => update((s) => ((s.robots[k].commands[j].command[d] = x), s))} /></td>
-                    ))}
-                    <td><button onClick={() => update((s) => (s.robots[k].commands.splice(j, 1), s))}>×</button></td>
-                  </tr>
+                  <Fragment key={j}>
+                    <tr>
+                      <td><Num step={1} value={c.seconds} onChange={(x) => update((s) => ((s.robots[k].commands[j].seconds = x), s))} /></td>
+                      {c.hold ? (
+                        <td colSpan={3}>{c.hold === 'upside_down' ? 'hold: get up on its back' : 'hold: stand'}</td>
+                      ) : (
+                        [0, 1, 2].map((d) => (
+                          <td key={d}><Num step={0.01} value={c.command[d]} onChange={(x) => update((s) => ((s.robots[k].commands[j].command[d] = x), s))} /></td>
+                        ))
+                      )}
+                      <td><button onClick={() => update((s) => (s.robots[k].commands.splice(j, 1), s))}>×</button></td>
+                    </tr>
+                    {(c.upside_down || c.push) && (
+                      <tr>
+                        <td colSpan={5} className="note">
+                          {[c.upside_down && `upside down (${c.upside_down === 'pitch' ? 'tumbled' : 'rolled'} over)`, c.push && `push ${JSON.stringify(c.push)}`].filter(Boolean).join(' · ')}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

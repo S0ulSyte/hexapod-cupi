@@ -558,6 +558,10 @@ class SurrogateEnv:
         self._next = np.zeros((cfg.num_envs, 1, self._nstate))
         self._sensor = np.zeros((cfg.num_envs, 1, m.nsensordata))
         self._warmstart = np.zeros((cfg.num_envs, m.nv))
+        # A world-frame force (N) and torque (N m) on each replica's body at its centre of mass, [n, 6];
+        # None applies none. Scenes push robots with it; keep zeros rather than None once one acted, as
+        # MuJoCo keeps the last applied force in its data.
+        self.applied_wrench = None
         self._control = np.zeros((cfg.num_envs, 1, m.nu))
         self._qpos0 = np.zeros(25)
         self._qpos0[2] = self.reset_height
@@ -652,12 +656,19 @@ class SurrogateEnv:
         """One 400 Hz step of every replica with the given float32 joint torques."""
         m = self.mj_model
         self._control[:, 0] = applied.numpy()
+        control, spec = self._control, int(mujoco.mjtState.mjSTATE_CTRL)
+        if self.applied_wrench is not None:
+            wrench = np.zeros((self.num_envs, 1, m.nbody, 6))
+            wrench[:, 0, 1] = np.asarray(self.applied_wrench, dtype=float)
+            control = np.concatenate((control, wrench.reshape(self.num_envs, 1, -1)), -1)
+            spec |= int(mujoco.mjtState.mjSTATE_XFRC_APPLIED)
         before = sum(d.warning[mujoco.mjtWarning.mjWARN_BADQACC].number for d in self._datas)
         self._pool.rollout(
             self._models,
             self._datas,
             self._state,
-            self._control,
+            control,
+            control_spec=spec,
             nstep=1,
             initial_warmstart=self._warmstart,
             state=self._next,

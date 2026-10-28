@@ -11,7 +11,7 @@ import activeModel from '../../../robot/active_model.json';
 const MODEL_URL = '/' + activeModel.model.path.replace(/^robot\//, '');
 const ROBOT_URL = MODEL_URL.replace(/[^/]+$/, '');
 const TILE_M = 0.5;
-const COLOURS = { background: '#d3dae0', floor: '#a9b4be', line: '#dfe5ea', robot: '#f3f4f5' };
+const COLOURS = { background: '#d3dae0', floor: '#a9b4be', line: '#dfe5ea', robot: '#5c636a' };
 // Views as the camera's direction from its target (x left, y back, z up).
 export const VIEWS = { '3d': [0.75, -1.1, 0.75], top: [0, -0.001, 1], side: [1, 0, 0.1] };
 
@@ -169,8 +169,9 @@ export class SceneRenderer {
     this.terrain = null;
   }
 
-  // The terrain mesh over [x0, x1] x [y0, y1] with heights `at(x, y)`, and the floor plane around it.
-  setTerrain(at, [x0, x1, y0, y1]) {
+  // The terrain mesh over [x0, x1] x [y0, y1] with heights `at(x, y)`, and the floor plane around it. Box
+  // features with a `color` (walls, blocks) are drawn as solid boxes of that colour over the height field.
+  setTerrain(at, [x0, x1, y0, y1], boxes = []) {
     if (this.terrain) {
       this.scene.remove(this.terrain);
       this.terrain.traverse((o) => o.geometry?.dispose());
@@ -191,6 +192,18 @@ export class SceneRenderer {
     for (const g of [field, floor]) {
       const mesh = new THREE.Mesh(g, this.ground);
       mesh.receiveShadow = true;
+      group.add(mesh);
+    }
+    for (const b of boxes) {
+      const [along, across] = b.size;
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(across, along, Math.abs(b.height)),
+        new THREE.MeshStandardMaterial({ color: b.color, roughness: 0.8, metalness: 0 }),
+      );
+      // Navigation (forward, left) is world (-y, x); a heading turns the box from forward toward left.
+      mesh.position.set(b.center[1], -b.center[0], b.height / 2);
+      mesh.rotation.z = ((b.heading_deg ?? 0) * Math.PI) / 180;
+      mesh.castShadow = mesh.receiveShadow = true;
       group.add(mesh);
     }
     this.terrain = group;
