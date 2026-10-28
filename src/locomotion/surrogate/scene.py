@@ -30,8 +30,12 @@ joints to the standing pose, ``"hold": "upside_down"`` to the standing pose of a
 folded over, toes beyond the top of the body). ``"upside_down": "roll"`` (or ``true``) on a command runs the
 policy for a robot that rolled onto its back, ``"pitch"`` for one that tumbled over its front or rear, as
 ``UpsideDown`` describes. ``"start": {"upside_down": true}`` starts a robot on its back, rolled over, in that
-pose. ``"push": {"force": [forward, left, up], "torque": [forward, left, up]}`` on any entry pushes the body
-at its centre of mass for the entry's seconds, in newtons and newton metres along the robot's heading.
+pose. ``{"seconds": 6, "hold": "get_up"}`` gets a robot lying flat up onto its feet with the same moves
+mirrored through the body's plane, ending in a level six-toed stance about two thirds of standing height
+(``GET_UP_POSES`` says why); a walking policy finishes the rise when it takes over. ``"start": {"flat":
+true}`` starts a robot lying flat on the ground, right side up, its legs folded over the top. ``"push": {"force": [forward, left,
+up], "torque": [forward, left, up]}`` on any entry pushes the body at its centre of mass for the entry's
+seconds, in newtons and newton metres along the robot's heading.
 
 The output folder holds ``scene.json`` (the scene with resolved checkpoint paths), ``terrain.npz`` and one
 ``robot_<k>.npz`` trace per robot; ``viewer/scene_view.py`` turns it into a file for the viewer's Scene page.
@@ -61,8 +65,8 @@ EDGE_MARGIN_M = 0.35
 FALL_TILT_RAD = 0.85
 SLOPE_MODES = (True, "gravity", "femurs", "joints")
 # What each control does: the policy, the policy upside down, or a held pose.
-POLICY, UPSIDE_DOWN, HOLD_STAND, HOLD_UPSIDE_DOWN = range(4)
-HOLDS = {"stand": HOLD_STAND, "upside_down": HOLD_UPSIDE_DOWN}
+POLICY, UPSIDE_DOWN, HOLD_STAND, HOLD_UPSIDE_DOWN, HOLD_GET_UP = range(5)
+HOLDS = {"stand": HOLD_STAND, "upside_down": HOLD_UPSIDE_DOWN, "get_up": HOLD_GET_UP}
 FLIPS = {True: "roll", "roll": "roll", "pitch": "pitch"}
 # The upside-down pose of a leg: femur and tibia angles mirrored about these, so a femur at the standing
 # -0.3 rad sits at 0 and a tibia at 0.4 at 2.79, folded over the top. The exact mirror (femur about -0.70,
@@ -89,6 +93,25 @@ STAND_UP_POSES = {
     "raise": (0.7, 0.848),
     "step": (-0.2, 2.0),
 }
+# Getting up onto its feet from lying flat ("hold": "get_up"): the same sequence mirrored through the body's
+# plane (femur and tibia about UPSIDE_DOWN_FEMUR_RAD and UPSIDE_DOWN_TIBIA_RAD) where the joints reach. The
+# exact mirror of the grip is out of reach (the tibia's 3.14 rad stop blocks tucking the toes under the femur
+# joints), so the toes grip about 0.37 m out, where the press stalls at the motors' 1.6 N m cap (73 N robot,
+# about 0.13 m femur lever) with the body 0.066 m up; and a raised toe can only be placed 0.40 m out or more,
+# wide of the 0.35/0.26 m standing footprint, so the steps land wide and the final stand holds a level,
+# six-toed stance at about two thirds of standing height (tilt under 1 degree). "step" parks the toe as near
+# the footprint as the arc allows; steps parked further out ((-0.1, 1.19), the plain mirror) ended lower, and
+# crouch-style plants that skip the grip ((-0.5, 0.6)) barely lifted the body at all (0.017 m). A walking
+# policy finishes the rise on takeover: Spark v29 u600 reached 0.092 m within half a second and walked 0.595 m
+# of a commanded 0.6 m straight out of the hold.
+GET_UP_POSES = {
+    "plant": (-1.6, 2.83),
+    "lift": (-1.6, 2.342),
+    "raise": (-1.0, 2.342),
+    "step": (-0.2, 0.55),
+}
+# Lying flat ("start": {"flat": true}): the body dropped from just above where it rests on the ground.
+FLAT_HEIGHT_M = 0.02
 # The steps into the standing pose: the four outer legs, then the middle two.
 STAND_UP_STEP_GROUPS = ((0, 2, 3, 5), (1, 4))
 # Each move lasts its largest joint travel at the environment's target slew (0.04 rad a control) and a short
@@ -98,10 +121,11 @@ STAND_UP_SETTLE_S = 0.05
 STAND_UP_PUSH_S = 0.3
 
 
-def stand_up_keyframes(upright, standing):
-    """Each leg's (seconds into the hold, (femur, tibia)) keyframes of getting up off its back, from the upright
-    standing pose ``upright`` to the upside-down one ``standing``."""
-    keys = [[(0.0, tuple(upright))] for _ in range(6)]
+def stand_up_keyframes(begin, end, poses=STAND_UP_POSES):
+    """Each leg's (seconds into the hold, (femur, tibia)) keyframes of getting up, from the pose ``begin``
+    through ``poses`` to the standing pose ``end``: off its back (``STAND_UP_POSES``, from the upright standing
+    pose to the upside-down one) or onto its feet from lying flat (``GET_UP_POSES``, the other way)."""
+    keys = [[(0.0, tuple(begin))] for _ in range(6)]
 
     def move(legs, pose, start, extra=0.0):
         """Move ``legs`` to ``pose`` from ``start``; returns when they get there."""
@@ -114,12 +138,12 @@ def stand_up_keyframes(upright, standing):
         return end
 
     every = range(6)
-    at = move(every, STAND_UP_POSES["plant"], 0.0, STAND_UP_PUSH_S)
-    at = move(every, STAND_UP_POSES["lift"], at, STAND_UP_PUSH_S)
+    at = move(every, poses["plant"], 0.0, STAND_UP_PUSH_S)
+    at = move(every, poses["lift"], at, STAND_UP_PUSH_S)
     for group in STAND_UP_STEP_GROUPS:
-        at = move(group, STAND_UP_POSES["raise"], at)
-        at = move(group, STAND_UP_POSES["step"], at)
-        at = move(group, standing, at)
+        at = move(group, poses["raise"], at)
+        at = move(group, poses["step"], at)
+        at = move(group, end, at)
     return [[(round(t, 3), pose) for t, pose in leg] for leg in keys]
 
 
@@ -139,7 +163,7 @@ def schedule(robot, controls):
                 f"{robot['name']}: each command is [forward, left, turn] with seconds > 0"
             )
         if entry.get("hold", "stand") not in HOLDS:
-            raise ValueError(f"{robot['name']}: hold is 'stand' or 'upside_down'")
+            raise ValueError(f"{robot['name']}: hold is 'stand', 'upside_down' or 'get_up'")
         if entry.get("upside_down", "roll") not in FLIPS:
             raise ValueError(f"{robot['name']}: upside_down is true, 'roll' or 'pitch'")
         push = entry.get("push", {})
@@ -277,6 +301,8 @@ def validate(scene):
         if ("checkpoint" in robot) == (robot.get("policy") == "stand"):
             raise ValueError(f"{robot['name']}: give a checkpoint or policy 'stand', not both")
         start = robot.get("start", {})
+        if start.get("upside_down") and start.get("flat"):
+            raise ValueError(f"{robot['name']}: start upside_down or flat, not both")
         if (
             abs(start.get("forward_m", 0.0) - cf) > length / 2 - EDGE_MARGIN_M
             or abs(start.get("left_m", 0.0) - cl) > width / 2 - EDGE_MARGIN_M
@@ -324,6 +350,14 @@ class Robot:
             qpos = self.env._qpos0
             qpos[2] += UPSIDE_DOWN_LIFT_M
             qpos[3:7] = (0.0, -math.sin(heading / 2), math.cos(heading / 2), 0.0)
+            neutral = self.upside_down["roll"].neutral
+            qpos[self.env._qpos_columns] = neutral.numpy().astype(np.float64)
+            self.env.neutral = neutral.clone()
+        elif start.get("flat"):
+            # Lying flat, right side up: the legs folded over the top (the pose getting up on its back ends
+            # in), the body dropped from just above where it rests on the ground.
+            qpos = self.env._qpos0
+            qpos[2] = ground + FLAT_HEIGHT_M
             neutral = self.upside_down["roll"].neutral
             qpos[self.env._qpos_columns] = neutral.numpy().astype(np.float64)
             self.env.neutral = neutral.clone()
@@ -386,25 +420,30 @@ class Robot:
         # The upright neutral and the upside-down one are each the same for both flips.
         upright, held_over = self.upside_down["roll"].upright, self.upside_down["roll"].neutral
         pushed = bool(np.any(steps["push"]))
-        frames = stand_up_keyframes(upright[1:3].tolist(), held_over[1:3].tolist())
-        took = max(leg[-1][0] for leg in frames)
-        last = [
-            k
-            for k in range(n)
-            if phase[k] == HOLD_UPSIDE_DOWN and (k + 1 == n or phase[k + 1] != HOLD_UPSIDE_DOWN)
-        ]
-        if any(steps["elapsed"][k] < took - 1e-9 for k in last):
-            raise ValueError(
-                f"Getting up off its back takes {took:.2f} s; hold 'upside_down' longer"
-            )
+        frames = {
+            HOLD_UPSIDE_DOWN: stand_up_keyframes(upright[1:3].tolist(), held_over[1:3].tolist()),
+            HOLD_GET_UP: stand_up_keyframes(
+                held_over[1:3].tolist(), upright[1:3].tolist(), GET_UP_POSES
+            ),
+        }
+        ends = {HOLD_UPSIDE_DOWN: held_over, HOLD_GET_UP: upright}
+        for hold, name in ((HOLD_UPSIDE_DOWN, "upside_down"), (HOLD_GET_UP, "get_up")):
+            took = max(leg[-1][0] for leg in frames[hold])
+            last = [
+                k for k in range(n) if phase[k] == hold and (k + 1 == n or phase[k + 1] != hold)
+            ]
+            if any(steps["elapsed"][k] < took - 1e-9 for k in last):
+                raise ValueError(f"Getting up takes {took:.2f} s; hold '{name}' longer")
         start = upright
         for k in range(n):
             flipped = phase[k] in (UPSIDE_DOWN, HOLD_UPSIDE_DOWN)
             env.neutral = held_over if flipped else upright
-            if phase[k] == HOLD_UPSIDE_DOWN:
-                if k == 0 or phase[k - 1] != HOLD_UPSIDE_DOWN:
+            if phase[k] in (HOLD_UPSIDE_DOWN, HOLD_GET_UP):
+                if k == 0 or phase[k - 1] != phase[k]:
                     start = env.held[0].clone()
-                env.neutral = self._getting_up(frames, start, held_over, steps["elapsed"][k])
+                env.neutral = self._getting_up(
+                    frames[phase[k]], start, ends[phase[k]], steps["elapsed"][k]
+                )
             if pushed:
                 env.applied_wrench = self._wrench(steps["push"][k])
             if k and (phase[k], steps["flip"][k]) != (phase[k - 1], steps["flip"][k - 1]):
@@ -413,7 +452,7 @@ class Robot:
             observation = env.observations(env.current)["obs"]
             if self.slope is not None and not flipped:
                 observation = self.slope.apply(observation)
-            if self.policy is None or phase[k] in (HOLD_STAND, HOLD_UPSIDE_DOWN):
+            if self.policy is None or phase[k] in (HOLD_STAND, HOLD_UPSIDE_DOWN, HOLD_GET_UP):
                 action = torch.zeros(1, 18)
             elif phase[k] == UPSIDE_DOWN:
                 upside_down = self.upside_down[steps["flip"][k]]
@@ -456,8 +495,8 @@ class Robot:
 
     @staticmethod
     def _getting_up(frames, start, end, elapsed):
-        """The held targets ``elapsed`` seconds into getting up off its back: each leg from ``start`` through
-        its keyframes in ``frames`` to ``end``, the upside-down standing pose."""
+        """The held targets ``elapsed`` seconds into getting up: each leg from ``start`` through its keyframes
+        in ``frames`` to the standing pose ``end`` (upside-down off its back, upright from lying flat)."""
         pose = end.clone()
         for leg, keys in enumerate(frames):
             first = slice(3 * leg, 3 * leg + 3)

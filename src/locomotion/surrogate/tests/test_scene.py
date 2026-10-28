@@ -11,6 +11,8 @@ import torch
 
 from locomotion.surrogate.env import ContactModel, SurrogateConfig, SurrogateEnv
 from locomotion.surrogate.scene import (
+    GET_UP_POSES,
+    HOLD_GET_UP,
     HOLD_STAND,
     HOLD_UPSIDE_DOWN,
     POLICY,
@@ -21,6 +23,9 @@ from locomotion.surrogate.scene import (
     run_scene,
     schedule,
     stand_up_keyframes,
+)
+from locomotion.surrogate.scene import (
+    validate as validate_scene,
 )
 from locomotion.surrogate.terrain import Terrain, feature_height, validate
 
@@ -247,17 +252,22 @@ class UpsideDownTests(unittest.TestCase):
                 {"seconds": 0.04, "hold": "stand", "push": {"force": [80, 0, 0]}},
                 {"seconds": 0.04, "hold": "upside_down"},
                 {"seconds": 0.04, "command": [0.1, 0, 0], "upside_down": "pitch"},
+                {"seconds": 0.04, "hold": "get_up"},
             ],
         }
-        steps = plan(robot, 8)
+        steps = plan(robot, 10)
         self.assertEqual(
             steps["phase"].tolist(),
-            [HOLD_STAND] * 2 + [HOLD_UPSIDE_DOWN] * 2 + [UPSIDE_DOWN] * 2 + [POLICY] * 2,
+            [HOLD_STAND] * 2
+            + [HOLD_UPSIDE_DOWN] * 2
+            + [UPSIDE_DOWN] * 2
+            + [HOLD_GET_UP] * 2
+            + [POLICY] * 2,
         )
-        self.assertEqual(steps["flip"], [None] * 4 + ["pitch"] * 2 + [None] * 2)
-        self.assertEqual(steps["push"][:, 0].tolist(), [80, 80, 0, 0, 0, 0, 0, 0])
+        self.assertEqual(steps["flip"], [None] * 4 + ["pitch"] * 2 + [None] * 4)
+        self.assertEqual(steps["push"][:, 0].tolist(), [80, 80, 0, 0, 0, 0, 0, 0, 0, 0])
         np.testing.assert_allclose(steps["elapsed"][:4], [0.02, 0.04, 0.02, 0.04])
-        self.assertEqual(schedule(robot, 8)[4:6, 0].tolist(), [0.1, 0.1])
+        self.assertEqual(schedule(robot, 10)[4:6, 0].tolist(), [0.1, 0.1])
         for bad in (
             {"seconds": 1, "hold": "sit"},
             {"seconds": 1, "command": [0, 0, 0], "upside_down": "yaw"},
@@ -288,24 +298,84 @@ class UpsideDownTests(unittest.TestCase):
         self.assertEqual(legs[middle[0]], legs[middle[1]])
         self.assertGreaterEqual(legs[middle[0]][-4][0], legs[outer[0]][-1][0])
 
-    def test_a_hold_too_short_to_get_up_is_refused(self):
+    def test_getting_up_from_flat_mirrors_the_steps_into_the_standing_pose(self):
+        standing = (-0.3, 0.4)
+        legs = stand_up_keyframes((0.0, 2.79), standing, GET_UP_POSES)
+        lower, upper = self.env.lower[1:3].tolist(), self.env.upper[1:3].tolist()
+        for keys in legs:
+            times = [at for at, _ in keys]
+            self.assertEqual(times, sorted(times))
+            self.assertEqual(keys[-1][1], standing)
+            # Every pose stays inside the joint stops.
+            for _, pose in keys:
+                for value, low, high in zip(pose, lower, upper):
+                    self.assertGreater(value, low)
+                    self.assertLess(value, high)
+        self.assertLess(max(keys[-1][0] for keys in legs), 5.0)
+        # Every leg swings to its grip and pushes up at once; the same groups then step.
+        self.assertEqual(len({tuple(keys[:3]) for keys in legs}), 1)
+        outer, middle = STAND_UP_STEP_GROUPS
+        self.assertEqual(len({tuple(legs[leg][-4:]) for leg in outer}), 1)
+        self.assertEqual(legs[middle[0]], legs[middle[1]])
+        self.assertGreaterEqual(legs[middle[0]][-4][0], legs[outer[0]][-1][0])
+
+    def test_a_flat_robot_gets_up_onto_its_feet(self):
         scene = {
             "schema": "hexapod_scene_v1",
-            "name": "short",
-            "seconds": 2,
+            "name": "flat get-up",
+            "seconds": 6,
             "terrain": {"size_m": [2, 2], "features": []},
             "robots": [
                 {
                     "name": "r",
                     "policy": "stand",
-                    "commands": [{"seconds": 2, "hold": "upside_down"}],
+                    "start": {"flat": True},
+                    "commands": [{"seconds": 6, "hold": "get_up"}],
                 }
             ],
         }
+        with self.assertRaises(ValueError):
+            validate_scene(
+                {
+                    **scene,
+                    "robots": [
+                        {**scene["robots"][0], "start": {"flat": True, "upside_down": True}}
+                    ],
+                }
+            )
         with tempfile.TemporaryDirectory() as folder:
             Path(folder, "s.json").write_text(json.dumps(scene))
-            with self.assertRaises(ValueError):
-                run_scene(Path(folder, "s.json"), Path(folder, "out"))
+            run_scene(Path(folder, "s.json"), Path(folder, "out"))
+            trace = np.load(Path(folder, "out", "robot_0.npz"))
+        self.assertEqual(int(trace["phase"][0]), HOLD_GET_UP)
+        self.assertFalse(trace["fallen"].any())
+        # It lies flat at first, and ends level on all six toes, pressed as high as the torque cap
+        # allows (GET_UP_POSES): about two thirds of the 0.11 m standing height.
+        self.assertLess(trace["root_pose_xyzw"][10, 2], 0.03)
+        self.assertGreater(trace["root_pose_xyzw"][-1, 2], 0.055)
+        self.assertTrue(trace["toe_contact"][-1].all())
+        x, y, _, _ = trace["root_pose_xyzw"][-1, 3:7]
+        self.assertGreater(1 - 2 * (x * x + y * y), 0.99)
+
+    def test_a_hold_too_short_to_get_up_is_refused(self):
+        for hold in ("upside_down", "get_up"):
+            scene = {
+                "schema": "hexapod_scene_v1",
+                "name": "short",
+                "seconds": 2,
+                "terrain": {"size_m": [2, 2], "features": []},
+                "robots": [
+                    {
+                        "name": "r",
+                        "policy": "stand",
+                        "commands": [{"seconds": 2, "hold": hold}],
+                    }
+                ],
+            }
+            with tempfile.TemporaryDirectory() as folder:
+                Path(folder, "s.json").write_text(json.dumps(scene))
+                with self.subTest(hold=hold), self.assertRaises(ValueError):
+                    run_scene(Path(folder, "s.json"), Path(folder, "out"))
 
     def test_an_applied_force_lifts_the_body(self):
         self.env.reset()

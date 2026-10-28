@@ -492,7 +492,7 @@ export default function SceneViewer() {
                     <tr>
                       <td><Num step={1} value={c.seconds} onChange={(x) => update((s) => ((s.robots[k].commands[j].seconds = x), s))} /></td>
                       {c.hold ? (
-                        <td colSpan={3}>{c.hold === 'upside_down' ? 'hold: get up on its back' : 'hold: stand'}</td>
+                        <td colSpan={3}>{c.hold === 'upside_down' ? 'hold: get up on its back' : c.hold === 'get_up' ? 'hold: get up onto its feet' : 'hold: stand'}</td>
                       ) : (
                         [0, 1, 2].map((d) => (
                           <td key={d}><Num step={0.01} value={c.command[d]} onChange={(x) => update((s) => ((s.robots[k].commands[j].command[d] = x), s))} /></td>
