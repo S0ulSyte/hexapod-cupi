@@ -143,8 +143,7 @@ def refresh_support(support, seen, env, episode_steps, state):
 class FootfallInputs:
     """The training-side ``terrain_v1`` block for ``DestinationVecEnv``: reads the task's env duck-typed."""
 
-    def __init__(self, task):
-        scaling = getattr(task.reward_config, "gait_clock_scaling", None)
+    def __init__(self, task, scaling):
         if scaling not in GAIT_CLOCK_SCALINGS:
             raise ValueError(
                 "terrain_v1 needs the task's speed-scaled gait clock (gait_clock_scaling)"
@@ -159,6 +158,9 @@ class FootfallInputs:
         task = self.task
         if self.grid is None:
             return torch.zeros(task.num_envs, FOOTFALL_FEATURES)
+        phase = getattr(task, "gait_clock_phase", None)
+        if phase is None:
+            raise ValueError("terrain_v1 on a terrain needs a task with the speed-scaled clock")
         state = task.current
         self.seen = refresh_support(
             self.support, self.seen, getattr(task, "env", None), task.episode_steps, state
@@ -169,7 +171,7 @@ class FootfallInputs:
             state["root"],
             task.commands if command is None else command,
             state["toe_body"],
-            task.gait_clock_phase,
+            phase,
             self.scaling,
         )
 

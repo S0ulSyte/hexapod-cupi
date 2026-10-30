@@ -52,7 +52,9 @@ class DestinationVecEnv(OmniVecEnv):
         if destination_input == "terrain_v1":
             from locomotion.omniwalk.mdp.footfall import FootfallInputs
 
-            self.footfall = FootfallInputs(task)
+            # The recorded option names the clock; a task may carry none (the flat suites
+            # evaluate every checkpoint under the v9 task, whose reward predates the clock).
+            self.footfall = FootfallInputs(task, gait_clock_scaling or kept)
         super().__init__(task, tensor_dict, **options)
 
     def destination_inputs(self, pending, command=None):
