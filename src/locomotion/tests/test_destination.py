@@ -1741,5 +1741,67 @@ class LaunchMountTests(unittest.TestCase):
         self.assertIn("/checkpoint", allowed)
 
 
+class TerrainCampaignTests(unittest.TestCase):
+    def test_destination_v33_biases_walks_forward_and_v34_adds_the_slope_inputs(self):
+        v29, v33, v34 = (
+            EXPERIMENTS[n]["reward"]
+            for n in ("destination_v29", "destination_v33", "destination_v34")
+        )
+        self.assertEqual(
+            {k for k, v in asdict(v33).items() if asdict(v29)[k] != v}, {"walk_forward_bias"}
+        )
+        self.assertEqual(v33.walk_forward_bias, 0.5)
+        self.assertEqual(
+            {k for k, v in asdict(v34).items() if asdict(v33)[k] != v}, {"slope_inputs"}
+        )
+        self.assertEqual(v34.slope_inputs, "joints")
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v33"], "terrain_v1")
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v34"], "ghost_v11")
+        self.assertEqual(EXPERIMENTS["destination_v33"]["episode_seconds"], 32.0)
+        with self.assertRaises(ValueError):
+            replace(v33, walk_forward_only=True).validate()
+        with self.assertRaises(ValueError):
+            replace(v33, walk_forward_bias=1.0).validate()
+
+    def test_half_the_biased_walks_face_forward(self):
+        task, native = moving_task(forward, reward=EXPERIMENTS["destination_v33"]["reward"])
+        hits = 0
+        for _ in range(300):
+            task._uniform_walks(torch.tensor([0]))
+            command = native.commands[0]
+            speed = float(torch.linalg.vector_norm(command[:2]))
+            self.assertGreaterEqual(speed, 0.05 - 1e-6)
+            self.assertLessEqual(speed, 0.15 + 1e-6)
+            hits += abs(float(command[1])) < 1e-9 and float(command[0]) > 0
+        self.assertGreater(hits / 300, 0.38)
+        self.assertLess(hits / 300, 0.62)
+
+    def test_terrain_v1_appends_zeros_without_a_terrain_and_needs_the_speed_scaled_clock(self):
+        task, native = moving_task(forward, reward=EXPERIMENTS["destination_v33"]["reward"])
+        env = DestinationVecEnv(
+            task,
+            plain,
+            observation_scaling="fixed",
+            gait_clock=60,
+            gait_clock_scaling="speed_v1",
+            destination_input="terrain_v1",
+        )
+        observation = env.get_observations()
+        self.assertEqual(observation["policy"].shape[-1], 272)
+        self.assertEqual(observation["critic"].shape[-1], 275)
+        torch.testing.assert_close(observation["policy"][:, 242:], torch.zeros(1, 30))
+        observation, *_ = env.step(torch.zeros(1, 18))
+        torch.testing.assert_close(observation["policy"][:, 242:], torch.zeros(1, 30))
+        nine, _ = moving_task(forward, reward=EXPERIMENTS["destination_v9"]["reward"])
+        with self.assertRaises(ValueError):
+            DestinationVecEnv(
+                nine,
+                plain,
+                observation_scaling="fixed",
+                gait_clock=60,
+                destination_input="terrain_v1",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

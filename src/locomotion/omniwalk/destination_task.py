@@ -136,6 +136,7 @@ class DestinationRewardConfig(RewardConfig):
     run_mix: tuple | None = None
     long_stand_controls: int | None = None
     walk_forward_only: bool | None = None
+    walk_forward_bias: float | None = None
     slope_inputs: str | None = None
     command_controls: int = 0
 
@@ -350,6 +351,15 @@ class DestinationRewardConfig(RewardConfig):
             self.walk_forward_only is not True or self.walk_speed_min_mps is None
         ):
             raise ValueError("Forward-only walks are True or None and need uniform walk speeds")
+        if self.walk_forward_bias is not None and (
+            self.walk_forward_only is not None
+            or self.walk_speed_min_mps is None
+            or not 0 < self.walk_forward_bias < 1
+        ):
+            raise ValueError(
+                "A forward bias is the share of walks facing forward, between 0 and 1, "
+                "needs uniform walk speeds and excludes forward-only walks"
+            )
         if self.slope_inputs not in (None, "gravity", "femurs", "joints"):
             raise ValueError("slope_inputs is None, gravity, femurs or joints (mdp/slope.py)")
         ceiling = (
@@ -750,6 +760,28 @@ EXPERIMENTS["destination_v30"] = {
         termination_weight=52.0,
     ),
 }
+# destination_v33 is destination_v29 for the 2026-10-30 terrain campaign (runs/terrain_campaign):
+# the v29 reward and run mix, with half the walks facing forward (walk_forward_bias 0.5, a chosen
+# split) instead of all bearings uniform - destination_v32's forward-only walks regressed on flat
+# ground and stand as the recorded cautionary control. Trained on terrain from random starts; the
+# campaign arms vary only the recorded destination_input (terrain_v1, the 30 footfall-lookahead
+# inputs of mdp/footfall.py, against ghost_v11), so arm A (terrain_v1) and arm C (ghost_v11) both
+# train this task at equal experience, seed 20260917, 1000 updates.
+EXPERIMENTS["destination_v33"] = {
+    **EXPERIMENTS["destination_v29"],
+    "reward": replace(
+        EXPERIMENTS["destination_v29"]["reward"],
+        walk_forward_bias=0.5,
+    ),
+}
+# destination_v34 is destination_v33 plus the run-time slope inputs destination_v32 used
+# (slope_inputs "joints", mdp/slope.py): campaign arm B, the honest rerun of v32's idea under the
+# campaign mix, terrain, updates and seed, so the terrain_v1 comparison holds the slope-input
+# alternative as a control.
+EXPERIMENTS["destination_v34"] = {
+    **EXPERIMENTS["destination_v33"],
+    "reward": replace(EXPERIMENTS["destination_v33"]["reward"], slope_inputs="joints"),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
@@ -961,7 +993,7 @@ class DestinationTrainingTask(TrainingTask):
         """Make every fresh command a walk in a uniform direction at a uniform speed between the bounds."""
         config = self.reward_config
         indices = torch.as_tensor(indices, dtype=torch.long, device=self.env.commands.device)
-        draws = torch.rand(len(indices), 2, generator=self.rng).to(self.env.commands)
+        draws = torch.rand(len(indices), 3, generator=self.rng).to(self.env.commands)
         speed = (
             config.walk_speed_min_mps
             + (config.walk_speed_max_mps - config.walk_speed_min_mps) * draws[:, 0]
@@ -969,6 +1001,11 @@ class DestinationTrainingTask(TrainingTask):
         angle = draws[:, 1] * 2 * math.pi
         if config.walk_forward_only:
             angle = torch.zeros_like(angle)
+        elif config.walk_forward_bias is not None:
+            # The biased share faces forward; the rest keep their uniform bearing.
+            angle = torch.where(
+                draws[:, 2] < config.walk_forward_bias, torch.zeros_like(angle), angle
+            )
         self.env.commands[indices, 0] = speed * torch.cos(angle)
         self.env.commands[indices, 1] = speed * torch.sin(angle)
         self.env.commands[indices, 2] = 0

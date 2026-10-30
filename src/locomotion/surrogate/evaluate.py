@@ -75,6 +75,12 @@ class DeterministicPolicy:
                 "ghost_v11": GhostV11Tracker,
             }[options["destination_input"]]
             self.tracker = tracker(env.num_envs, "cpu")
+        elif options.get("destination_input") == "terrain_v1":
+            from locomotion.omniwalk.mdp.footfall import TerrainV1Tracker
+
+            self.tracker = TerrainV1Tracker(
+                env.num_envs, "cpu", env=env, scaling=options.get("gait_clock_scaling")
+            )
 
     def record(self, options):
         """The ``policy_path`` entry of the summary: the path that ran and the options that acted on it."""

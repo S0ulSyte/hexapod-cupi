@@ -448,6 +448,8 @@ class SurrogateEnv:
         self.reference_metadata = reference_metadata
         self.contact_model = ContactModel() if contact is None else contact
         self.spawn = spawn
+        # Kept for terrain-aware observations (mdp/footfall.py reads it duck-typed off the env).
+        self.terrain = terrain
         if terrain is not None and self.contact_model.touchdown_overshoot:
             raise ValueError(
                 "A terrain needs touchdown_overshoot=False: the model assumes a flat floor"
