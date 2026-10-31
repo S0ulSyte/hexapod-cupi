@@ -1693,8 +1693,7 @@ class PackTests(unittest.TestCase):
                 steps_per_env=36,
             )
             self.assertIn("--experiment", evaluation["command_args"])
-            spec = root / "mixed.json"
-            spec.write_text(json.dumps({"size_m": [20, 20], "features": []}))
+            spec = "/srv/cupi/hexapod/runs/julian/terrain_inputs/terrain/mixed_v3.json"
             terrain = prepare(
                 root / "terrain",
                 remote,
@@ -1707,17 +1706,19 @@ class PackTests(unittest.TestCase):
                 steps_per_env=36,
             )
             args = terrain["command_args"]
-            self.assertEqual(args[args.index("--terrain") + 1], "/terrain/mixed.json")
+            self.assertEqual(args[args.index("--terrain") + 1], "/terrain/mixed_v3.json")
             self.assertEqual(args[args.index("--terrain-mesh-resolution") + 1], "0.08")
             self.assertIn("--terrain-spawn", args)
-            self.assertIn([str(spec.parent), "/terrain"], terrain["extra_mounts"])
-            self.assertEqual(terrain["input_files"][str(spec)], "e" * 64)
+            self.assertIn([str(Path(spec).parent), "/terrain"], terrain["extra_mounts"])
+            self.assertEqual(terrain["input_files"][spec], "e" * 64)
             for index, bad in enumerate(
                 (
                     dict(mode="train", experiment="unknown"),
                     dict(mode="diagnostic", experiment="destination_v1"),
                     dict(mode="evaluate", terrain=spec, terrain_sha="e" * 64),
                     dict(mode="train", terrain=spec),
+                    dict(mode="train", terrain="/tmp/mixed.json", terrain_sha="e" * 64),
+                    dict(mode="train", terrain=spec, terrain_sha="not a hash"),
                     dict(mode="train", terrain_spawn=True),
                     dict(mode="train", terrain_mesh_resolution=0.08),
                     dict(mode="train", initialize_from=start),

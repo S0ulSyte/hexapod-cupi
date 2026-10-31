@@ -113,8 +113,16 @@ def prepare(
         terrain = Path(terrain)
         if mode != "train" or learner != "ppo":
             raise ValueError("A terrain spec applies to PPO training")
-        if not terrain.is_file() or terrain_sha is None:
-            raise ValueError("A terrain spec needs its file and its SHA-256")
+        # The spec is a remote run-tree path at launch time, validated like a checkpoint: by
+        # allowed root and hash shape, never by a local stat.
+        if (
+            not within_roots(terrain, RUN_ROOTS)
+            or ".." in terrain.parts
+            or terrain_sha is None
+            or len(terrain_sha) != 64
+            or set(terrain_sha) - set("0123456789abcdef")
+        ):
+            raise ValueError("Invalid terrain spec identity")
     elif terrain_spawn or terrain_sha is not None or terrain_mesh_resolution is not None:
         raise ValueError("Terrain options need a terrain spec")
     learner_options = resolve_learner_options(
