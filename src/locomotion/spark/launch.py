@@ -312,6 +312,7 @@ def command(binding, paths, name):
                 "/checkpoint",
                 "/realized_prior",
                 "/compatibility",
+                "/terrain",
             ),
             "Unexpected read-only input mount",
         )
