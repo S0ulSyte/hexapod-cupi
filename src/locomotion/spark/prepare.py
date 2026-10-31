@@ -340,6 +340,19 @@ def prepare(
     contracts.mkdir()
     for name in ("__init__.py", "release.py"):
         shutil.copy2(tree / "contracts" / name, contracts / name)
+    shim = source / "triton"
+    shim.mkdir()
+    (shim / "__init__.py").write_text(
+        '"""Shadow the bundled triton, whose native library faults on import on this image.\n'
+        "\n"
+        "torch probes triton with ``has_triton_package`` and treats ImportError as triton\n"
+        "absent, the normal aarch64 path, so raising here keeps lazy ``torch._dynamo``\n"
+        "imports (tensordict reaches one through ``torch.compiler.allow_in_graph``) from\n"
+        "loading the faulting library (terrain_isaac_smoke_20261031_007/_008, probe_002).\n"
+        '"""\n'
+        "\n"
+        'raise ImportError("triton disabled: the bundled native library faults on this image")\n'
+    )
     write_runtime(source)
     save(
         source / "FREEZE_SHA256.json",
