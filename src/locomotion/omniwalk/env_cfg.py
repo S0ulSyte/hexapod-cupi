@@ -38,10 +38,28 @@ class EnvConfig:
     floor: str = "isaaclab_mesh"
     floor_contact_offset_m: float | None = None
     floor_rest_offset_m: float | None = None
+    # A terrain spec (surrogate/terrain.py JSON) replaces the flat mesh floor with its height
+    # field, tiled to cover the environment origins; the policy inputs read the same grid through
+    # the env's ``terrain`` attribute (omniwalk/mdp/footfall.py). The mesh resolution decimates the
+    # collision mesh only; the input grid keeps the spec's resolution. ``terrain_spawn`` scatters
+    # each reset inside its environment's cell with a random heading, as surrogate terrain
+    # training does.
+    terrain_spec_path: str | None = None
+    terrain_mesh_resolution_m: float = 0.08
+    terrain_spawn: bool = False
 
     def __post_init__(self):
         if self.floor not in FLOORS:
             raise ValueError("Unknown stock floor")
+        if self.terrain_spec_path is not None and self.floor != "isaaclab_mesh":
+            raise ValueError("A terrain spec builds the mesh floor; declare floor isaaclab_mesh")
+        if self.terrain_spawn and self.terrain_spec_path is None:
+            raise ValueError("Terrain spawn randomization needs a terrain spec")
+        if (
+            not math.isfinite(self.terrain_mesh_resolution_m)
+            or not 0.02 <= self.terrain_mesh_resolution_m <= 0.2
+        ):
+            raise ValueError("Terrain mesh resolution is 0.02 to 0.2 m")
         offsets = (self.floor_contact_offset_m, self.floor_rest_offset_m)
         if any(x is None for x in offsets) != all(x is None for x in offsets):
             raise ValueError("Declare both floor collider offsets or neither")

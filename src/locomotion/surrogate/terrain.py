@@ -125,6 +125,37 @@ def validate(spec):
 class Terrain:
     """The height map of a terrain spec on MuJoCo's world grid: rows along y, columns along x."""
 
+    @classmethod
+    def tiled(cls, spec, extent_m):
+        """The spec repeated periodically to cover at least ``extent_m`` metres each way from the
+        origin: one height map, the spec's resolution, for worlds wider than the spec (the native
+        robots stand on one shared floor scattered over tens of metres). The spec's own grid is the
+        period; its last row and column are dropped when tiling so seams do not double."""
+        base = cls(spec)
+        length, width = (float(x) for x in spec["size_m"])
+        tiles_x = max(1, math.ceil((2 * float(extent_m)) / width))
+        tiles_y = max(1, math.ceil((2 * float(extent_m)) / length))
+        out = cls.__new__(cls)
+        out.spec = {
+            "tiled_from": spec,
+            "size_m": [length * tiles_y, width * tiles_x],
+            "center_m": [0.0, 0.0],
+            "resolution_m": base.resolution,
+        }
+        out.resolution = base.resolution
+        out.center_xy = (0.0, 0.0)
+        out.half = (width * tiles_x / 2, length * tiles_y / 2)
+        out.nx = (base.nx - 1) * tiles_x + 1
+        out.ny = (base.ny - 1) * tiles_y + 1
+        out.xs = out.center_xy[0] + np.linspace(-out.half[0], out.half[0], out.nx)
+        out.ys = out.center_xy[1] + np.linspace(-out.half[1], out.half[1], out.ny)
+        inner = base.heights[:-1, :-1]
+        heights = np.tile(inner, (tiles_y, tiles_x))
+        heights = np.concatenate((heights, heights[:1, :]), axis=0)
+        heights = np.concatenate((heights, heights[:, :1]), axis=1)
+        out.heights = heights
+        return out
+
     def __init__(self, spec):
         validate(spec)
         self.spec = spec

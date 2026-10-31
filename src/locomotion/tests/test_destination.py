@@ -1693,10 +1693,33 @@ class PackTests(unittest.TestCase):
                 steps_per_env=36,
             )
             self.assertIn("--experiment", evaluation["command_args"])
+            spec = root / "mixed.json"
+            spec.write_text(json.dumps({"size_m": [20, 20], "features": []}))
+            terrain = prepare(
+                root / "terrain",
+                remote,
+                mode="train",
+                experiment="destination_v1",
+                terrain=spec,
+                terrain_sha="e" * 64,
+                terrain_mesh_resolution=0.08,
+                terrain_spawn=True,
+                steps_per_env=36,
+            )
+            args = terrain["command_args"]
+            self.assertEqual(args[args.index("--terrain") + 1], "/terrain/mixed.json")
+            self.assertEqual(args[args.index("--terrain-mesh-resolution") + 1], "0.08")
+            self.assertIn("--terrain-spawn", args)
+            self.assertIn([str(spec.parent), "/terrain"], terrain["extra_mounts"])
+            self.assertEqual(terrain["input_files"][str(spec)], "e" * 64)
             for index, bad in enumerate(
                 (
                     dict(mode="train", experiment="unknown"),
                     dict(mode="diagnostic", experiment="destination_v1"),
+                    dict(mode="evaluate", terrain=spec, terrain_sha="e" * 64),
+                    dict(mode="train", terrain=spec),
+                    dict(mode="train", terrain_spawn=True),
+                    dict(mode="train", terrain_mesh_resolution=0.08),
                     dict(mode="train", initialize_from=start),
                     dict(mode="train", initialize_from=start, initialize_from_sha="c" * 64),
                     dict(

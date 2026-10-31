@@ -251,3 +251,24 @@ class FloorDeclarationTests(unittest.TestCase):
         ):
             with self.subTest(contact=contact, rest=rest), self.assertRaises(ValueError):
                 EnvConfig(floor_contact_offset_m=contact, floor_rest_offset_m=rest)
+
+
+class TerrainDeclarationTests(unittest.TestCase):
+    def test_a_terrain_spec_is_declared_bounded_and_tied_to_the_mesh_floor(self):
+        from locomotion.omniwalk.env_cfg import EnvConfig
+
+        declared = EnvConfig(
+            terrain_spec_path="/terrain/mixed_v3.json", terrain_spawn=True
+        ).declaration()
+        self.assertEqual(declared["terrain_spec_path"], "/terrain/mixed_v3.json")
+        self.assertEqual(declared["terrain_mesh_resolution_m"], 0.08)
+        self.assertTrue(declared["terrain_spawn"])
+        self.assertIsNone(EnvConfig().declaration()["terrain_spec_path"])
+        for kwargs in (
+            dict(terrain_spec_path="/t.json", floor="isaaclab_ground_plane"),
+            dict(terrain_spawn=True),
+            dict(terrain_spec_path="/t.json", terrain_mesh_resolution_m=0.01),
+            dict(terrain_spec_path="/t.json", terrain_mesh_resolution_m=0.5),
+        ):
+            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                EnvConfig(**kwargs)

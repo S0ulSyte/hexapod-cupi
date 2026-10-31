@@ -140,6 +140,23 @@ def add_common_arguments(parser):
 
 def add_learner_arguments(parser):
     """Add the learner and recipe arguments with the option flags that replace recipe values."""
+    parser.add_argument(
+        "--terrain",
+        type=Path,
+        help="Terrain spec (JSON, locomotion/surrogate/terrain.py) tiled under every environment; "
+        "the floor becomes its height field and the env exposes the grid to terrain inputs.",
+    )
+    parser.add_argument(
+        "--terrain-mesh-resolution",
+        type=float,
+        default=0.08,
+        help="Collision-mesh decimation in metres; the input grid keeps the spec's resolution.",
+    )
+    parser.add_argument(
+        "--terrain-spawn",
+        action="store_true",
+        help="Scatter each reset inside its environment's cell with a random heading.",
+    )
     parser.add_argument("--learner", choices=["ppo", "amp"], default="ppo")
     parser.add_argument("--networks", choices=["mlp", "paper"], default="mlp")
     parser.add_argument(
@@ -332,6 +349,13 @@ def validate(args):
     ):
         # 32 s, the evaluator's longest probe, as locomotion.spark.prepare allows.
         raise ValueError("Episode length selection applies to training, between 5 and 32 seconds")
+    if args.terrain is not None:
+        if args.mode != "train" or args.learner != "ppo":
+            raise ValueError("A terrain spec applies to PPO training")
+        if not args.terrain.is_file():
+            raise ValueError("The terrain spec file does not exist")
+    if args.terrain_spawn and args.terrain is None:
+        raise ValueError("Terrain spawn randomization needs a terrain spec")
     if args.action_std_decay_updates is not None and args.action_std_final is None:
         raise ValueError("The deviation decay length needs a final action deviation")
     validate_decay(args.mode, args.updates, args.action_std_decay_updates)
@@ -368,6 +392,13 @@ def environment_config(args):
         episode_seconds = 90.0 if args.eval_scope == "full" else 60.0
     else:
         episode_seconds = 60.0 if args.mode == "diagnostic" else args.episode_seconds
+    terrain = {}
+    if getattr(args, "terrain", None) is not None:
+        terrain = {
+            "terrain_spec_path": str(args.terrain),
+            "terrain_mesh_resolution_m": args.terrain_mesh_resolution,
+            "terrain_spawn": bool(args.terrain_spawn),
+        }
     return config_class(
         num_envs=args.num_envs,
         seed=args.seed,
@@ -375,6 +406,7 @@ def environment_config(args):
         render=args.mode == "evaluate",
         episode_seconds=episode_seconds,
         device=args.device,
+        **terrain,
     )
 
 
@@ -411,6 +443,13 @@ def build_identity(args, cfg, metadata):
         identity["experiment"] = args.experiment
         identity["reward_version"] = REWARD_VERSION
         identity["reward_task"] = args.experiment
+    if getattr(args, "terrain", None) is not None:
+        identity["terrain"] = {
+            "spec_path": str(args.terrain),
+            "spec_sha256": sha(args.terrain),
+            "mesh_resolution_m": args.terrain_mesh_resolution,
+            "spawn": bool(args.terrain_spawn),
+        }
     if getattr(args, "initialize_from", None) is not None:
         identity["initialized_from"] = {
             "checkpoint_sha256": args.initialize_from_sha256,

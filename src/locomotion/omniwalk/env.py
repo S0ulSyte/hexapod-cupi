@@ -147,9 +147,11 @@ class IsaacEnv(DirectRLEnv):
         )
         self.total_controls = 0
         self.telemetry = {}
+        self.spawn_rng = np.random.default_rng(config.seed)
         self.capture = None
 
     def _setup_scene(self):
+        self.terrain = None
         self.robot = CaptureArticulation(self.robot_cfg)
         self.robot.env = self
         self.scene.articulations["robot"] = self.robot
@@ -162,7 +164,42 @@ class IsaacEnv(DirectRLEnv):
             friction_combine_mode="multiply",
             restitution_combine_mode="multiply",
         )
-        if self.config.floor == "isaaclab_ground_plane":
+        if self.config.terrain_spec_path is not None:
+            # The terrain height field replaces the flat mesh floor: one shared, world-aligned
+            # surface tiled from the spec to cover every environment origin, so the raw world
+            # coordinates the state reads stay consistent with the ``terrain`` grid the policy
+            # inputs sample (omniwalk/mdp/footfall.py reads it duck-typed off this attribute).
+            import trimesh
+            from isaaclab.terrains.utils import create_prim_from_mesh
+
+            from locomotion.surrogate.terrain import Terrain
+            from locomotion.surrogate.terrain import validate as validate_terrain
+
+            spec = json.loads(Path(self.config.terrain_spec_path).read_text())
+            validate_terrain(spec)
+            origins = self.scene.env_origins
+            extent = float(origins[:, :2].abs().max().item()) + 10.0
+            self.terrain = Terrain.tiled(spec, extent)
+            step = max(1, round(self.config.terrain_mesh_resolution_m / self.terrain.resolution))
+            xs, ys = self.terrain.xs[::step], self.terrain.ys[::step]
+            heights = self.terrain.heights[::step, ::step]
+            grid_x, grid_y = np.meshgrid(xs, ys)
+            vertices = np.stack((grid_x, grid_y, heights), axis=-1).reshape(-1, 3)
+            nx = len(xs)
+            rows, cols = np.meshgrid(np.arange(len(ys) - 1), np.arange(nx - 1), indexing="ij")
+            corner = rows * nx + cols
+            faces = np.concatenate(
+                (
+                    np.stack((corner, corner + 1, corner + nx + 1), -1).reshape(-1, 3),
+                    np.stack((corner, corner + nx + 1, corner + nx), -1).reshape(-1, 3),
+                )
+            )
+            mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
+            create_prim_from_mesh("/Ground", mesh, physics_material=material)
+            UsdPhysics.MeshCollisionAPI.Apply(
+                stage.GetPrimAtPath("/Ground/mesh")
+            ).CreateApproximationAttr("none")
+        elif self.config.floor == "isaaclab_ground_plane":
             floor = GroundPlaneCfg(size=(80.0, 80.0), physics_material=material)
             floor.func("/Ground", floor)
         elif self.config.floor == "isaaclab_cuboid":
@@ -400,7 +437,24 @@ class IsaacEnv(DirectRLEnv):
         zero = torch.zeros_like(q)
         pose = self.torch([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]).expand(len(rows), -1).clone()
         pose[:, :3] = self.origins[rows]
-        pose[:, 2] = self.reset_height
+        if self.terrain is not None and self.config.terrain_spawn:
+            # Scatter each reset inside its environment's cell with a random heading, as the
+            # surrogate's terrain spawner does; the margin keeps robots off neighbouring cells.
+            span = max(0.0, self.config.spacing_m / 2 - 0.5)
+            offsets = self.spawn_rng.uniform(-span, span, size=(len(rows), 2))
+            yaws = self.spawn_rng.uniform(-math.pi, math.pi, size=len(rows))
+            pose[:, 0] += self.torch(offsets[:, 0])
+            pose[:, 1] += self.torch(offsets[:, 1])
+            pose[:, 5] = self.torch(np.sin(yaws / 2))
+            pose[:, 6] = self.torch(np.cos(yaws / 2))
+        if self.terrain is not None:
+            # Navigation (forward, left) is world (-y, x); start above the highest nearby ground.
+            ground = [
+                self.terrain.highest_under(-float(row[1]), float(row[0]), 0.25) for row in pose
+            ]
+            pose[:, 2] = self.torch(ground) + self.reset_height
+        else:
+            pose[:, 2] = self.reset_height
         ids = rows.to(torch.int32)
         self.robot.write_root_link_pose_to_sim_index(root_pose=pose, env_ids=ids)
         self.robot.write_root_com_velocity_to_sim_index(

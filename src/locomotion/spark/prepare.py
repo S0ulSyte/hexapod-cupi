@@ -80,6 +80,10 @@ def prepare(
     action_std_decay_updates=None,
     steps_per_env=None,
     experiment=None,
+    terrain=None,
+    terrain_sha=None,
+    terrain_mesh_resolution=None,
+    terrain_spawn=False,
     initialize_from=None,
     initialize_from_sha=None,
     initialize_from_declaration_sha=None,
@@ -105,6 +109,14 @@ def prepare(
         experiment not in EXPERIMENT_INPUTS or mode not in ("train", "evaluate") or learner != "ppo"
     ):
         raise ValueError("A named experiment applies to PPO training and evaluation")
+    if terrain is not None:
+        terrain = Path(terrain)
+        if mode != "train" or learner != "ppo":
+            raise ValueError("A terrain spec applies to PPO training")
+        if not terrain.is_file() or terrain_sha is None:
+            raise ValueError("A terrain spec needs its file and its SHA-256")
+    elif terrain_spawn or terrain_sha is not None or terrain_mesh_resolution is not None:
+        raise ValueError("Terrain options need a terrain spec")
     learner_options = resolve_learner_options(
         recipe,
         mode,
@@ -420,6 +432,19 @@ def prepare(
         ]
     if experiment is not None:
         binding["command_args"] += ["--experiment", experiment]
+    if terrain is not None:
+        # The spec takes its own read-only mount, like a checkpoint, and the launcher verifies
+        # its recorded hash before execution.
+        binding["extra_mounts"].append([str(terrain.parent), "/terrain"])
+        binding["input_files"][str(terrain)] = terrain_sha
+        binding["command_args"] += ["--terrain", "/terrain/" + terrain.name]
+        if terrain_mesh_resolution is not None:
+            binding["command_args"] += [
+                "--terrain-mesh-resolution",
+                str(terrain_mesh_resolution),
+            ]
+        if terrain_spawn:
+            binding["command_args"] += ["--terrain-spawn"]
     if initialize_from is not None:
         # Training mounts no evaluation checkpoint, so the starting checkpoint and its declaration take
         # the launcher's read-only /checkpoint mount.
@@ -547,6 +572,10 @@ def main():
     parser.add_argument("--action-smoothing", choices=["none", "mean2"])
     parser.add_argument("--velocity-noise", type=float)
     parser.add_argument("--experiment", choices=sorted(EXPERIMENT_INPUTS))
+    parser.add_argument("--terrain", type=Path)
+    parser.add_argument("--terrain-sha")
+    parser.add_argument("--terrain-mesh-resolution", type=float)
+    parser.add_argument("--terrain-spawn", action="store_true")
     parser.add_argument("--initialize-from", type=Path)
     parser.add_argument("--initialize-from-sha")
     parser.add_argument("--initialize-from-declaration-sha")

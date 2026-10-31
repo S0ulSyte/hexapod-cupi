@@ -386,5 +386,34 @@ class UpsideDownTests(unittest.TestCase):
         self.assertGreater(float(self.env.current["root"][0, 2]), start + 0.05)
 
 
+class TiledTerrainTests(unittest.TestCase):
+    SPEC = {
+        "size_m": [4, 4],
+        "center_m": [0, 0],
+        "resolution_m": 0.1,
+        "features": [{"type": "bump", "center": [0.6, -0.4], "radius": 0.5, "height": 0.05}],
+    }
+
+    def test_the_tiled_terrain_repeats_the_spec_over_the_extent(self):
+        base = Terrain(self.SPEC)
+        tiled = Terrain.tiled(self.SPEC, 9.0)
+        self.assertGreaterEqual(tiled.half[0], 9.0)
+        self.assertGreaterEqual(tiled.half[1], 9.0)
+        self.assertEqual(tiled.resolution, base.resolution)
+        self.assertEqual(tiled.heights.shape, (tiled.ny, tiled.nx))
+        self.assertEqual((len(tiled.xs), len(tiled.ys)), (tiled.nx, tiled.ny))
+        # The spec is the period: one period away in each direction reads the same height.
+        for forward, left in ((0.6, -0.4), (0.35, 0.15), (-1.2, 0.8)):
+            here = tiled.height_at(forward, left)
+            self.assertAlmostEqual(here, base.height_at(forward, left), places=9)
+            self.assertAlmostEqual(here, tiled.height_at(forward + 4.0, left), places=9)
+            self.assertAlmostEqual(here, tiled.height_at(forward, left - 8.0), places=9)
+        # The seam carries no doubled edge: heights stay continuous across the period boundary.
+        self.assertAlmostEqual(
+            tiled.height_at(2.0 - 1e-6, 0.3), tiled.height_at(2.0 + 1e-6, 0.3), places=4
+        )
+        self.assertFalse(tiled.flat)
+
+
 if __name__ == "__main__":
     unittest.main()
