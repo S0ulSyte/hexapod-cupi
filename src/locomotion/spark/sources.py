@@ -25,11 +25,16 @@ def runtime_paths(package):
     return sorted(
         path
         for path in package.rglob("*.py")
-        if not set(path.relative_to(package).parts)
-        & {"tests", "__pycache__", "hexapod", "surrogate"}
+        if not set(path.relative_to(package).parts) & {"tests", "__pycache__", "hexapod"}
         and (
             "amp" not in path.relative_to(package).parts
             or path.name in {"__init__.py", "features.py"}
+        )
+        and (
+            # The native terrain floor samples the same height grid the surrogate builds
+            # (omniwalk/env.py imports surrogate/terrain.py); the rest of the CPU twin stays out.
+            "surrogate" not in path.relative_to(package).parts
+            or path.name in {"__init__.py", "terrain.py"}
         )
     )
 
