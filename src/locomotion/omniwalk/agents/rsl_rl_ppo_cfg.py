@@ -75,8 +75,19 @@ def ppo_config(
         )
     if type(steps_per_env) is not int or not 12 <= steps_per_env <= 96 or steps_per_env % 6:
         raise ValueError("The rollout length is a multiple of 6 from 12 to 96 controls per robot")
-    if destination_input not in ("none", "ghost", "ghost_v10", "ghost_v11"):
-        raise ValueError("The destination input is none, ghost, ghost_v10 or ghost_v11")
+    if destination_input not in (
+        "none",
+        "ghost",
+        "ghost_v10",
+        "ghost_v11",
+        "terrain_v1",
+        "terrain_v2",
+        "terrain_v2_critic",
+    ):
+        raise ValueError(
+            "The destination input is none, ghost, ghost_v10, ghost_v11, terrain_v1, "
+            "terrain_v2 or terrain_v2_critic"
+        )
     if gait_clock_scaling not in (None, "speed_v1") or (gait_clock_scaling and not gait_clock):
         raise ValueError("The gait clock scaling is None or speed_v1 and needs the gait clock")
     distribution = (
