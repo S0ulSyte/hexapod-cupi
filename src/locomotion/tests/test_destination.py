@@ -1759,6 +1759,13 @@ class TerrainCampaignTests(unittest.TestCase):
         self.assertEqual(EXPERIMENT_INPUTS["destination_v34"], "ghost_v11")
         self.assertEqual(EXPERIMENT_INPUTS["destination_v35"], "terrain_v2")
         self.assertEqual(EXPERIMENTS["destination_v35"]["reward"], v33)
+        v36 = EXPERIMENTS["destination_v36"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v36).items() if asdict(v33)[k] != v},
+            {"end_destination_distance_m"},
+        )
+        self.assertEqual(v36.end_destination_distance_m, 0.075)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v36"], "terrain_v2")
         self.assertEqual(EXPERIMENTS["destination_v33"]["episode_seconds"], 32.0)
         with self.assertRaises(ValueError):
             replace(v33, walk_forward_only=True).validate()

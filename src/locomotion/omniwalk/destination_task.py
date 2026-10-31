@@ -790,6 +790,20 @@ EXPERIMENTS["destination_v34"] = {
 # length ahead. Same experience as tc2_a (mixed_v3, seed 20260917, 1000 updates) isolates the
 # profile's addition.
 EXPERIMENTS["destination_v35"] = {**EXPERIMENTS["destination_v33"]}
+# destination_v36 is destination_v35 with the run-end pay's linear ramp extended, 25 -> 75 mm
+# (share * max(1 - d / 75 mm, -1): 0 at 75 mm, -1 from 150 mm). Campaign rounds 3-6 (decisions.md
+# 2026-10-30/31): at a 2.5 cm step base the robot falls more than 50 mm behind the ghost, where the
+# 25 mm ramp sits clamped at -1 - no gradient reaches the climb that would close the gap, and step
+# crossings flicker (2/6 at one rung, 0/6 at the next). The wider ramp keeps each millimetre closed
+# worth the same out to 150 mm of lag; the cost is a softer precision signal near the ghost, judged
+# by the unchanged flat gate.
+EXPERIMENTS["destination_v36"] = {
+    **EXPERIMENTS["destination_v35"],
+    "reward": replace(
+        EXPERIMENTS["destination_v35"]["reward"],
+        end_destination_distance_m=0.075,
+    ),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
