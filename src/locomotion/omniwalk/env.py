@@ -14,7 +14,7 @@ from isaaclab.sim.schemas import define_collision_properties
 from isaaclab.sim.utils import bind_physics_material, get_first_matching_child_prim
 from isaaclab_physx.assets.articulation import Articulation
 from isaaclab_physx.sim.spawners.materials import RigidBodyMaterialCfg
-from pxr import PhysxSchema, UsdPhysics
+from pxr import PhysxSchema, UsdGeom, UsdPhysics, Vt
 
 from locomotion.omniwalk.env_cfg import make_config
 from locomotion.omniwalk.mdp.actions import emitted_target, executed_action_feature
@@ -183,9 +183,9 @@ class IsaacEnv(DirectRLEnv):
             # surface tiled from the spec to cover every environment origin, so the raw world
             # coordinates the state reads stay consistent with the ``terrain`` grid the policy
             # inputs sample (omniwalk/mdp/footfall.py reads it duck-typed off this attribute).
-            import trimesh
-            from isaaclab.terrains.utils import create_prim_from_mesh
-
+            # Isaac's ``create_prim_from_mesh`` helper aborts this container on meshes past a
+            # few thousand faces (terrain_isaac_probe_001..005), so the height field is authored
+            # directly as one USD quad mesh and PhysX cooks the exact triangles ("none").
             from locomotion.terrain import Terrain
             from locomotion.terrain import validate as validate_terrain
 
@@ -198,21 +198,22 @@ class IsaacEnv(DirectRLEnv):
             xs, ys = self.terrain.xs[::step], self.terrain.ys[::step]
             heights = self.terrain.heights[::step, ::step]
             grid_x, grid_y = np.meshgrid(xs, ys)
-            vertices = np.stack((grid_x, grid_y, heights), axis=-1).reshape(-1, 3)
+            points = np.stack((grid_x, grid_y, heights), -1).reshape(-1, 3).astype(np.float32)
             nx = len(xs)
             rows, cols = np.meshgrid(np.arange(len(ys) - 1), np.arange(nx - 1), indexing="ij")
-            corner = rows * nx + cols
-            faces = np.concatenate(
-                (
-                    np.stack((corner, corner + 1, corner + nx + 1), -1).reshape(-1, 3),
-                    np.stack((corner, corner + nx + 1, corner + nx), -1).reshape(-1, 3),
-                )
-            )
-            mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
-            create_prim_from_mesh("/Ground", mesh, physics_material=material)
-            UsdPhysics.MeshCollisionAPI.Apply(
-                stage.GetPrimAtPath("/Ground/mesh")
-            ).CreateApproximationAttr("none")
+            corner = (rows * nx + cols).reshape(-1)
+            quads = np.stack((corner, corner + 1, corner + nx + 1, corner + nx), -1)
+            UsdGeom.Xform.Define(stage, "/Ground")
+            mesh = UsdGeom.Mesh.Define(stage, "/Ground/mesh")
+            mesh.CreatePointsAttr(Vt.Vec3fArray.FromNumpy(points))
+            indices = quads.reshape(-1).astype(np.int32)
+            mesh.CreateFaceVertexIndicesAttr(Vt.IntArray.FromNumpy(indices))
+            mesh.CreateFaceVertexCountsAttr(Vt.IntArray.FromNumpy(np.full(len(quads), 4, np.int32)))
+            mesh.CreateSubdivisionSchemeAttr("none")
+            UsdPhysics.CollisionAPI.Apply(mesh.GetPrim())
+            UsdPhysics.MeshCollisionAPI.Apply(mesh.GetPrim()).CreateApproximationAttr("none")
+            material.func("/Ground/physicsMaterial", material)
+            bind_physics_material("/Ground/mesh", "/Ground/physicsMaterial", stage=stage)
         elif self.config.floor == "isaaclab_ground_plane":
             floor = GroundPlaneCfg(size=(80.0, 80.0), physics_material=material)
             floor.func("/Ground", floor)

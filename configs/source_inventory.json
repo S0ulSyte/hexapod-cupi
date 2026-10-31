@@ -45,6 +45,13 @@
       "purpose": "Locomotion on the approved direct-drive hexapod."
     },
     {
+      "path": "src/locomotion/terrain.py",
+      "previous_path": "src/locomotion/surrogate/terrain.py",
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Build, validate and tile scene height maps from terrain features, numpy-only, for the surrogate floor, the native terrain mesh and the footfall inputs."
+    },
+    {
       "path": "src/locomotion/evaluation/__init__.py",
       "previous_path": "locomotion/tools/__init__.py",
       "classification": "current",
@@ -225,6 +232,13 @@
       "classification": "prototype",
       "owner": "Platform lead",
       "purpose": "Estimate each replica's tilt along a slope from its front and rear toes and correct the policy's gravity or joint inputs for it, for experiment destination_v32 and surrogate scenes."
+    },
+    {
+      "path": "src/locomotion/omniwalk/mdp/footfall.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Predict each leg's next touchdown from the tripod schedule and sample the terrain grid there and along the command bearing, for the terrain_v1 and terrain_v2 policy inputs."
     },
     {
       "path": "src/locomotion/omniwalk/destination_task.py",
@@ -504,7 +518,7 @@
       "previous_path": null,
       "classification": "prototype",
       "owner": "Platform lead",
-      "purpose": "Build scene height maps from terrain features for the surrogate's height-field floor."
+      "purpose": "Re-export the neutral locomotion.terrain module so existing surrogate imports keep working."
     },
     {
       "path": "src/locomotion/surrogate/train.py",
