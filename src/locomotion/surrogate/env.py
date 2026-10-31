@@ -132,10 +132,17 @@ class SurrogateConfig:
     floor: str = "isaaclab_mesh"
     floor_contact_offset_m: float | None = None
     floor_rest_offset_m: float | None = None
+    # Declared for field parity with EnvConfig; the surrogate takes its terrain as the
+    # SurrogateEnv ``terrain`` argument and these fields stay at their defaults here.
+    terrain_spec_path: str | None = None
+    terrain_mesh_resolution_m: float = 0.08
+    terrain_spawn: bool = False
 
     def __post_init__(self):
         if type(self.num_envs) is not int or self.num_envs < 1:
             raise ValueError("The surrogate needs at least one replica")
+        if self.terrain_spec_path is not None or self.terrain_spawn:
+            raise ValueError("The surrogate takes its terrain as the SurrogateEnv argument")
         if self.physics_dt != 0.0025 or self.decimation != 8 or self.target_slew_rad != 0.040:
             raise ValueError("Canonical 400/50Hz servo and target slew are fixed")
         if self.spacing_m < 2 or self.device != "cpu":

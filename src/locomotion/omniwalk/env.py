@@ -45,7 +45,13 @@ class IsaacEnv(DirectRLEnv):
     ``history``, ``held`` and ``previous_action`` and updates them in place. ``capture`` is None or a
     per-substep hook that OmniEnv binds before each step. State and property reads use raw PhysX
     views until native parity admits ``robot.data`` in their place.
+
+    ``terrain`` and ``last_reset_pose`` default to None at the class so partial doubles in tests
+    reach ``write_reset`` without the scene setup that fills them.
     """
+
+    terrain = None
+    last_reset_pose = None
 
     def __init__(
         self, config, asset, model_path, geometry_path, output, *, reference_metadata=None
@@ -180,8 +186,8 @@ class IsaacEnv(DirectRLEnv):
             import trimesh
             from isaaclab.terrains.utils import create_prim_from_mesh
 
-            from locomotion.surrogate.terrain import Terrain
-            from locomotion.surrogate.terrain import validate as validate_terrain
+            from locomotion.terrain import Terrain
+            from locomotion.terrain import validate as validate_terrain
 
             spec = json.loads(Path(self.config.terrain_spec_path).read_text())
             validate_terrain(spec)
@@ -463,7 +469,8 @@ class IsaacEnv(DirectRLEnv):
             pose[:, 2] = self.torch(ground) + self.reset_height
         else:
             pose[:, 2] = self.reset_height
-        self.last_reset_pose[rows] = pose
+        if self.last_reset_pose is not None:
+            self.last_reset_pose[rows] = pose
         ids = rows.to(torch.int32)
         self.robot.write_root_link_pose_to_sim_index(root_pose=pose, env_ids=ids)
         self.robot.write_root_com_velocity_to_sim_index(
