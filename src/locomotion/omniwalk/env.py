@@ -148,6 +148,14 @@ class IsaacEnv(DirectRLEnv):
         self.total_controls = 0
         self.telemetry = {}
         self.spawn_rng = np.random.default_rng(config.seed)
+        # The pose each row's last reset wrote, for the adapter's exact readback check: on a
+        # terrain the reset pose carries the local ground height and a drawn heading, so the
+        # expectation must be what was written, not the flat-world constant.
+        self.last_reset_pose = (
+            self.torch([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]).expand(config.num_envs, -1).clone()
+        )
+        self.last_reset_pose[:, :3] = self.origins
+        self.last_reset_pose[:, 2] = self.reset_height
         self.capture = None
 
     def _setup_scene(self):
@@ -455,6 +463,7 @@ class IsaacEnv(DirectRLEnv):
             pose[:, 2] = self.torch(ground) + self.reset_height
         else:
             pose[:, 2] = self.reset_height
+        self.last_reset_pose[rows] = pose
         ids = rows.to(torch.int32)
         self.robot.write_root_link_pose_to_sim_index(root_pose=pose, env_ids=ids)
         self.robot.write_root_com_velocity_to_sim_index(

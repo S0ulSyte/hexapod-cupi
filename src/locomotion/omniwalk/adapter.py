@@ -99,11 +99,17 @@ class OmniEnv:
             expected = self.neutral.expand(len(rows), -1)
             if not torch.allclose(self.current["q"][rows], expected, atol=2e-6, rtol=0):
                 raise RuntimeError("Selected joint reset readback differs")
-            expected_root = (
-                self.torch([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]).expand(len(rows), -1).clone()
-            )
-            expected_root[:, :3] = self.origins[rows]
-            expected_root[:, 2] = self.reset_height
+            written = getattr(self.isaac, "last_reset_pose", None)
+            if written is not None:
+                # The pose the reset wrote: on a terrain it carries the local ground height and
+                # a drawn heading, so the readback must match what was written, exactly as before.
+                expected_root = written[rows]
+            else:
+                expected_root = (
+                    self.torch([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]).expand(len(rows), -1).clone()
+                )
+                expected_root[:, :3] = self.origins[rows]
+                expected_root[:, 2] = self.reset_height
             if not torch.allclose(self.current["root"][rows], expected_root, atol=2e-6, rtol=0):
                 raise RuntimeError("Selected root reset readback differs")
             self.history[rows] = proprio(self.current, self.neutral)[rows, None].expand(-1, 5, -1)
