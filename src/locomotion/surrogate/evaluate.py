@@ -62,7 +62,12 @@ class DeterministicPolicy:
         self.previous = None
         # The destination inputs follow each probe's command from the root pose, as play.py does.
         self.tracker = None
-        if options.get("destination_input", "none") in ("ghost", "ghost_v10", "ghost_v11"):
+        if options.get("destination_input", "none") in (
+            "ghost",
+            "ghost_v10",
+            "ghost_v11",
+            "terrain_v2_critic",  # the critic alone read the terrain; the actor is ghost_v11-shaped
+        ):
             from locomotion.omniwalk.mdp.destination import (
                 DestinationTracker,
                 GhostV10Tracker,
@@ -73,6 +78,7 @@ class DeterministicPolicy:
                 "ghost": DestinationTracker,
                 "ghost_v10": GhostV10Tracker,
                 "ghost_v11": GhostV11Tracker,
+                "terrain_v2_critic": GhostV11Tracker,
             }[options["destination_input"]]
             self.tracker = tracker(env.num_envs, "cpu")
         elif options.get("destination_input") in ("terrain_v1", "terrain_v2"):

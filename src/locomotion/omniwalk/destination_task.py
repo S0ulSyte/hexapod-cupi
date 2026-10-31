@@ -804,6 +804,12 @@ EXPERIMENTS["destination_v36"] = {
         end_destination_distance_m=0.075,
     ),
 }
+# destination_v37 is destination_v35 with the terrain blocks on the critic alone
+# (destination_input "terrain_v2_critic"): the required ablation for the native proposal.
+# docs/TRAINING.md keeps privileged simulation inputs in the critic; this arm measures what that
+# costs against tc3_a (terrain_v2 on actor and critic, same reward, terrain, start function, seed
+# and updates). The actor keeps the nine ghost_v11 inputs it could run on the robot unchanged.
+EXPERIMENTS["destination_v37"] = {**EXPERIMENTS["destination_v35"]}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.

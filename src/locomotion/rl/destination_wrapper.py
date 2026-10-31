@@ -7,12 +7,14 @@ has not run a control reads the destination at the body. It needs a ``Destinatio
 ``ppo_config`` records ``destination_input="ghost"``, so evaluation rebuilds the same inputs.
 ``terrain_v1`` appends the 30 footfall-lookahead values of ``omniwalk/mdp/footfall.py`` after the
 nine ``ghost_v11`` values (zeros without a terrain, so flat suites and the native robot stay valid);
-``terrain_v2`` appends its 6-point forward height profile after those.
+``terrain_v2`` appends its 6-point forward height profile after those, and ``terrain_v2_critic``
+gives both terrain blocks to the critic alone while the actor keeps the nine ghost_v11 values.
 """
 
 import torch
 
 from locomotion.omniwalk.mdp.destination import (
+    GHOST_V11_FEATURES,
     NEUTRAL_FEATURES,
     destination_features,
     ghost_v10_features,
@@ -33,10 +35,17 @@ class DestinationVecEnv(OmniVecEnv):
         gait_clock_scaling=None,
         **options,
     ):
-        if destination_input not in ("ghost", "ghost_v10", "ghost_v11", "terrain_v1", "terrain_v2"):
+        if destination_input not in (
+            "ghost",
+            "ghost_v10",
+            "ghost_v11",
+            "terrain_v1",
+            "terrain_v2",
+            "terrain_v2_critic",
+        ):
             raise ValueError(
-                "DestinationVecEnv applies the ghost, ghost_v10, ghost_v11, terrain_v1 "
-                "or terrain_v2 input"
+                "DestinationVecEnv applies the ghost, ghost_v10, ghost_v11, terrain_v1, "
+                "terrain_v2 or terrain_v2_critic input"
             )
         if not hasattr(task, "destination"):
             raise ValueError("The destination inputs need a DestinationTrainingTask")
@@ -51,13 +60,16 @@ class DestinationVecEnv(OmniVecEnv):
             )
         self.destination_input = destination_input
         self.footfall = None
-        if destination_input in ("terrain_v1", "terrain_v2"):
+        # terrain_v2_critic gives the terrain values to the critic alone: the actor keeps the nine
+        # ghost_v11 inputs it could run on the robot with, the ablation docs/TRAINING.md asks for.
+        self.critic_only = destination_input == "terrain_v2_critic"
+        if destination_input in ("terrain_v1", "terrain_v2", "terrain_v2_critic"):
             from locomotion.omniwalk.mdp.footfall import FootfallInputs
 
             # The recorded option names the clock; a task may carry none (the flat suites
             # evaluate every checkpoint under the v9 task, whose reward predates the clock).
             self.footfall = FootfallInputs(
-                task, gait_clock_scaling or kept, profile=destination_input == "terrain_v2"
+                task, gait_clock_scaling or kept, profile=destination_input != "terrain_v1"
             )
         super().__init__(task, tensor_dict, **options)
 
@@ -66,7 +78,7 @@ class DestinationVecEnv(OmniVecEnv):
         values for ``ghost``, and a destination at the body for ``ghost_v10`` and ``ghost_v11``. ``command`` defaults to the
         task's current commands."""
         task = self.task
-        if self.destination_input in ("ghost_v10", "ghost_v11", "terrain_v1", "terrain_v2"):
+        if self.destination_input != "ghost":
             pending = pending[:, None].to(task.destination.device)
             here = planar_pose(task.current["root"]).to(task.destination)
             ghost = ghost_v10_features(
@@ -90,7 +102,8 @@ class DestinationVecEnv(OmniVecEnv):
     def observations(self, output):
         base = super().observations(output)
         extra = self.destination_inputs(self.task.command_started)
-        policy = torch.cat((base["policy"], extra.to(base["policy"])), -1)
+        shown = extra[..., :GHOST_V11_FEATURES] if self.critic_only else extra
+        policy = torch.cat((base["policy"], shown.to(base["policy"])), -1)
         critic = torch.cat((base["critic"], extra.to(base["critic"])), -1)
         return self.tensor_dict({"policy": policy, "critic": critic}, batch_size=[self.num_envs])
 

@@ -1766,6 +1766,8 @@ class TerrainCampaignTests(unittest.TestCase):
         )
         self.assertEqual(v36.end_destination_distance_m, 0.075)
         self.assertEqual(EXPERIMENT_INPUTS["destination_v36"], "terrain_v2")
+        self.assertEqual(EXPERIMENTS["destination_v37"]["reward"], v33)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v37"], "terrain_v2_critic")
         self.assertEqual(EXPERIMENTS["destination_v33"]["episode_seconds"], 32.0)
         with self.assertRaises(ValueError):
             replace(v33, walk_forward_only=True).validate()
@@ -1814,6 +1816,18 @@ class TerrainCampaignTests(unittest.TestCase):
         self.assertEqual(observation["policy"].shape[-1], 278)
         self.assertEqual(observation["critic"].shape[-1], 281)
         torch.testing.assert_close(observation["policy"][:, 242:], torch.zeros(1, 36))
+        hidden, _ = moving_task(forward, reward=EXPERIMENTS["destination_v37"]["reward"])
+        critic_only = DestinationVecEnv(
+            hidden,
+            plain,
+            observation_scaling="fixed",
+            gait_clock=60,
+            gait_clock_scaling="speed_v1",
+            destination_input="terrain_v2_critic",
+        )
+        observation = critic_only.get_observations()
+        self.assertEqual(observation["policy"].shape[-1], 242)
+        self.assertEqual(observation["critic"].shape[-1], 281)
         nine, _ = moving_task(forward, reward=EXPERIMENTS["destination_v9"]["reward"])
         with self.assertRaises(ValueError):
             DestinationVecEnv(
