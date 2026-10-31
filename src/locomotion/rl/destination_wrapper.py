@@ -6,7 +6,8 @@ gap, and the controls since the command began over 250 (``omniwalk/mdp/destinati
 has not run a control reads the destination at the body. It needs a ``DestinationTrainingTask``;
 ``ppo_config`` records ``destination_input="ghost"``, so evaluation rebuilds the same inputs.
 ``terrain_v1`` appends the 30 footfall-lookahead values of ``omniwalk/mdp/footfall.py`` after the
-nine ``ghost_v11`` values (zeros without a terrain, so flat suites and the native robot stay valid).
+nine ``ghost_v11`` values (zeros without a terrain, so flat suites and the native robot stay valid);
+``terrain_v2`` appends its 6-point forward height profile after those.
 """
 
 import torch
@@ -32,9 +33,10 @@ class DestinationVecEnv(OmniVecEnv):
         gait_clock_scaling=None,
         **options,
     ):
-        if destination_input not in ("ghost", "ghost_v10", "ghost_v11", "terrain_v1"):
+        if destination_input not in ("ghost", "ghost_v10", "ghost_v11", "terrain_v1", "terrain_v2"):
             raise ValueError(
-                "DestinationVecEnv applies the ghost, ghost_v10, ghost_v11 or terrain_v1 input"
+                "DestinationVecEnv applies the ghost, ghost_v10, ghost_v11, terrain_v1 "
+                "or terrain_v2 input"
             )
         if not hasattr(task, "destination"):
             raise ValueError("The destination inputs need a DestinationTrainingTask")
@@ -49,12 +51,14 @@ class DestinationVecEnv(OmniVecEnv):
             )
         self.destination_input = destination_input
         self.footfall = None
-        if destination_input == "terrain_v1":
+        if destination_input in ("terrain_v1", "terrain_v2"):
             from locomotion.omniwalk.mdp.footfall import FootfallInputs
 
             # The recorded option names the clock; a task may carry none (the flat suites
             # evaluate every checkpoint under the v9 task, whose reward predates the clock).
-            self.footfall = FootfallInputs(task, gait_clock_scaling or kept)
+            self.footfall = FootfallInputs(
+                task, gait_clock_scaling or kept, profile=destination_input == "terrain_v2"
+            )
         super().__init__(task, tensor_dict, **options)
 
     def destination_inputs(self, pending, command=None):
@@ -62,7 +66,7 @@ class DestinationVecEnv(OmniVecEnv):
         values for ``ghost``, and a destination at the body for ``ghost_v10`` and ``ghost_v11``. ``command`` defaults to the
         task's current commands."""
         task = self.task
-        if self.destination_input in ("ghost_v10", "ghost_v11", "terrain_v1"):
+        if self.destination_input in ("ghost_v10", "ghost_v11", "terrain_v1", "terrain_v2"):
             pending = pending[:, None].to(task.destination.device)
             here = planar_pose(task.current["root"]).to(task.destination)
             ghost = ghost_v10_features(
@@ -73,7 +77,7 @@ class DestinationVecEnv(OmniVecEnv):
                     pending[:, 0], torch.zeros_like(task.command_elapsed), task.command_elapsed
                 ),
                 task.commands if command is None else command,
-                along_track=self.destination_input in ("ghost_v11", "terrain_v1"),
+                along_track=self.destination_input != "ghost_v10",
             )
             if self.footfall is None:
                 return ghost

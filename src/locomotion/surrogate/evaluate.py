@@ -75,10 +75,13 @@ class DeterministicPolicy:
                 "ghost_v11": GhostV11Tracker,
             }[options["destination_input"]]
             self.tracker = tracker(env.num_envs, "cpu")
-        elif options.get("destination_input") == "terrain_v1":
-            from locomotion.omniwalk.mdp.footfall import TerrainV1Tracker
+        elif options.get("destination_input") in ("terrain_v1", "terrain_v2"):
+            from locomotion.omniwalk.mdp.footfall import TerrainV1Tracker, TerrainV2Tracker
 
-            self.tracker = TerrainV1Tracker(
+            tracker = {"terrain_v1": TerrainV1Tracker, "terrain_v2": TerrainV2Tracker}[
+                options["destination_input"]
+            ]
+            self.tracker = tracker(
                 env.num_envs, "cpu", env=env, scaling=options.get("gait_clock_scaling")
             )
 

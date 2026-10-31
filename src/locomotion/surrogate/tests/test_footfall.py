@@ -26,7 +26,7 @@ BOX = {
 }
 
 
-def build(terrain):
+def build(terrain, destination_input="terrain_v1"):
     env = SurrogateEnv(
         SurrogateConfig(num_envs=1, seed=20260917),
         threads=0,
@@ -34,7 +34,7 @@ def build(terrain):
         terrain=terrain,
     )
     task = experiment_task("destination_v33")(env, task_module.TaskConfig(seed=20260917), None)
-    wrapped = DestinationVecEnv(task, **OPTIONS)
+    wrapped = DestinationVecEnv(task, **{**OPTIONS, "destination_input": destination_input})
     env.commands[:] = torch.tensor([[0.08, 0.0, 0.0]])
     task.remaining_controls[:] = 5000
     return env, task, wrapped
@@ -74,6 +74,33 @@ class FootfallTests(unittest.TestCase):
                     msg=f"control {control}",
                 )
                 wrapped.step(torch.zeros(1, 18))
+        finally:
+            env.close()
+
+    def test_terrain_v2_adds_the_forward_profile_and_evaluation_rebuilds_it(self):
+        from locomotion.omniwalk.mdp.footfall import TerrainV2Tracker
+
+        env, task, wrapped = build(Terrain(BOX), destination_input="terrain_v2")
+        tracker = TerrainV2Tracker(1, "cpu", env=env, scaling="speed_v1")
+        try:
+            observation = wrapped.get_observations()
+            self.assertEqual(observation["policy"].shape[-1], 278)
+            self.assertEqual(observation["critic"].shape[-1], 281)
+            for control in range(25):
+                observation = wrapped.get_observations()
+                expected = tracker.inputs(
+                    env.current["root"], env.commands.clone(), env.episode_steps
+                )
+                torch.testing.assert_close(
+                    observation["policy"][:, 233:278],
+                    expected,
+                    atol=1e-4,
+                    rtol=0,
+                    msg=f"control {control}",
+                )
+                wrapped.step(torch.zeros(1, 18))
+            # The box ahead fills the whole forward profile (5-40 cm at this stance).
+            self.assertGreater(float(observation["policy"][0, 272:278].mean()), 0.3)
         finally:
             env.close()
 

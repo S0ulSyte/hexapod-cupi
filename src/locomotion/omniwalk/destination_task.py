@@ -782,6 +782,14 @@ EXPERIMENTS["destination_v34"] = {
     **EXPERIMENTS["destination_v33"],
     "reward": replace(EXPERIMENTS["destination_v33"]["reward"], slope_inputs="joints"),
 }
+# destination_v35 is destination_v33's reward unchanged with the terrain_v2 input (campaign round 3):
+# terrain_v1's footfall lookahead plus a 6-point forward height profile along the command bearing
+# (mdp/footfall.py PROFILE_DISTANCES_M, 5-40 cm). Rounds 1 and 2 (decisions.md 2026-10-30): every
+# terrain-trained policy climbs the full 9.5-degree ramp and stalls at the crest, which one cycle of
+# footfall lookahead (~10 cm at 0.1 m/s) cannot yet see; the profile puts the crest in view a body
+# length ahead. Same experience as tc2_a (mixed_v3, seed 20260917, 1000 updates) isolates the
+# profile's addition.
+EXPERIMENTS["destination_v35"] = {**EXPERIMENTS["destination_v33"]}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.

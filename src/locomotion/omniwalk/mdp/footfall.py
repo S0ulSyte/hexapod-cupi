@@ -16,6 +16,13 @@ this module imports nothing from ``locomotion.surrogate``). With no terrain — 
 flat-floor surrogate — every value is zero, so flat suites and native evaluation stay valid.
 ``ppo_config`` records ``destination_input="terrain_v1"`` and evaluation rebuilds the same inputs
 (``surrogate/evaluate.py``'s ``TerrainV1Tracker`` below).
+
+``terrain_v2`` appends, after the 30 footfall values, a 6-point forward height profile: the terrain
+at ``PROFILE_DISTANCES_M`` along the command bearing from the body centre (the heading when the
+planar command is zero), relative to the same support height and scale. One gait cycle of footfall
+lookahead reaches about 10 cm at 0.1 m/s; the profile sees a crest or step coming across a body
+length (campaign round 3: every round-1/2 policy climbed the 9.5-degree ramp and stalled at the
+crest its inputs could not yet see).
 """
 
 import torch
@@ -26,6 +33,7 @@ from locomotion.omniwalk.mdp.gait import GaitPhase, gait_cycle
 from locomotion.omniwalk.mdp.rewards import TRIPOD_A
 
 FOOTFALL_FEATURES = 30
+PROFILE_FEATURES = 6
 RING_M = 0.03
 CLAMP_M = 0.2
 CONTACT_FORCE_N = 1.0
@@ -33,6 +41,8 @@ SMOOTHING = 0.2
 CONTROL_DT_S = 0.02
 # Sample offsets in world metres: the predicted touchdown and a ring around it.
 RING_XY = ((0.0, 0.0), (RING_M, 0.0), (-RING_M, 0.0), (0.0, RING_M), (0.0, -RING_M))
+# Forward-profile sample distances along the command bearing, metres from the body centre.
+PROFILE_DISTANCES_M = (0.05, 0.10, 0.15, 0.20, 0.30, 0.40)
 
 
 class TerrainGrid:
@@ -129,6 +139,26 @@ def footfall_features(grid, reference, root, command, toe_body, phase, scaling):
     return scaled.reshape(root.shape[0], FOOTFALL_FEATURES)
 
 
+def profile_features(grid, reference, root, command):
+    """The 6 forward-profile values, [n, 6]: terrain heights along the command bearing (the heading
+    under a zero planar command), relative to the support-height ``reference``."""
+    pose = planar_pose(root).double()
+    command = command.double()
+    c, s = torch.cos(pose[:, 2]), torch.sin(pose[:, 2])
+    # The planar command (forward, left) in world axes; the body's forward axis when it is zero.
+    bx, by = command[:, 1], -command[:, 0]
+    wx, wy = c * bx - s * by, s * bx + c * by
+    norm = torch.sqrt(wx * wx + wy * wy)
+    moving = norm > 1e-9
+    wx = torch.where(moving, wx / norm.clamp_min(1e-9), s)
+    wy = torch.where(moving, wy / norm.clamp_min(1e-9), -c)
+    distances = torch.tensor(PROFILE_DISTANCES_M, dtype=torch.float64)
+    x = pose[:, 0:1] + wx[:, None] * distances[None, :]
+    y = pose[:, 1:2] + wy[:, None] * distances[None, :]
+    relative = grid.sample(x, y) - reference[:, None].float()
+    return relative.clamp(-CLAMP_M, CLAMP_M) / DISTANCE_SCALE_M
+
+
 def refresh_support(support, seen, env, episode_steps, state):
     """Advance the support height once per control: observations can be rebuilt several times for one
     control, and the smoothing must not advance again (``env.total_controls`` marks the control)."""
@@ -141,14 +171,16 @@ def refresh_support(support, seen, env, episode_steps, state):
 
 
 class FootfallInputs:
-    """The training-side ``terrain_v1`` block for ``DestinationVecEnv``: reads the task's env duck-typed."""
+    """The training-side ``terrain_v1``/``terrain_v2`` block for ``DestinationVecEnv``: reads the
+    task's env duck-typed; ``profile`` adds the 6 forward-profile values (``terrain_v2``)."""
 
-    def __init__(self, task, scaling):
+    def __init__(self, task, scaling, profile=False):
         if scaling not in GAIT_CLOCK_SCALINGS:
             raise ValueError(
                 "terrain_v1 needs the task's speed-scaled gait clock (gait_clock_scaling)"
             )
-        self.task, self.scaling = task, scaling
+        self.task, self.scaling, self.profile = task, scaling, profile
+        self.width = FOOTFALL_FEATURES + (PROFILE_FEATURES if profile else 0)
         terrain = getattr(getattr(task, "env", None), "terrain", None)
         self.grid = None if terrain is None else TerrainGrid(terrain)
         self.support = SupportHeight(task.num_envs)
@@ -157,7 +189,7 @@ class FootfallInputs:
     def features(self, command=None):
         task = self.task
         if self.grid is None:
-            return torch.zeros(task.num_envs, FOOTFALL_FEATURES)
+            return torch.zeros(task.num_envs, self.width)
         phase = getattr(task, "gait_clock_phase", None)
         if phase is None:
             raise ValueError("terrain_v1 on a terrain needs a task with the speed-scaled clock")
@@ -165,20 +197,27 @@ class FootfallInputs:
         self.seen = refresh_support(
             self.support, self.seen, getattr(task, "env", None), task.episode_steps, state
         )
-        return footfall_features(
+        command = task.commands if command is None else command
+        values = footfall_features(
             self.grid,
             self.support.height,
             state["root"],
-            task.commands if command is None else command,
+            command,
             state["toe_body"],
             phase,
             self.scaling,
         )
+        if not self.profile:
+            return values
+        ahead = profile_features(self.grid, self.support.height, state["root"], command)
+        return torch.cat((values, ahead.to(values)), -1)
 
 
 class TerrainV1Tracker(GhostV11Tracker):
     """Evaluation-side ``terrain_v1``: the nine ``ghost_v11`` values plus the 30 footfall values, rebuilt
     from the env the policy runs in (``surrogate/evaluate.py`` passes it after construction)."""
+
+    profile = False
 
     def __init__(self, num_envs, device, *, env=None, scaling=None):
         super().__init__(num_envs, device)
@@ -186,6 +225,7 @@ class TerrainV1Tracker(GhostV11Tracker):
             raise ValueError("terrain_v1 needs the recorded gait_clock_scaling")
         self.env, self.gait = env, GaitPhase(num_envs, scaling, device)
         self.scaling = scaling
+        self.width = FOOTFALL_FEATURES + (PROFILE_FEATURES if self.profile else 0)
         terrain = getattr(env, "terrain", None)
         self.grid = None if terrain is None else TerrainGrid(terrain)
         self.support = SupportHeight(num_envs)
@@ -195,7 +235,7 @@ class TerrainV1Tracker(GhostV11Tracker):
         ghost = super().inputs(pose, command, episode_steps)
         phase = self.gait.follow(command, episode_steps)
         if self.grid is None:
-            zeros = torch.zeros(ghost.shape[0], FOOTFALL_FEATURES)
+            zeros = torch.zeros(ghost.shape[0], self.width)
             return torch.cat((ghost, zeros.to(ghost)), -1)
         state = self.env.current
         self.seen = refresh_support(self.support, self.seen, self.env, episode_steps, state)
@@ -208,4 +248,13 @@ class TerrainV1Tracker(GhostV11Tracker):
             phase,
             self.scaling,
         )
+        if self.profile:
+            ahead = profile_features(self.grid, self.support.height, state["root"], command)
+            terrain = torch.cat((terrain, ahead.to(terrain)), -1)
         return torch.cat((ghost, terrain.to(ghost)), -1)
+
+
+class TerrainV2Tracker(TerrainV1Tracker):
+    """``TerrainV1Tracker`` plus the 6 forward-profile values (``terrain_v2``)."""
+
+    profile = True
