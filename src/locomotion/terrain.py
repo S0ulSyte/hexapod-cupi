@@ -91,6 +91,32 @@ def feature_height(feature, forward, left):
     return np.where(inside, feature["rise"] * step / count, 0.0)
 
 
+def chunk_grid(xs, ys, heights, cells):
+    """A height grid as quad-mesh chunks of at most ``cells`` cells per side, in row-major order.
+
+    Chunks slice one vertex array and share their boundary rows and columns, so their union is
+    exactly the grid's surface with no gaps; a separate collider per chunk lets broadphase cull
+    by chunk instead of pairing every body with the whole world's triangles. Yields
+    (points, quads): float32 world vertices [k, 3] and int32 quad corners [m, 4], wound as a
+    single mesh over the grid would be wound.
+    """
+    if type(cells) is not int or cells < 1:
+        raise ValueError("Chunk size is a positive cell count")
+    grid_x, grid_y = np.meshgrid(xs, ys)
+    full = np.stack((grid_x, grid_y, heights), -1)
+    ny, nx = heights.shape
+    for r0 in range(0, ny - 1, cells):
+        for c0 in range(0, nx - 1, cells):
+            r1 = min(r0 + cells, ny - 1)
+            c1 = min(c0 + cells, nx - 1)
+            block = full[r0 : r1 + 1, c0 : c1 + 1]
+            h, w = block.shape[:2]
+            rows, cols = np.meshgrid(np.arange(h - 1), np.arange(w - 1), indexing="ij")
+            corner = (rows * w + cols).reshape(-1)
+            quads = np.stack((corner, corner + 1, corner + w + 1, corner + w), -1)
+            yield block.reshape(-1, 3).astype(np.float32), quads.astype(np.int32)
+
+
 def validate(spec):
     """Raise ValueError unless ``spec`` is a terrain: extent, resolution and known, complete features."""
     size = spec.get("size_m")

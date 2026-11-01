@@ -23,6 +23,12 @@ from locomotion.omniwalk.mdp.observations import observations, proprio
 from locomotion.robots.hexapod import BODY_NAMES, JOINT_NAMES, LEGS, USD_SHA256, verify_assets
 from locomotion.robots.rs05 import RATED_TORQUE_NM
 
+# Collider offsets and chunk side authored on the terrain height field (metres); _setup_scene
+# explains both.
+TERRAIN_CONTACT_OFFSET_M = 0.02
+TERRAIN_REST_OFFSET_M = 0.0
+TERRAIN_CHUNK_M = 5.0
+
 
 class CaptureArticulation(Articulation):
     """Read submitted force before physics; capture state after physics."""
@@ -116,11 +122,13 @@ class IsaacEnv(DirectRLEnv):
         self.root_com_local = self.get("get_coms")[:, self.body_index, :3]
         self.contact = self.sim.physics_sim_view.create_rigid_contact_view(
             "/World/envs/env_*/Robot/*",
-            [self.ground_collision_path],
+            list(self.ground_collision_paths),
             max_contact_data_count=1024 * config.num_envs,
         )
         paths = list(self.contact.sensor_paths)
-        if len(paths) != 19 * config.num_envs or self.contact.filter_count != 1:
+        if len(paths) != 19 * config.num_envs or self.contact.filter_count != len(
+            self.ground_collision_paths
+        ):
             raise ValueError("Native contact matrix layout differs")
         self.contact_index = torch.tensor(
             [paths.index(r + "/" + b) for r in self.roots for b in self.native_body_names],
@@ -185,8 +193,17 @@ class IsaacEnv(DirectRLEnv):
             # inputs sample (omniwalk/mdp/footfall.py reads it duck-typed off this attribute).
             # Isaac's ``create_prim_from_mesh`` helper aborts this container on meshes past a
             # few thousand faces (terrain_isaac_probe_001..005), so the height field is authored
-            # directly as one USD quad mesh and PhysX cooks the exact triangles ("none").
-            from locomotion.terrain import Terrain
+            # directly as USD quad meshes and PhysX cooks the exact triangles ("none"). It is
+            # authored as one collider per ~TERRAIN_CHUNK_M square, not one world-sized mesh:
+            # this image's PhysX scans every triangle of a paired mesh each substep (cost ~
+            # faces x robots; one mesh multiplied sim.step ~50x at 128 replicas), and broadphase
+            # culls per-chunk AABBs so each body pairs only with the chunks under it
+            # (terrain_isaac_probe_014..016). Chunks slice one grid and share seam vertices; a
+            # contact at a seam reports against both chunks and collect_substep sums them. The
+            # explicit collider offsets replace PhysX's auto contact margin; the stock-floor
+            # offsets stay None so flat runs and the 96-case evaluation declare unchanged
+            # physics, and these values bind through this file's hash.
+            from locomotion.terrain import Terrain, chunk_grid
             from locomotion.terrain import validate as validate_terrain
 
             spec = json.loads(Path(self.config.terrain_spec_path).read_text())
@@ -197,23 +214,27 @@ class IsaacEnv(DirectRLEnv):
             step = max(1, round(self.config.terrain_mesh_resolution_m / self.terrain.resolution))
             xs, ys = self.terrain.xs[::step], self.terrain.ys[::step]
             heights = self.terrain.heights[::step, ::step]
-            grid_x, grid_y = np.meshgrid(xs, ys)
-            points = np.stack((grid_x, grid_y, heights), -1).reshape(-1, 3).astype(np.float32)
-            nx = len(xs)
-            rows, cols = np.meshgrid(np.arange(len(ys) - 1), np.arange(nx - 1), indexing="ij")
-            corner = (rows * nx + cols).reshape(-1)
-            quads = np.stack((corner, corner + 1, corner + nx + 1, corner + nx), -1)
+            cells = max(1, round(TERRAIN_CHUNK_M / self.config.terrain_mesh_resolution_m))
             UsdGeom.Xform.Define(stage, "/Ground")
-            mesh = UsdGeom.Mesh.Define(stage, "/Ground/mesh")
-            mesh.CreatePointsAttr(Vt.Vec3fArray.FromNumpy(points))
-            indices = quads.reshape(-1).astype(np.int32)
-            mesh.CreateFaceVertexIndicesAttr(Vt.IntArray.FromNumpy(indices))
-            mesh.CreateFaceVertexCountsAttr(Vt.IntArray.FromNumpy(np.full(len(quads), 4, np.int32)))
-            mesh.CreateSubdivisionSchemeAttr("none")
-            UsdPhysics.CollisionAPI.Apply(mesh.GetPrim())
-            UsdPhysics.MeshCollisionAPI.Apply(mesh.GetPrim()).CreateApproximationAttr("none")
+            self.ground_collision_paths = []
+            for points, quads in chunk_grid(xs, ys, heights, cells):
+                path = f"/Ground/chunk_{len(self.ground_collision_paths)}"
+                mesh = UsdGeom.Mesh.Define(stage, path)
+                mesh.CreatePointsAttr(Vt.Vec3fArray.FromNumpy(points))
+                mesh.CreateFaceVertexIndicesAttr(Vt.IntArray.FromNumpy(quads.reshape(-1)))
+                mesh.CreateFaceVertexCountsAttr(
+                    Vt.IntArray.FromNumpy(np.full(len(quads), 4, np.int32))
+                )
+                mesh.CreateSubdivisionSchemeAttr("none")
+                UsdPhysics.CollisionAPI.Apply(mesh.GetPrim())
+                UsdPhysics.MeshCollisionAPI.Apply(mesh.GetPrim()).CreateApproximationAttr("none")
+                collision = PhysxSchema.PhysxCollisionAPI.Apply(mesh.GetPrim())
+                collision.CreateContactOffsetAttr(TERRAIN_CONTACT_OFFSET_M)
+                collision.CreateRestOffsetAttr(TERRAIN_REST_OFFSET_M)
+                self.ground_collision_paths.append(path)
             material.func("/Ground/physicsMaterial", material)
-            bind_physics_material("/Ground/mesh", "/Ground/physicsMaterial", stage=stage)
+            for path in self.ground_collision_paths:
+                bind_physics_material(path, "/Ground/physicsMaterial", stage=stage)
         elif self.config.floor == "isaaclab_ground_plane":
             floor = GroundPlaneCfg(size=(80.0, 80.0), physics_material=material)
             floor.func("/Ground", floor)
@@ -266,6 +287,8 @@ class IsaacEnv(DirectRLEnv):
                 stage=stage,
             )
         self.ground_collision_path = str(collider.GetPath())
+        if self.terrain is None:
+            self.ground_collision_paths = [self.ground_collision_path]
         self.scene.filter_collisions(global_prim_paths=["/Ground"])
         for prim in stage.Traverse():
             if prim.HasAPI(UsdPhysics.CollisionAPI) and "/Robot/" in str(prim.GetPath()):
@@ -338,9 +361,11 @@ class IsaacEnv(DirectRLEnv):
         )
         ceiling = self.motor.ceiling[:, order]
         forces = wp.to_torch(self.contact.get_contact_force_matrix(self.config.physics_dt)).clone()
-        if forces.shape != (19 * self.num_envs, 1, 3) or not bool(torch.isfinite(forces).all()):
+        expected = (19 * self.num_envs, len(self.ground_collision_paths), 3)
+        if forces.shape != expected or not bool(torch.isfinite(forces).all()):
             raise FloatingPointError("Native floor-force shape/finite check failed")
-        forces = forces[self.contact_index, 0].reshape(self.num_envs, 19, 3)
+        # A contact at a chunk seam reports against both chunks; the floor total is their sum.
+        forces = forces.sum(1)[self.contact_index].reshape(self.num_envs, 19, 3)
         norms = torch.linalg.vector_norm(forces, dim=-1)
         other = [i for i, name in enumerate(self.native_body_names) if not name.endswith("_tibia")]
         self.other_force_max = torch.maximum(self.other_force_max, norms[:, other].amax(-1))

@@ -272,3 +272,72 @@ class TerrainDeclarationTests(unittest.TestCase):
         ):
             with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
                 EnvConfig(**kwargs)
+
+    def test_the_terrain_mesh_authors_explicit_collider_offsets(self):
+        """Unauthored offsets leave PhysX's auto contact margin, which pairs every nearby body
+        with swaths of height-field triangles and multiplies sim.step ~50x at 128 replicas
+        (terrain_isaac_probe_004, probe_014). The stock-floor offset declaration stays None, so
+        flat runs and the 96-case evaluation keep their physics; the authored terrain values
+        bind through env.py's hash in the physics closure."""
+        import ast
+
+        tree = ast.parse((Path(__file__).resolve().parents[1] / "omniwalk/env.py").read_text())
+        constants = {
+            node.targets[0].id: node.value.value
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id.startswith("TERRAIN_")
+            and isinstance(node.value, ast.Constant)
+        }
+        contact = constants["TERRAIN_CONTACT_OFFSET_M"]
+        rest = constants["TERRAIN_REST_OFFSET_M"]
+        self.assertEqual((contact, rest), (0.02, 0.0))
+        self.assertTrue(0 <= rest < contact <= 0.1)
+        authored = {
+            ast.unparse(node.args[0])
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in ("CreateContactOffsetAttr", "CreateRestOffsetAttr")
+            and node.args
+        }
+        self.assertEqual(authored, {"TERRAIN_CONTACT_OFFSET_M", "TERRAIN_REST_OFFSET_M"})
+
+    def test_chunked_grid_is_the_same_surface_with_shared_seams(self):
+        """Chunk colliders exist so broadphase can cull by chunk (one world-sized mesh pairs
+        every body with every triangle on this image, terrain_isaac_probe_015/_016); the union
+        must be exactly the grid's surface, cell for cell, with seam vertices shared."""
+        from locomotion.terrain import Terrain, chunk_grid
+
+        spec = {
+            "size_m": [0.5, 0.7],
+            "center_m": [0, 0],
+            "resolution_m": 0.05,
+            "features": [{"type": "box", "center": [0.05, 0.1], "size": [0.2, 0.2], "height": 0.1}],
+        }
+        terrain = Terrain(spec)
+        self.assertEqual((terrain.ny, terrain.nx), (11, 15))
+        chunks = list(chunk_grid(terrain.xs, terrain.ys, terrain.heights, 4))
+        self.assertEqual(len(chunks), 12)
+        self.assertEqual(sum(len(quads) for _, quads in chunks), (11 - 1) * (15 - 1))
+        heights = {}
+        cells = set()
+        for points, quads in chunks:
+            for x, y, z in points:
+                key = (round(float(x), 6), round(float(y), 6))
+                self.assertEqual(heights.setdefault(key, float(z)), float(z))
+            for quad in quads:
+                corner = points[quad[0]]
+                cells.add((round(float(corner[0]), 6), round(float(corner[1]), 6)))
+                square = points[quad][:, :2] - corner[:2]
+                self.assertEqual(
+                    {(round(float(dx), 6), round(float(dy), 6)) for dx, dy in square},
+                    {(0.0, 0.0), (0.05, 0.0), (0.05, 0.05), (0.0, 0.05)},
+                )
+        self.assertEqual(len(cells), (11 - 1) * (15 - 1))
+        for (x, y), z in heights.items():
+            i = int(round((x - terrain.xs[0]) / 0.05))
+            j = int(round((y - terrain.ys[0]) / 0.05))
+            self.assertAlmostEqual(z, float(terrain.heights[j, i]), places=5)

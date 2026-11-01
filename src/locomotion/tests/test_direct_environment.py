@@ -333,6 +333,7 @@ class DirectEnvironmentContractTests(unittest.TestCase):
                     [self.native_body_names.index(leg + "_tibia") for leg in LEGS]
                 )
                 self.contact_index = torch.arange(19 * n)
+                self.ground_collision_paths = ["/Ground/mesh"]
                 self.contact = SimpleNamespace(
                     get_contact_force_matrix=lambda dt: torch.zeros(19 * n, 1, 3)
                 )
