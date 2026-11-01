@@ -23,6 +23,7 @@ from locomotion.robots.hexapod import (
     MODEL_SHA256,
     sha,
 )
+from locomotion.terrain import TERRAIN_CONTACT_OFFSET_M, TERRAIN_REST_OFFSET_M
 
 ROOT = Path(__file__).resolve().parents[3]
 MODEL_PATH = ROOT / "robot/hexapod_mkii_updated_v1/model_rs05_mass_corrected.json"
@@ -270,6 +271,28 @@ def construct(scene, verify=verify_scene):
         return OmniEnv(scene.cfg, None, None, None, None, verify=verify)
 
 
+CHUNKS = ["/Ground/chunk_0", "/Ground/chunk_1"]
+
+
+def terrain_scene(output):
+    """The stand-in with the chunked terrain floor in place of the single flat mesh."""
+    scene = Scene(output)
+    scene.terrain = SimpleNamespace(kind="height map stand-in")
+    scene.ground_collision_paths = list(CHUNKS)
+    for path in CHUNKS:
+        scene.prims[path] = Prim(
+            apis=("CollisionAPI", "MeshCollisionAPI"),
+            type_name="Mesh",
+            **{
+                "physics:approximation": "none",
+                "physxCollision:contactOffset": TERRAIN_CONTACT_OFFSET_M,
+                "physxCollision:restOffset": TERRAIN_REST_OFFSET_M,
+                "material:binding:physics": scene.prims[GROUND_MATERIAL],
+            },
+        )
+    return scene
+
+
 class SceneCheckTests(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
@@ -502,6 +525,75 @@ class SceneCheckTests(unittest.TestCase):
                 scene = Scene(directory)
                 change(scene)
                 with self.assertRaisesRegex(error, "^" + re.escape(message) + "$"):
+                    construct(scene)
+                self.assertNotIn("reset", scene.events)
+
+    def test_terrain_chunks_verify_against_the_terrain_recipe(self):
+        env = construct(terrain_scene(self.output))
+        self.assertEqual(
+            env.native_readback["recipe_readbacks"]["after_sdk_reset"]["floor_collider"],
+            {
+                "path": CHUNKS[0],
+                "type": "Mesh",
+                "kind": "isaaclab_mesh",
+                "contact_offset_m": TERRAIN_CONTACT_OFFSET_M,
+                "rest_offset_m": TERRAIN_REST_OFFSET_M,
+                "approximation": "none",
+                "material": {
+                    "path": GROUND_MATERIAL,
+                    "static_friction": 1.0,
+                    "dynamic_friction": 1.0,
+                    "restitution": 0.0,
+                    "friction_combine_mode": "multiply",
+                    "restitution_combine_mode": "multiply",
+                },
+                "chunk_count": len(CHUNKS),
+            },
+        )
+
+    def test_each_changed_terrain_chunk_raises_its_named_error(self):
+        # Every fault sits on the second chunk: the readback must check past the first.
+        target = CHUNKS[1]
+
+        def attribute(name, item):
+            return lambda scene: scene.prims[target].attributes.__setitem__(name, item)
+
+        floor_error = "Actual floor collider differs from the declared floor"
+        cases = [
+            (
+                "contact offset",
+                attribute("physxCollision:contactOffset", TERRAIN_CONTACT_OFFSET_M + 0.01),
+                floor_error,
+            ),
+            (
+                "unauthored offsets",
+                lambda scene: [
+                    scene.prims[target].attributes.pop("physxCollision:contactOffset"),
+                    scene.prims[target].attributes.pop("physxCollision:restOffset"),
+                ],
+                floor_error,
+            ),
+            (
+                "collision api",
+                lambda scene: setattr(scene.prims[target], "apis", ()),
+                floor_error,
+            ),
+            (
+                "approximation",
+                attribute("physics:approximation", "convexHull"),
+                floor_error,
+            ),
+            (
+                "material unbound",
+                attribute("material:binding:physics", None),
+                "Actual floor has no bound physics material",
+            ),
+        ]
+        for name, change, message in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                scene = terrain_scene(directory)
+                change(scene)
+                with self.assertRaisesRegex(ValueError, "^" + re.escape(message) + "$"):
                     construct(scene)
                 self.assertNotIn("reset", scene.events)
 

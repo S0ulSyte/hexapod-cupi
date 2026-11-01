@@ -278,23 +278,15 @@ class TerrainDeclarationTests(unittest.TestCase):
         with swaths of height-field triangles and multiplies sim.step ~50x at 128 replicas
         (terrain_isaac_probe_004, probe_014). The stock-floor offset declaration stays None, so
         flat runs and the 96-case evaluation keep their physics; the authored terrain values
-        bind through env.py's hash in the physics closure."""
+        bind through locomotion/terrain.py's hash in the physics closure, and the admission
+        readback checks every chunk against them."""
         import ast
 
+        from locomotion.terrain import TERRAIN_CONTACT_OFFSET_M, TERRAIN_REST_OFFSET_M
+
+        self.assertEqual((TERRAIN_CONTACT_OFFSET_M, TERRAIN_REST_OFFSET_M), (0.02, 0.0))
+        self.assertTrue(0 <= TERRAIN_REST_OFFSET_M < TERRAIN_CONTACT_OFFSET_M <= 0.1)
         tree = ast.parse((Path(__file__).resolve().parents[1] / "omniwalk/env.py").read_text())
-        constants = {
-            node.targets[0].id: node.value.value
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Assign)
-            and len(node.targets) == 1
-            and isinstance(node.targets[0], ast.Name)
-            and node.targets[0].id.startswith("TERRAIN_")
-            and isinstance(node.value, ast.Constant)
-        }
-        contact = constants["TERRAIN_CONTACT_OFFSET_M"]
-        rest = constants["TERRAIN_REST_OFFSET_M"]
-        self.assertEqual((contact, rest), (0.02, 0.0))
-        self.assertTrue(0 <= rest < contact <= 0.1)
         authored = {
             ast.unparse(node.args[0])
             for node in ast.walk(tree)
@@ -304,6 +296,13 @@ class TerrainDeclarationTests(unittest.TestCase):
             and node.args
         }
         self.assertEqual(authored, {"TERRAIN_CONTACT_OFFSET_M", "TERRAIN_REST_OFFSET_M"})
+        imported = {
+            alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module == "locomotion.terrain"
+            for alias in node.names
+        }
+        self.assertLessEqual({"TERRAIN_CONTACT_OFFSET_M", "TERRAIN_REST_OFFSET_M"}, imported)
 
     def test_chunked_grid_is_the_same_surface_with_shared_seams(self):
         """Chunk colliders exist so broadphase can cull by chunk (one world-sized mesh pairs

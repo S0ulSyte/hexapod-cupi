@@ -23,12 +23,6 @@ from locomotion.omniwalk.mdp.observations import observations, proprio
 from locomotion.robots.hexapod import BODY_NAMES, JOINT_NAMES, LEGS, USD_SHA256, verify_assets
 from locomotion.robots.rs05 import RATED_TORQUE_NM
 
-# Collider offsets and chunk side authored on the terrain height field (metres); _setup_scene
-# explains both.
-TERRAIN_CONTACT_OFFSET_M = 0.02
-TERRAIN_REST_OFFSET_M = 0.0
-TERRAIN_CHUNK_M = 5.0
-
 
 class CaptureArticulation(Articulation):
     """Read submitted force before physics; capture state after physics."""
@@ -202,8 +196,15 @@ class IsaacEnv(DirectRLEnv):
             # contact at a seam reports against both chunks and collect_substep sums them. The
             # explicit collider offsets replace PhysX's auto contact margin; the stock-floor
             # offsets stay None so flat runs and the 96-case evaluation declare unchanged
-            # physics, and these values bind through this file's hash.
-            from locomotion.terrain import Terrain, chunk_grid
+            # physics. The offsets and chunk side live in locomotion.terrain, where the
+            # admission readback checks every chunk against them.
+            from locomotion.terrain import (
+                TERRAIN_CHUNK_M,
+                TERRAIN_CONTACT_OFFSET_M,
+                TERRAIN_REST_OFFSET_M,
+                Terrain,
+                chunk_grid,
+            )
             from locomotion.terrain import validate as validate_terrain
 
             spec = json.loads(Path(self.config.terrain_spec_path).read_text())

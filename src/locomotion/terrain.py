@@ -30,6 +30,14 @@ FEATURES = {
     "noise": ("amplitude", "wavelength", "seed"),
 }
 
+# Collider recipe for the native chunked terrain floor: omniwalk/env.py authors one collider
+# per ~TERRAIN_CHUNK_M square with these explicit offsets, and evaluation/admission.py reads
+# every chunk back against them. The values bind through this file's hash in
+# physics_source_files; the stock flat floor declares its offsets through the config instead.
+TERRAIN_CONTACT_OFFSET_M = 0.02
+TERRAIN_REST_OFFSET_M = 0.0
+TERRAIN_CHUNK_M = 5.0
+
 
 def _local(feature, forward, left):
     """Coordinates along and across a feature's heading, from its centre."""
