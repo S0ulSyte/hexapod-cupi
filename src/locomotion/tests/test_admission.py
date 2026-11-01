@@ -157,6 +157,7 @@ class Scene:
             GROUND,
             [],
         )
+        self.terrain = None  # IsaacEnv's stock-floor default; terrain_scene overwrites it
         limits = self.torch(
             [[joints[name]["lower"], joints[name]["upper"]] for name in self.native_joint_names]
         )

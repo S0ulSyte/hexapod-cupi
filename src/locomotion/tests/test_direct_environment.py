@@ -368,6 +368,15 @@ class DirectEnvironmentContractTests(unittest.TestCase):
                     False,
                 )
                 self.native_errors = []
+                self.terrain = SimpleNamespace(
+                    heights=[[0.0, 0.01], [0.02, 0.03]],
+                    xs=(-1.0, 1.0),
+                    ys=(-1.0, 1.0),
+                    resolution=2.0,
+                    nx=2,
+                    ny=2,
+                    highest_under=lambda x, y, radius: 0.0,
+                )
                 # OmniEnv aliases these; this control reads none of them.
                 for name in (
                     "output",
@@ -395,12 +404,20 @@ class DirectEnvironmentContractTests(unittest.TestCase):
             episode_seconds=20.0,
             control_dt=0.02,
             record_motion_features=False,
+            terrain_spawn=False,
         )
         with mock.patch.dict(
             sys.modules, {"locomotion.omniwalk.env": SimpleNamespace(IsaacEnv=Isaac)}
         ):
             env = OmniEnv(config, None, None, None, None)
         isaac = env.isaac
+        # The wrapper's footfall inputs read the terrain duck-typed off the task's env — this
+        # adapter — so the alias must carry IsaacEnv's grid (zeros trained wherever it is lost).
+        self.assertIs(env.terrain, isaac.terrain)
+        from locomotion.omniwalk.mdp.footfall import FootfallInputs
+
+        footfall = FootfallInputs(SimpleNamespace(env=env, num_envs=n), "speed_v1", profile=True)
+        self.assertIsNotNone(footfall.grid)
         # A task-side write between controls must reach the tensors that IsaacEnv shifts.
         env.history.copy_(torch.arange(n * 5 * 42, dtype=torch.float32).reshape(n, 5, 42) / 100)
         env.commands[:] = torch.tensor([[0.05, 0.0, 0.0], [0.0, 0.0, 0.2]])

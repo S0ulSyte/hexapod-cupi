@@ -80,6 +80,9 @@ class OmniEnv:
         )
         self.root_com_local = isaac.root_com_local
         self.native_errors = isaac.native_errors
+        # The task and its wrapper read the terrain duck-typed off this adapter (footfall.py);
+        # the stock flat floor keeps None, which pins the terrain inputs to zero.
+        self.terrain = isaac.terrain
         self.get, self.native_array, self.save = isaac.get, isaac.native_array, isaac.save
         self.telemetry, self.total_controls = isaac.telemetry, isaac.total_controls
         self.capture = None
