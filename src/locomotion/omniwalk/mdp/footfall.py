@@ -110,11 +110,16 @@ class SupportHeight:
         self.known = self.known & ~fresh.to(self.known.device)
 
     def update(self, toe_world, contact_force):
-        toes = toe_world[:, :, 2].double()
+        # The native state lives on the training device while this buffer is cpu float64; the cpu
+        # copies keep the support height the same bits as the surrogate's.
+        toes = toe_world[:, :, 2].detach().double().cpu()
         if contact_force is None:
             contact = torch.zeros(toes.shape, dtype=torch.bool)
         else:
-            contact = torch.linalg.vector_norm(contact_force.double(), dim=-1) > CONTACT_FORCE_N
+            contact = (
+                torch.linalg.vector_norm(contact_force.detach().double().cpu(), dim=-1)
+                > CONTACT_FORCE_N
+            )
         n = contact.double().sum(-1)
         measured = (toes * contact).sum(-1) / n.clamp_min(1)
         valid = n > 0
@@ -198,18 +203,23 @@ class FootfallInputs:
             self.support, self.seen, getattr(task, "env", None), task.episode_steps, state
         )
         command = task.commands if command is None else command
+        # The grid and support height are cpu float64 while the native state lives on the training
+        # device; the footfall math runs on cpu copies so native and surrogate features match bitwise.
+        root = state["root"].detach().cpu()
+        toe_body = state["toe_body"].detach().cpu()
+        command = command.detach().cpu()
         values = footfall_features(
             self.grid,
             self.support.height,
-            state["root"],
+            root,
             command,
-            state["toe_body"],
-            phase,
+            toe_body,
+            phase.detach().cpu(),
             self.scaling,
         )
         if not self.profile:
             return values
-        ahead = profile_features(self.grid, self.support.height, state["root"], command)
+        ahead = profile_features(self.grid, self.support.height, root, command)
         return torch.cat((values, ahead.to(values)), -1)
 
 
@@ -239,17 +249,21 @@ class TerrainV1Tracker(GhostV11Tracker):
             return torch.cat((ghost, zeros.to(ghost)), -1)
         state = self.env.current
         self.seen = refresh_support(self.support, self.seen, self.env, episode_steps, state)
+        # The same cpu copies as FootfallInputs.features, for the same bitwise parity.
+        root = state["root"].detach().cpu()
+        toe_body = state["toe_body"].detach().cpu()
+        cpu_command = command.detach().cpu()
         terrain = footfall_features(
             self.grid,
             self.support.height,
-            state["root"],
-            command,
-            state["toe_body"],
-            phase,
+            root,
+            cpu_command,
+            toe_body,
+            phase.detach().cpu(),
             self.scaling,
         )
         if self.profile:
-            ahead = profile_features(self.grid, self.support.height, state["root"], command)
+            ahead = profile_features(self.grid, self.support.height, root, cpu_command)
             terrain = torch.cat((terrain, ahead.to(terrain)), -1)
         return torch.cat((ghost, terrain.to(ghost)), -1)
 
