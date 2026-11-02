@@ -137,6 +137,7 @@ class DestinationRewardConfig(RewardConfig):
     long_stand_controls: int | None = None
     walk_forward_only: bool | None = None
     walk_forward_bias: float | None = None
+    turn_rate_choices_rad_s: tuple | None = None
     slope_inputs: str | None = None
     command_controls: int = 0
 
@@ -362,6 +363,19 @@ class DestinationRewardConfig(RewardConfig):
             )
         if self.slope_inputs not in (None, "gravity", "femurs", "joints"):
             raise ValueError("slope_inputs is None, gravity, femurs or joints (mdp/slope.py)")
+        choices = self.turn_rate_choices_rad_s
+        if choices is not None and (
+            self.run_mix is None
+            or type(choices) is not tuple
+            or not choices
+            or not all(
+                isinstance(rate, float) and math.isfinite(rate) and rate > 0 for rate in choices
+            )
+        ):
+            raise ValueError(
+                "Turn-rate choices are a nonempty tuple of positive finite rad/s rates and "
+                "need a run mix"
+            )
         ceiling = (
             (self.linear_tracking_weight + self.yaw_tracking_weight)
             * (1 + self.stride_tracking_weight)
@@ -810,6 +824,25 @@ EXPERIMENTS["destination_v36"] = {
 # costs against tc3_a (terrain_v2 on actor and critic, same reward, terrain, start function, seed
 # and updates). The actor keeps the nine ghost_v11 inputs it could run on the robot unchanged.
 EXPERIMENTS["destination_v37"] = {**EXPERIMENTS["destination_v35"]}
+# destination_v38 is destination_v35 retargeted at the 2026-11-01 campaign scope (decisions.md
+# "NEW CAMPAIGN TARGET"): the four left/rear translate_0.10 failures trace to walk_forward_bias
+# 0.5 starving side and rear bearings, turn_+/-0.40 to the single trained rate (the task's
+# yaw_rate_rad_s, 0.2 — 0.4 rad/s was never commanded), and formal__0.16 plus the omni-0.15
+# requirement sit at or past the trained 0.15 m/s top speed. Walks rebalance to bias 0.25 (kept
+# nonzero: v32's forward-only walks regressed flat and v33 chose the bias to protect forward
+# quality), each turn run draws 0.2 or 0.4 rad/s, the turn share rises 0.10 -> 0.15 paid by
+# walks-that-stop (all in-scope stops pass), and walk speeds extend to 0.17 m/s — below the
+# 0.20 tier the record excludes as torque-infeasible. The reward terms are v35's unchanged.
+EXPERIMENTS["destination_v38"] = {
+    **EXPERIMENTS["destination_v35"],
+    "reward": replace(
+        EXPERIMENTS["destination_v35"]["reward"],
+        walk_forward_bias=0.25,
+        run_mix=(0.15, 0.10, 0.45, 0.30),
+        walk_speed_max_mps=0.17,
+        turn_rate_choices_rad_s=(0.2, 0.4),
+    ),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
@@ -1049,7 +1082,10 @@ class DestinationTrainingTask(TrainingTask):
         fresh = indices[~torch.isin(indices, stopping)]
         if not len(fresh):
             return
-        draws = torch.rand(len(fresh), 2, generator=self.rng).to(fresh.device)
+        # The third draw column exists only when turn rates are drawn, so the RNG stream of
+        # every experiment without the knob stays byte-identical.
+        columns = 2 if config.turn_rate_choices_rad_s is None else 3
+        draws = torch.rand(len(fresh), columns, generator=self.rng).to(fresh.device)
         edges = torch.tensor(config.run_mix, dtype=torch.float64).cumsum(0).to(fresh.device)
         kind = torch.bucketize(draws[:, 0].double(), edges[:-1], right=True)  # 0 turn .. 3 walk
         self.run_length[fresh] = config.command_controls
@@ -1057,8 +1093,13 @@ class DestinationTrainingTask(TrainingTask):
         self._uniform_walks(fresh[kind >= 2])
         turns = fresh[kind == 0]
         sign = torch.where(draws[kind == 0, 1] < 0.5, -1.0, 1.0).to(self.env.commands)
+        rate = self.config.yaw_rate_rad_s
+        if config.turn_rate_choices_rad_s is not None:
+            choices = torch.tensor(config.turn_rate_choices_rad_s).to(self.env.commands)
+            pick = (draws[kind == 0, 2] * len(choices)).long().clamp_(max=len(choices) - 1)
+            rate = choices[pick]
         self.env.commands[turns] = 0
-        self.env.commands[turns, 2] = sign * self.config.yaw_rate_rad_s
+        self.env.commands[turns, 2] = sign * rate
         stands = fresh[kind == 1]
         self.env.commands[stands] = 0
         long = stands[draws[kind == 1, 1] < 0.5]

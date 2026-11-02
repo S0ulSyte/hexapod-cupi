@@ -1811,6 +1811,56 @@ class TerrainCampaignTests(unittest.TestCase):
         self.assertGreater(hits / 300, 0.38)
         self.assertLess(hits / 300, 0.62)
 
+    def test_destination_v38_draws_both_turn_rates_and_rebalances_the_mix(self):
+        v35 = EXPERIMENTS["destination_v35"]["reward"]
+        v38 = EXPERIMENTS["destination_v38"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v38).items() if asdict(v35)[k] != v},
+            {"walk_forward_bias", "run_mix", "walk_speed_max_mps", "turn_rate_choices_rad_s"},
+        )
+        self.assertEqual(v38.walk_forward_bias, 0.25)
+        self.assertEqual(v38.run_mix, (0.15, 0.10, 0.45, 0.30))
+        self.assertEqual(v38.walk_speed_max_mps, 0.17)
+        self.assertEqual(v38.turn_rate_choices_rad_s, (0.2, 0.4))
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v38"], "terrain_v2")
+        self.assertEqual(EXPERIMENTS["destination_v38"]["episode_seconds"], 32.0)
+        for broken in (
+            {"turn_rate_choices_rad_s": (0.2, -0.4)},
+            {"turn_rate_choices_rad_s": ()},
+            {"turn_rate_choices_rad_s": [0.2, 0.4]},
+        ):
+            with self.assertRaises(ValueError):
+                replace(v38, **broken).validate()
+        with self.assertRaises(ValueError):
+            # The drawn turn rates need a run mix.
+            replace(
+                EXPERIMENTS["destination_v26"]["reward"], turn_rate_choices_rad_s=(0.2, 0.4)
+            ).validate()
+        native = GaitDouble(8192)
+        native.cfg.episode_seconds, native.cfg.declaration = 32.0, dict
+        task = DestinationTrainingTask(native, TaskConfig(), None, v38)
+        task.reset()
+        command = native.commands
+        planar = torch.linalg.vector_norm(command[:, :2], dim=-1)
+        turns = (planar == 0) & (command[:, 2] != 0)
+        walks = planar > 0
+        rates = command[turns, 2].abs()
+
+        def near(value):
+            return (rates - value).abs() < 1e-6
+
+        self.assertTrue(bool((near(0.2) | near(0.4)).all()))
+        # Both rates and both signs are drawn in roughly even shares; the mix holds its shares.
+        self.assertAlmostEqual(float(near(0.4).double().mean()), 0.5, delta=0.06)
+        self.assertAlmostEqual(float((command[turns, 2] > 0).double().mean()), 0.5, delta=0.06)
+        self.assertAlmostEqual(float(turns.double().mean()), 0.15, delta=0.015)
+        self.assertAlmostEqual(float(walks.double().mean()), 0.75, delta=0.02)
+        self.assertTrue(bool((planar[walks] >= 0.05 - 1e-6).all()))
+        self.assertTrue(bool((planar[walks] <= 0.17 + 1e-6).all()))
+        # About a quarter of the walks face exactly forward (the rebalanced bias).
+        ahead = walks & (command[:, 1].abs() < 1e-9) & (command[:, 0] > 0)
+        self.assertAlmostEqual(float(ahead.double().sum() / walks.double().sum()), 0.25, delta=0.03)
+
     def test_terrain_v1_appends_zeros_without_a_terrain_and_needs_the_speed_scaled_clock(self):
         task, native = moving_task(forward, reward=EXPERIMENTS["destination_v33"]["reward"])
         env = DestinationVecEnv(
