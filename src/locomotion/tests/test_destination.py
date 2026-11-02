@@ -1837,7 +1837,14 @@ class TerrainCampaignTests(unittest.TestCase):
         )
         self.assertEqual(v40.run_mix, (0.35, 0.10, 0.35, 0.20))
         self.assertEqual(v40.turn_rate_choices_rad_s, (0.3, 0.4))
-        for name in ("destination_v39", "destination_v40"):
+        v42 = EXPERIMENTS["destination_v42"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v42).items() if asdict(v38)[k] != v},
+            {"run_mix", "turn_rate_choices_rad_s"},
+        )
+        self.assertEqual(v42.run_mix, (0.20, 0.10, 0.40, 0.30))
+        self.assertEqual(v42.turn_rate_choices_rad_s, (0.3, 0.4))
+        for name in ("destination_v39", "destination_v40", "destination_v42"):
             self.assertEqual(EXPERIMENT_INPUTS[name], "terrain_v2")
         for broken in (
             {"turn_rate_choices_rad_s": (0.2, -0.4)},

@@ -880,6 +880,19 @@ EXPERIMENTS["destination_v41"] = {
     **EXPERIMENTS["destination_v38"],
     "reward": replace(EXPERIMENTS["destination_v38"]["reward"], swing_clearance_weight=0.5),
 }
+# destination_v42 is the consolidation recipe: destination_v38's bearings and speeds with the
+# round-B turn lever at consolidation dose — turns take 0.20 of runs and draw 0.3 or 0.4 rad/s
+# (arm b3 halved turn_+0.40's yaw error with ~70 such runs; 1000 updates at 0.20 give ~200,
+# and b3 held the ±0.20 cases without practising 0.2). Clearance stays off (tc9_c1). Meant for
+# the NATIVE retrain, where fresh runs showed none of the surrogate legs' drift tax.
+EXPERIMENTS["destination_v42"] = {
+    **EXPERIMENTS["destination_v38"],
+    "reward": replace(
+        EXPERIMENTS["destination_v38"]["reward"],
+        run_mix=(0.20, 0.10, 0.40, 0.30),
+        turn_rate_choices_rad_s=(0.3, 0.4),
+    ),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
