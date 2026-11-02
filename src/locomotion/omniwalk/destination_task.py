@@ -843,6 +843,30 @@ EXPERIMENTS["destination_v38"] = {
         turn_rate_choices_rad_s=(0.2, 0.4),
     ),
 }
+# destination_v39 is destination_v38 with the over-rating torque charge tripled (10 -> 30):
+# the omni-0.15 judge fails ten of twelve bearings on computed demand over the 1.6 Nm rating
+# (0.0056-0.0278 vs the 0.005 bound) and the continuation control tc9_ctrl shows the demand
+# habit worsening with training — at weight 10 a ~1% violation rate costs ~0.1/control against
+# ~1.5 of tracking pay, so violating stays profitable. One change against v38; the 9.5-degree
+# crest median is the recorded canary for pricing torque the climb may need.
+EXPERIMENTS["destination_v39"] = {
+    **EXPERIMENTS["destination_v38"],
+    "reward": replace(EXPERIMENTS["destination_v38"]["reward"], over_rating_weight=30.0),
+}
+# destination_v40 is destination_v38 with a turn-heavy mix as the 0.40 rad/s stepping stone:
+# after 200 v38 updates both turn_+/-0.40 still fail (yaw error 0.26/0.36 vs 0.10, demand
+# 0.043-0.056) — a 7.5% share per drawn rate is too little practice for a never-trained
+# capability. Turns take 0.35 of runs and draw 0.3 or 0.4 rad/s (0.3 bridges from the mastered
+# 0.2), paid by walks; walks keep the v38 bias and speeds. One change against v38, meant for
+# short dedicated legs whose walking quality is re-anchored afterwards, not for long runs.
+EXPERIMENTS["destination_v40"] = {
+    **EXPERIMENTS["destination_v38"],
+    "reward": replace(
+        EXPERIMENTS["destination_v38"]["reward"],
+        run_mix=(0.35, 0.10, 0.35, 0.20),
+        turn_rate_choices_rad_s=(0.3, 0.4),
+    ),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
