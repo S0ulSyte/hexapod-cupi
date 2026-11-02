@@ -19,10 +19,11 @@ from locomotion.omniwalk.mdp.destination import (
     advance_destination,
     destination_features,
 )
-from locomotion.omniwalk.mdp.rewards import REWARD_CONFIG
+from locomotion.omniwalk.mdp.footfall import TerrainGrid
+from locomotion.omniwalk.mdp.rewards import REWARD_CONFIG, measured_reward
 from locomotion.rl.destination_wrapper import DestinationVecEnv
 from locomotion.rl.ppo import initialize_learner, widen_inputs
-from locomotion.tests.task_double import GaitDouble
+from locomotion.tests.task_double import GaitDouble, telemetry
 
 FORWARD, LEFT = torch.tensor([[0.05, 0.0, 0.0]]), torch.tensor([[0.0, 0.05, 0.0]])
 SETTINGS = EXPERIMENTS["destination_v1"]
@@ -1874,6 +1875,81 @@ class TerrainCampaignTests(unittest.TestCase):
         # About a quarter of the walks face exactly forward (the rebalanced bias).
         ahead = walks & (command[:, 1].abs() < 1e-9) & (command[:, 0] > 0)
         self.assertAlmostEqual(float(ahead.double().sum() / walks.double().sum()), 0.25, delta=0.03)
+
+    def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
+        v38 = EXPERIMENTS["destination_v38"]["reward"]
+        v41 = EXPERIMENTS["destination_v41"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v41).items() if asdict(v38)[k] != v}, {"swing_clearance_weight"}
+        )
+        self.assertEqual(v41.swing_clearance_weight, 0.5)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v41"], "terrain_v2")
+        with self.assertRaises(ValueError):
+            replace(v41, swing_clearance_target_m=0.0).validate()
+        commands = torch.tensor(
+            [[0.1, 0.0, 0.0], [0.1, 0.0, 0.0], [0.0, 0.0, 0.2], [0.0, 0.0, 0.0]]
+        )
+        values = telemetry(commands)
+        values.update(
+            gate_yaw_rate_rad_s=torch.zeros(4),
+            stride_velocity_nav=torch.zeros(4, 3),
+            stride_touchdown=torch.zeros(4, 6, dtype=torch.bool),
+            stride_displacement_nav=torch.zeros(4, 6, 2),
+        )
+        values["tibia_floor_force_world_n"] = torch.zeros(4, 6, 3)
+        values["scheduled_swing"] = torch.tensor([[True] * 3 + [False] * 3] * 4)
+        terminated = torch.zeros(4, dtype=torch.bool)
+        base, parts = measured_reward(values, commands, terminated, v38, 0.1)
+        self.assertNotIn("swing_clearance", parts)
+        # Swinging airborne toes earn height up to the target on walking rows over rough ground;
+        # a smooth-ground row, a turning row and a standing row earn nothing.
+        values["toe_clearance_m"] = torch.full((4, 6), 0.035)
+        values["toe_clearance_m"][1] = 0.0175
+        values["toe_rough_m"] = torch.full((4, 6), 0.02)
+        values["toe_rough_m"][1] = 0.004
+        paid, parts = measured_reward(values, commands, terminated, v41, 0.1)
+        torch.testing.assert_close(parts["swing_clearance"], torch.tensor([0.5, 0.0, 0.0, 0.0]))
+        torch.testing.assert_close(paid, base + parts["swing_clearance"])
+        missing = {k: v for k, v in values.items() if k not in ("toe_clearance_m", "toe_rough_m")}
+        with self.assertRaises(ValueError):
+            measured_reward(missing, commands, terminated, v41, 0.1)
+
+    def test_the_swing_clearance_telemetry_reads_the_terrain_grid(self):
+        task, native = moving_task(forward, reward=EXPERIMENTS["destination_v41"]["reward"])
+        # One full control on the stock flat floor: the reward runs end to end with the term
+        # priced at zero (zero roughness closes the gate).
+        task.step(torch.zeros(1, 18))
+        torch.testing.assert_close(task.last_components["swing_clearance"], torch.zeros(1))
+        # The stock flat floor: clearance is the toe's world height over zero roughness.
+        flat = task.reward_telemetry(native.commands)
+        torch.testing.assert_close(flat["toe_rough_m"], torch.zeros(1, 6))
+        torch.testing.assert_close(
+            flat["toe_clearance_m"], flat["toe_xyz_world"].detach().cpu()[..., 2].float()
+        )
+        # A 5 cm riser between x = 0.1 and 0.2: a toe before it sees smooth ground, a toe on the
+        # riser face sees the 5-point spread, a toe past it stands 5 cm higher on smooth ground.
+        task._clearance_grid = TerrainGrid(
+            SimpleNamespace(
+                heights=[[0.0, 0.0, 0.05, 0.05]] * 4,
+                xs=(0.0, 0.3),
+                ys=(0.0, 0.3),
+                resolution=0.1,
+                nx=4,
+                ny=4,
+            )
+        )
+        world = torch.zeros(1, 6, 3)
+        world[0, :, 0] = torch.tensor([0.05, 0.15, 0.25, 0.05, 0.15, 0.25])
+        world[0, :, 1] = 0.15
+        world[0, :, 2] = torch.tensor([0.02, 0.055, 0.06, 0.0, 0.025, 0.05])
+        out = task._swing_clearance_telemetry({"toe_xyz_world": world})
+        torch.testing.assert_close(
+            out["toe_clearance_m"], torch.tensor([[0.02, 0.03, 0.01, 0.0, 0.0, 0.0]])
+        )
+        rough = out["toe_rough_m"]
+        self.assertTrue(bool((rough[0, torch.tensor([0, 2, 3, 5])] < 1e-6).all()))
+        torch.testing.assert_close(rough[0, 1], torch.tensor(0.03))
+        torch.testing.assert_close(rough[0, 4], torch.tensor(0.03))
 
     def test_terrain_v1_appends_zeros_without_a_terrain_and_needs_the_speed_scaled_clock(self):
         task, native = moving_task(forward, reward=EXPERIMENTS["destination_v33"]["reward"])

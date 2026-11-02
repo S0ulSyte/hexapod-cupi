@@ -77,7 +77,15 @@ class ActiveTaskTests(unittest.TestCase):
         expected = asdict(self.old.reward_config(SPEC))
         del expected["forward_draw_fraction"]
         del expected["yaw_gate_on"]
-        self.assertEqual(asdict(reward.REWARD_CONFIG), expected)
+        active = asdict(reward.REWARD_CONFIG)
+        # Fields added since the frozen baseline must be exactly these and stay at their inert
+        # defaults, so the recorded checkpoint's options still reproduce the active default reward.
+        self.assertEqual(
+            set(active) - set(expected),
+            {"swing_clearance_weight", "swing_clearance_target_m", "swing_clearance_rough_m"},
+        )
+        self.assertEqual(active["swing_clearance_weight"], 0.0)
+        self.assertEqual({k: v for k, v in active.items() if k in expected}, expected)
         baseline = importlib.import_module("_active_task_baseline.task")
         self.assertEqual(command_bank(TaskConfig()), baseline.command_bank(baseline.TaskConfig()))
 

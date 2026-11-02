@@ -75,6 +75,14 @@ class RewardConfig:
     stride_tracking_weight: float = 0.3
     stride_window_controls: int = 60
     stride_length_weight: float = 2.0
+    # Swing clearance over rough ground (0 keeps the term, its telemetry and the old reward
+    # byte-identical): scheduled-swing unloaded toes earn up to the weight, walking only, in
+    # proportion to their height above the local ground up to the target — and only where the
+    # ground's 5-point spread exceeds the roughness threshold, so flat ground (its 5 mm training
+    # noise included) pays nothing and cannot teach high-stepping.
+    swing_clearance_weight: float = 0.0
+    swing_clearance_target_m: float = 0.035
+    swing_clearance_rough_m: float = 0.008
 
     def validate(self):
         for key, low in (
@@ -94,6 +102,7 @@ class RewardConfig:
             "contact_force_n",
             "joint_margin_rad",
             "quiet_load_n",
+            "swing_clearance_target_m",
         ]
         if any(getattr(self, key) <= 0 for key in positive):
             raise ValueError("Positive reward v4 scales required")
@@ -429,6 +438,33 @@ def measured_reward(telemetry, commands, terminated, config=REWARD_CONFIG, nomin
         paid = paid * (period / fixed)
         components["stride_length"] = config.stride_length_weight * moving * paid.sum(-1)
         reward = reward + components["stride_length"]
+    if config.swing_clearance_weight:
+        clearance = telemetry.get("toe_clearance_m")
+        rough = telemetry.get("toe_rough_m")
+        if (
+            not torch.is_tensor(clearance)
+            or tuple(clearance.shape) != (len(commands), 6)
+            or not torch.is_tensor(rough)
+            or tuple(rough.shape) != (len(commands), 6)
+            or not bool(torch.isfinite(clearance).all())
+            or not bool(torch.isfinite(rough).all())
+        ):
+            raise ValueError(
+                "Missing/nonfinite swing-clearance telemetry: toe_clearance_m, toe_rough_m"
+            )
+        airborne = (toe_force <= config.contact_force_n).to(torch.float32)
+        rough_gate = (rough.to(device, torch.float32) > config.swing_clearance_rough_m).to(
+            torch.float32
+        )
+        walking = (commands[:, :2] != 0).any(-1).to(torch.float32)
+        height = (clearance.to(device, torch.float32) / config.swing_clearance_target_m).clamp(0, 1)
+        components["swing_clearance"] = (
+            config.swing_clearance_weight
+            * walking
+            * (rough_gate * swing * airborne * height).sum(-1)
+            / 3
+        )
+        reward = reward + components["swing_clearance"]
     if not bool(torch.isfinite(reward).all()):
         raise FloatingPointError("Nonfinite yaw-gated reward v4")
     return reward, components

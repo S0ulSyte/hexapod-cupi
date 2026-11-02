@@ -81,6 +81,7 @@ from locomotion.omniwalk.mdp.destination import (
     destination_distance,
     planar_pose,
 )
+from locomotion.omniwalk.mdp.footfall import RING_XY, TerrainGrid
 from locomotion.omniwalk.mdp.frames import inverse_rotate, navigation
 from locomotion.omniwalk.mdp.gait import GaitPhase
 from locomotion.omniwalk.mdp.rewards import RewardConfig
@@ -867,6 +868,18 @@ EXPERIMENTS["destination_v40"] = {
         turn_rate_choices_rad_s=(0.3, 0.4),
     ),
 }
+# destination_v41 is destination_v38 with the swing-clearance pay on (weight 0.5, subordinate to
+# the schedule's 2.0): the 2.5 cm step wall held at ~0.9 m through five input/reward experiments
+# and the rebalanced v38 distribution alike — the recorded diagnosis is a gait barrier at the
+# riser (feet never clear it), and no clearance term existed. Scheduled-swing unloaded toes earn
+# in proportion to height above the local ground up to 3.5 cm (inside the 6.15 cm kinematic
+# swing ceiling), only where the ground's 5-point spread exceeds 8 mm — flat ground, its 5 mm
+# training noise included, pays nothing by construction, answering the recorded high-stepping
+# objection. One change against v38.
+EXPERIMENTS["destination_v41"] = {
+    **EXPERIMENTS["destination_v38"],
+    "reward": replace(EXPERIMENTS["destination_v38"]["reward"], swing_clearance_weight=0.5),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
@@ -940,6 +953,9 @@ class DestinationTrainingTask(TrainingTask):
             self.slope = SlopeTracker(env.num_envs, env.model["joints"], chosen.slope_inputs)
         # The root pose before the latest control, for the ghost_v10 velocity input.
         self.control_start_pose = env.current["root"].detach().clone()
+        # The terrain grid for the swing-clearance telemetry, resolved on first use ("unset"
+        # because the stock flat floor is a valid None).
+        self._clearance_grid = "unset"
         self.gait = (
             None
             if chosen.gait_clock_scaling is None
@@ -1020,7 +1036,30 @@ class DestinationTrainingTask(TrainingTask):
             device = telemetry["scheduled_swing"].device
             telemetry["scheduled_swing"] = swing.to(device)
             telemetry["schedule_period_s"] = period.to(device, torch.float32)
+        if self.reward_config.swing_clearance_weight:
+            telemetry.update(self._swing_clearance_telemetry(telemetry))
         return telemetry
+
+    def _swing_clearance_telemetry(self, telemetry):
+        """Toe height above the local ground and the ground's 5-point spread, [n, 6] each,
+        sampled on detached cpu float64 copies of the state so native and surrogate values
+        stay bitwise equal (the footfall grid discipline). The stock flat floor reports the
+        toe's world height over zero roughness, which the rough gate prices at nothing."""
+        world = telemetry["toe_xyz_world"].detach().cpu()
+        if self._clearance_grid == "unset":
+            terrain = getattr(self.env, "terrain", None)
+            self._clearance_grid = None if terrain is None else TerrainGrid(terrain)
+        if self._clearance_grid is None:
+            return {
+                "toe_clearance_m": world[..., 2].float().clone(),
+                "toe_rough_m": torch.zeros(world.shape[0], 6),
+            }
+        x, y = world[..., 0], world[..., 1]
+        samples = torch.stack([self._clearance_grid.sample(x + dx, y + dy) for dx, dy in RING_XY])
+        return {
+            "toe_clearance_m": world[..., 2].float() - samples[0],
+            "toe_rough_m": samples.amax(0) - samples.amin(0),
+        }
 
     def _next_command_observation(self, output):
         output = super()._next_command_observation(output)
