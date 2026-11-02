@@ -83,6 +83,15 @@ class RewardConfig:
     swing_clearance_weight: float = 0.0
     swing_clearance_target_m: float = 0.035
     swing_clearance_rough_m: float = 0.008
+    # Landing-conditioned lift (0 keeps the term, its telemetry and the old reward
+    # byte-identical): when a swinging toe's predicted touchdown ground sits at least the rise
+    # above the ground under the toe now, the toe earns up to the weight, walking only, in
+    # proportion to its clearance over the current ground, saturating a target margin above the
+    # landing ground itself — the ceiling scales with the obstacle. Flat ground and descents
+    # never open the rise gate, so they pay nothing by construction.
+    landing_lift_weight: float = 0.0
+    landing_lift_target_m: float = 0.02
+    landing_lift_rise_m: float = 0.01
 
     def validate(self):
         for key, low in (
@@ -103,6 +112,7 @@ class RewardConfig:
             "joint_margin_rad",
             "quiet_load_n",
             "swing_clearance_target_m",
+            "landing_lift_target_m",
         ]
         if any(getattr(self, key) <= 0 for key in positive):
             raise ValueError("Positive reward v4 scales required")
@@ -465,6 +475,31 @@ def measured_reward(telemetry, commands, terminated, config=REWARD_CONFIG, nomin
             / 3
         )
         reward = reward + components["swing_clearance"]
+    if config.landing_lift_weight:
+        rise = telemetry.get("toe_landing_rise_m")
+        clearance = telemetry.get("toe_clearance_m")
+        if (
+            not torch.is_tensor(rise)
+            or tuple(rise.shape) != (len(commands), 6)
+            or not torch.is_tensor(clearance)
+            or tuple(clearance.shape) != (len(commands), 6)
+            or not bool(torch.isfinite(rise).all())
+            or not bool(torch.isfinite(clearance).all())
+        ):
+            raise ValueError(
+                "Missing/nonfinite landing-lift telemetry: toe_landing_rise_m, toe_clearance_m"
+            )
+        rise = rise.to(device, torch.float32)
+        airborne = (toe_force <= config.contact_force_n).to(torch.float32)
+        rising = (rise > config.landing_lift_rise_m).to(torch.float32)
+        walking = (commands[:, :2] != 0).any(-1).to(torch.float32)
+        height = (
+            clearance.to(device, torch.float32) / (rise.clamp_min(0) + config.landing_lift_target_m)
+        ).clamp(0, 1)
+        components["landing_lift"] = (
+            config.landing_lift_weight * walking * (rising * swing * airborne * height).sum(-1) / 3
+        )
+        reward = reward + components["landing_lift"]
     if not bool(torch.isfinite(reward).all()):
         raise FloatingPointError("Nonfinite yaw-gated reward v4")
     return reward, components

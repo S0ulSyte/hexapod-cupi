@@ -19,7 +19,12 @@ from locomotion.omniwalk.mdp.destination import (
     advance_destination,
     destination_features,
 )
-from locomotion.omniwalk.mdp.footfall import TerrainGrid
+from locomotion.omniwalk.mdp.footfall import (
+    RING_XY,
+    TerrainGrid,
+    touchdown_points,
+    touchdown_seconds,
+)
 from locomotion.omniwalk.mdp.rewards import REWARD_CONFIG, measured_reward
 from locomotion.rl.destination_wrapper import DestinationVecEnv
 from locomotion.rl.ppo import initialize_learner, widen_inputs
@@ -1921,6 +1926,48 @@ class TerrainCampaignTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             measured_reward(missing, commands, terminated, v41, 0.1)
 
+    def test_destination_v43_pays_lift_toward_a_higher_landing(self):
+        v38 = EXPERIMENTS["destination_v38"]["reward"]
+        v43 = EXPERIMENTS["destination_v43"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v43).items() if asdict(v38)[k] != v}, {"landing_lift_weight"}
+        )
+        self.assertEqual(v43.landing_lift_weight, 0.5)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v43"], "terrain_v2")
+        with self.assertRaises(ValueError):
+            replace(v43, landing_lift_target_m=0.0).validate()
+        commands = torch.tensor(
+            [[0.1, 0.0, 0.0], [0.1, 0.0, 0.0], [0.0, 0.0, 0.2], [0.0, 0.0, 0.0]]
+        )
+        values = telemetry(commands)
+        values.update(
+            gate_yaw_rate_rad_s=torch.zeros(4),
+            stride_velocity_nav=torch.zeros(4, 3),
+            stride_touchdown=torch.zeros(4, 6, dtype=torch.bool),
+            stride_displacement_nav=torch.zeros(4, 6, 2),
+        )
+        values["tibia_floor_force_world_n"] = torch.zeros(4, 6, 3)
+        values["scheduled_swing"] = torch.tensor([[True] * 3 + [False] * 3] * 4)
+        terminated = torch.zeros(4, dtype=torch.bool)
+        base, parts = measured_reward(values, commands, terminated, v38, 0.1)
+        self.assertNotIn("landing_lift", parts)
+        # A swinging airborne toe walking toward a 2.5 cm higher landing earns clearance up to
+        # 2 cm over that landing (0.045 saturates); a landing under the 1 cm rise gate, a
+        # turning row and a standing row earn nothing.
+        values["toe_landing_rise_m"] = torch.full((4, 6), 0.025)
+        values["toe_landing_rise_m"][1] = 0.005
+        values["toe_clearance_m"] = torch.full((4, 6), 0.045)
+        paid, parts = measured_reward(values, commands, terminated, v43, 0.1)
+        torch.testing.assert_close(parts["landing_lift"], torch.tensor([0.5, 0.0, 0.0, 0.0]))
+        torch.testing.assert_close(paid, base + parts["landing_lift"])
+        # The saturation scales with the obstacle: half the clearance pays half.
+        values["toe_clearance_m"] = torch.full((4, 6), 0.0225)
+        _, parts = measured_reward(values, commands, terminated, v43, 0.1)
+        torch.testing.assert_close(parts["landing_lift"], torch.tensor([0.25, 0.0, 0.0, 0.0]))
+        missing = {k: v for k, v in values.items() if k != "toe_landing_rise_m"}
+        with self.assertRaises(ValueError):
+            measured_reward(missing, commands, terminated, v43, 0.1)
+
     def test_the_swing_clearance_telemetry_reads_the_terrain_grid(self):
         task, native = moving_task(forward, reward=EXPERIMENTS["destination_v41"]["reward"])
         # One full control on the stock flat floor: the reward runs end to end with the term
@@ -1957,6 +2004,53 @@ class TerrainCampaignTests(unittest.TestCase):
         self.assertTrue(bool((rough[0, torch.tensor([0, 2, 3, 5])] < 1e-6).all()))
         torch.testing.assert_close(rough[0, 1], torch.tensor(0.03))
         torch.testing.assert_close(rough[0, 4], torch.tensor(0.03))
+
+    def test_the_landing_lift_telemetry_predicts_the_touchdown_ground(self):
+        task, native = moving_task(forward, reward=EXPERIMENTS["destination_v43"]["reward"])
+        # One full control on the stock flat floor: the reward runs end to end, zero rise keeps
+        # the gate closed, and the clearance telemetry rides along for the shared pay reference.
+        task.step(torch.zeros(1, 18))
+        torch.testing.assert_close(task.last_components["landing_lift"], torch.zeros(1))
+        flat = task.reward_telemetry(native.commands)
+        torch.testing.assert_close(flat["toe_landing_rise_m"], torch.zeros(1, 6))
+        self.assertIn("toe_clearance_m", flat)
+        # The 5 cm riser between x = 0.1 and 0.2, faced from x = 0.05 at heading pi/2 (a forward
+        # command walks along world +x there); every toe hangs at the body's planar position.
+        task._clearance_grid = TerrainGrid(
+            SimpleNamespace(
+                heights=[[0.0, 0.0, 0.05, 0.05]] * 4,
+                xs=(0.0, 0.3),
+                ys=(0.0, 0.3),
+                resolution=0.1,
+                nx=4,
+                ny=4,
+            )
+        )
+        native.current["root"] = pose_at(0.05, 0.15, math.pi / 2)
+        world = torch.zeros(1, 6, 3)
+        world[0, :, 0], world[0, :, 1], world[0, :, 2] = 0.05, 0.15, 0.02
+        # Standing still, the predicted touchdown is the ground already underfoot: no rise.
+        still = task._landing_lift_telemetry({"toe_xyz_world": world}, torch.zeros(1, 3))
+        torch.testing.assert_close(still["toe_landing_rise_m"], torch.zeros(1, 6))
+        # Walking at the riser, the prediction advances into it: some toe's landing reads ground
+        # past the 1 cm gate, none reads more than the riser's 5 cm, and the values are exactly
+        # the footfall touchdown prediction sampled at the ring maximum.
+        command = torch.tensor([[0.1, 0.0, 0.0]])
+        rise = task._landing_lift_telemetry({"toe_xyz_world": world}, command)["toe_landing_rise_m"]
+        self.assertGreater(float(rise.max()), 0.01)
+        self.assertLessEqual(float(rise.max()), 0.05 + 1e-6)
+        self.assertTrue(bool((rise > -1e-6).all()))
+        seconds = touchdown_seconds(task.gait.phase, command, "speed_v1")
+        points = touchdown_points(
+            native.current["root"], command, native.current["toe_body"], seconds
+        )
+        ring = torch.tensor(RING_XY, dtype=torch.float64)
+        landing = task._clearance_grid.sample(
+            points[:, :, None, 0] + ring[None, None, :, 0],
+            points[:, :, None, 1] + ring[None, None, :, 1],
+        ).amax(-1)
+        expected = landing - task._clearance_grid.sample(world[..., 0], world[..., 1])
+        torch.testing.assert_close(rise, expected)
 
     def test_terrain_v1_appends_zeros_without_a_terrain_and_needs_the_speed_scaled_clock(self):
         task, native = moving_task(forward, reward=EXPERIMENTS["destination_v33"]["reward"])

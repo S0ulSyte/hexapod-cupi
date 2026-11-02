@@ -82,9 +82,17 @@ class ActiveTaskTests(unittest.TestCase):
         # defaults, so the recorded checkpoint's options still reproduce the active default reward.
         self.assertEqual(
             set(active) - set(expected),
-            {"swing_clearance_weight", "swing_clearance_target_m", "swing_clearance_rough_m"},
+            {
+                "swing_clearance_weight",
+                "swing_clearance_target_m",
+                "swing_clearance_rough_m",
+                "landing_lift_weight",
+                "landing_lift_target_m",
+                "landing_lift_rise_m",
+            },
         )
         self.assertEqual(active["swing_clearance_weight"], 0.0)
+        self.assertEqual(active["landing_lift_weight"], 0.0)
         self.assertEqual({k: v for k, v in active.items() if k in expected}, expected)
         baseline = importlib.import_module("_active_task_baseline.task")
         self.assertEqual(command_bank(TaskConfig()), baseline.command_bank(baseline.TaskConfig()))

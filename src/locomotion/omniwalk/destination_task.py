@@ -81,7 +81,12 @@ from locomotion.omniwalk.mdp.destination import (
     destination_distance,
     planar_pose,
 )
-from locomotion.omniwalk.mdp.footfall import RING_XY, TerrainGrid
+from locomotion.omniwalk.mdp.footfall import (
+    RING_XY,
+    TerrainGrid,
+    touchdown_points,
+    touchdown_seconds,
+)
 from locomotion.omniwalk.mdp.frames import inverse_rotate, navigation
 from locomotion.omniwalk.mdp.gait import GaitPhase
 from locomotion.omniwalk.mdp.rewards import RewardConfig
@@ -893,6 +898,20 @@ EXPERIMENTS["destination_v42"] = {
         turn_rate_choices_rad_s=(0.3, 0.4),
     ),
 }
+# destination_v43 is destination_v38 with the landing-conditioned lift on (weight 0.5,
+# subordinate to the schedule's 2.0): tc9_c1 showed apex pay over the current cell makes the
+# 2.5 cm steps WORSE — the stalls read as horizontal toe-riser contact, which height over the
+# ground behind the riser cannot prevent. This successor pays a swinging unloaded toe only when
+# its predicted touchdown (the footfall schedule-and-command advance, ring maximum) lands at
+# least 1 cm above the ground under the toe now — the 2.5 cm risers, the 2-4 cm bumps and the
+# upper 9.5-degree ramp open the gate; flat ground, descents and the held 4/7-degree ramps
+# never do — in proportion to its clearance over the current ground, saturating 2 cm above the
+# landing ground itself, so a taller obstacle demands a proportionally higher swing. One change
+# against v38.
+EXPERIMENTS["destination_v43"] = {
+    **EXPERIMENTS["destination_v38"],
+    "reward": replace(EXPERIMENTS["destination_v38"]["reward"], landing_lift_weight=0.5),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
@@ -1049,8 +1068,10 @@ class DestinationTrainingTask(TrainingTask):
             device = telemetry["scheduled_swing"].device
             telemetry["scheduled_swing"] = swing.to(device)
             telemetry["schedule_period_s"] = period.to(device, torch.float32)
-        if self.reward_config.swing_clearance_weight:
+        if self.reward_config.swing_clearance_weight or self.reward_config.landing_lift_weight:
             telemetry.update(self._swing_clearance_telemetry(telemetry))
+        if self.reward_config.landing_lift_weight:
+            telemetry.update(self._landing_lift_telemetry(telemetry, command))
         return telemetry
 
     def _swing_clearance_telemetry(self, telemetry):
@@ -1073,6 +1094,36 @@ class DestinationTrainingTask(TrainingTask):
             "toe_clearance_m": world[..., 2].float() - samples[0],
             "toe_rough_m": samples.amax(0) - samples.amin(0),
         }
+
+    def _landing_lift_telemetry(self, telemetry, command):
+        """Each toe's predicted-touchdown ground rise over the ground under it now, [n, 6]: the
+        footfall module's schedule-and-command touchdown prediction, sampled at the five ring
+        points and taken at their maximum so a prediction landing just short of a riser still
+        reads the riser top, on the same detached cpu float64 copies as the footfall inputs.
+        The stock flat floor reports zero rise, which the reward's rise gate prices at nothing."""
+        world = telemetry["toe_xyz_world"].detach().cpu()
+        if self._clearance_grid == "unset":
+            terrain = getattr(self.env, "terrain", None)
+            self._clearance_grid = None if terrain is None else TerrainGrid(terrain)
+        if self._clearance_grid is None:
+            return {"toe_landing_rise_m": torch.zeros(world.shape[0], 6)}
+        if self.gait is None:
+            raise ValueError("The landing lift needs the task's speed-scaled gait clock")
+        state = self.env.current
+        cpu_command = command.detach().cpu()
+        seconds = touchdown_seconds(
+            self.gait.phase.detach().cpu(), cpu_command, self.reward_config.gait_clock_scaling
+        )
+        points = touchdown_points(
+            state["root"].detach().cpu(), cpu_command, state["toe_body"].detach().cpu(), seconds
+        )
+        ring = torch.tensor(RING_XY, dtype=torch.float64)
+        landing = self._clearance_grid.sample(
+            points[:, :, None, 0] + ring[None, None, :, 0],
+            points[:, :, None, 1] + ring[None, None, :, 1],
+        ).amax(-1)
+        ground = self._clearance_grid.sample(world[..., 0], world[..., 1])
+        return {"toe_landing_rise_m": landing - ground}
 
     def _next_command_observation(self, output):
         output = super()._next_command_observation(output)
