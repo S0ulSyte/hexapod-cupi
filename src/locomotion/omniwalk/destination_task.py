@@ -912,6 +912,17 @@ EXPERIMENTS["destination_v43"] = {
     **EXPERIMENTS["destination_v38"],
     "reward": replace(EXPERIMENTS["destination_v38"]["reward"], landing_lift_weight=0.5),
 }
+# destination_v44 is destination_v42 (the native consolidation recipe: v38 bearings and
+# speeds, turns at 0.20 share drawing 0.3/0.4 rad/s) with the landing-conditioned lift on at
+# v43's proven dose. The tc9_d2 leg (v43, 1000 surrogate updates from tc9_a u200) crossed the
+# 9.5-degree hill 6/6 where its matched-experience control (tc9_a u1000, v38 alone) managed
+# 2/6 bimodal, held every held course and scored the best in-scope flat of any leg (31/36)
+# at a horizon that collapsed the control — the lift is proven and consolidates natively,
+# where fresh runs showed none of the surrogate legs' drift tax.
+EXPERIMENTS["destination_v44"] = {
+    **EXPERIMENTS["destination_v42"],
+    "reward": replace(EXPERIMENTS["destination_v42"]["reward"], landing_lift_weight=0.5),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.

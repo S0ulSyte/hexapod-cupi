@@ -1964,6 +1964,14 @@ class TerrainCampaignTests(unittest.TestCase):
         values["toe_clearance_m"] = torch.full((4, 6), 0.0225)
         _, parts = measured_reward(values, commands, terminated, v43, 0.1)
         torch.testing.assert_close(parts["landing_lift"], torch.tensor([0.25, 0.0, 0.0, 0.0]))
+        # The native consolidation recipe carries the lift on top of v42 unchanged.
+        v42 = EXPERIMENTS["destination_v42"]["reward"]
+        v44 = EXPERIMENTS["destination_v44"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v44).items() if asdict(v42)[k] != v}, {"landing_lift_weight"}
+        )
+        self.assertEqual(v44.landing_lift_weight, 0.5)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v44"], "terrain_v2")
         missing = {k: v for k, v in values.items() if k != "toe_landing_rise_m"}
         with self.assertRaises(ValueError):
             measured_reward(missing, commands, terminated, v43, 0.1)
