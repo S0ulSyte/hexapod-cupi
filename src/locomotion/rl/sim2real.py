@@ -73,12 +73,22 @@ def _core_actor(core, obs, obs_groups, obs_set, output_dim):
 
 
 class _CompensatedMean(nn.Module):
-    """The composite pre-distribution output: the frozen core on modulated inputs plus a delta."""
+    """The composite pre-distribution output: the frozen core on modulated inputs plus a delta.
 
-    def __init__(self, core_mlp, encoder, limits, output_dim, latent_dim):
+    With an ``identification`` module and ``condition_heads`` the heads read the DETACHED
+    identification latent: supervision alone owns that latent's geometry (heads cannot warp it,
+    the s2r_b failure), while the heads finally receive a code that means something. Without
+    conditioning the heads read the reward-only control latent, as the first arms did.
+    """
+
+    def __init__(
+        self, core_mlp, encoder, limits, output_dim, latent_dim, identification, condition_heads
+    ):
         super().__init__()
         self.core = core_mlp
         self.encoder = encoder
+        self.identification = identification
+        self.condition_heads = condition_heads
         self.gain_head = nn.Linear(latent_dim, SLOT_COUNT)
         self.bias_head = nn.Linear(latent_dim, SLOT_COUNT)
         self.delta_head = nn.Linear(latent_dim, output_dim)
@@ -93,8 +103,13 @@ class _CompensatedMean(nn.Module):
     def latent(self, observation):
         return self.encoder(observation)
 
+    def heads_latent(self, observation):
+        if self.condition_heads:
+            return self.identification(observation).detach()
+        return self.encoder(observation)
+
     def forward(self, observation):
-        latent = self.encoder(observation)
+        latent = self.heads_latent(observation)
         gains = 1.0 + self.gain_limit * torch.tanh(self.gain_head(latent))
         biases = self.bias_limit * torch.tanh(self.bias_head(latent))
         modulated = observation.clone()
@@ -125,10 +140,13 @@ class CompensatedActor(MLPModel):
         observation_bias_limit=0.25,
         action_delta_limit=0.25,
         identification=False,
+        condition_heads=False,
         **settings,
     ):
         if core is None:
             raise ValueError("CompensatedActor needs the frozen core settings")
+        if condition_heads and not identification:
+            raise ValueError("Conditioned heads need the identification encoder")
         limits = (observation_gain_limit, observation_bias_limit, action_delta_limit)
         if not all(type(limit) is float and 0.0 < limit <= 1.0 for limit in limits):
             raise ValueError("The gain, bias and delta limits are floats in (0, 1]")
@@ -149,28 +167,39 @@ class CompensatedActor(MLPModel):
             encoder.extend((nn.Linear(width, int(size)), nn.ELU()))
             width = int(size)
         encoder.append(nn.Linear(width, latent_dim))
-        # The composite replaces the stock trunk; only the compensator's parameters require grad.
-        self.mlp = _CompensatedMean(
-            frozen.mlp, nn.Sequential(*encoder), limits, output_dim, latent_dim
-        )
         # A separate identification encoder keeps supervision out of the control path entirely:
         # s2r_b showed that supervising the control encoder stretches the latent under the heads
-        # (z std 0.67 -> 1.64) and shifts behavior incidentally. With this module the instrument
-        # and the gait cannot pull on each other.
-        self.identification = None
+        # (z std 0.67 -> 1.64) and shifts behavior incidentally. The supervised module is only
+        # read by the heads DETACHED (condition_heads), so the instrument and the gait cannot
+        # pull on each other in either direction.
+        instrument = None
         if identification:
             stages, width = [], self.obs_dim
             for size in encoder_hidden:
                 stages.extend((nn.Linear(width, int(size)), nn.ELU()))
                 width = int(size)
             stages.append(nn.Linear(width, latent_dim))
-            self.identification = nn.Sequential(*stages)
+            instrument = nn.Sequential(*stages)
+        # The composite replaces the stock trunk; only the compensator's parameters require grad.
+        self.mlp = _CompensatedMean(
+            frozen.mlp,
+            nn.Sequential(*encoder),
+            limits,
+            output_dim,
+            latent_dim,
+            instrument,
+            condition_heads,
+        )
+
+    @property
+    def identification(self):
+        return self.mlp.identification
 
     def dynamics_latent(self, obs):
         """The identification latent when the actor keeps one, else the control-path latent."""
         latent = obs if torch.is_tensor(obs) else self.get_latent(obs)
-        if self.identification is not None:
-            return self.identification(latent)
+        if self.mlp.identification is not None:
+            return self.mlp.identification(latent)
         return self.mlp.latent(latent)
 
 

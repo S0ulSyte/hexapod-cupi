@@ -37,7 +37,7 @@ WIDE = DynamicsRandomization(
 )
 
 
-def composite_actor(tmp):
+def composite_actor(tmp, identification=True, condition_heads=False):
     """A small compensated actor around a freshly written core checkpoint."""
     from rsl_rl.models import MLPModel
 
@@ -74,7 +74,8 @@ def composite_actor(tmp):
         },
         "encoder_hidden": (32,),
         "latent_dim": 6,
-        "identification": True,
+        "identification": identification,
+        "condition_heads": condition_heads,
         "hidden_dims": [32],
         "activation": "elu",
         "obs_normalization": False,
@@ -144,8 +145,7 @@ class LatentSupervisionTests(unittest.TestCase):
             LatentSupervision(SimpleNamespace(actor=plain, update=lambda: {}), wrapper, WIDE, 1e-3)
         with tempfile.TemporaryDirectory() as tmp:
             actor = composite_actor(tmp)
-            without = composite_actor(tmp)
-            without.identification = None
+            without = composite_actor(tmp, identification=False)
             with self.assertRaises(ValueError):
                 LatentSupervision(
                     SimpleNamespace(actor=without, update=lambda: {}), wrapper, WIDE, 1e-3
@@ -158,6 +158,35 @@ class LatentSupervisionTests(unittest.TestCase):
             supervision = LatentSupervision(algorithm, wrapper, WIDE, 1e-3)
             self.assertEqual(supervision.update(), {})
             self.assertIsNone(supervision.last_loss)
+
+    def test_conditioned_heads_read_the_detached_instrument(self):
+        torch.manual_seed(7)
+        with tempfile.TemporaryDirectory() as tmp:
+            actor = composite_actor(tmp, condition_heads=True)
+            obs = TensorDict(
+                {"policy": torch.randn(4, 278), "critic": torch.randn(4, 281)}, batch_size=[4]
+            )
+            # Zero heads: the composite is still exactly the frozen core.
+            self.assertTrue(torch.equal(actor(obs), torch.tanh(actor.mlp.core(obs["policy"]))))
+            with torch.no_grad():
+                actor.mlp.delta_head.weight.normal_(0, 5)
+            out = actor(obs)
+            out.sum().backward()
+            # The heads train; the instrument is read detached, so supervision alone shapes it.
+            self.assertTrue(all(p.grad is None for p in actor.identification.parameters()))
+            self.assertIsNotNone(actor.mlp.delta_head.weight.grad)
+            with torch.no_grad():
+                reference = out.detach().clone()
+                for parameter in actor.identification.parameters():
+                    parameter.normal_(0, 1)
+                changed = actor(obs)
+                self.assertFalse(torch.equal(reference, changed))
+                # The control encoder is out of the conditioned path entirely.
+                for parameter in actor.mlp.encoder.parameters():
+                    parameter.normal_(0, 1)
+                self.assertTrue(torch.equal(actor(obs), changed))
+            with self.assertRaises(ValueError):
+                composite_actor(tmp, identification=False, condition_heads=True)
 
     def test_the_wrapper_buffers_observations_with_their_draws(self):
         env = SurrogateEnv(
