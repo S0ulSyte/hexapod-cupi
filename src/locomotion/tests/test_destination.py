@@ -1888,6 +1888,68 @@ class TerrainCampaignTests(unittest.TestCase):
         ahead = walks & (command[:, 1].abs() < 1e-9) & (command[:, 0] > 0)
         self.assertAlmostEqual(float(ahead.double().sum() / walks.double().sum()), 0.25, delta=0.03)
 
+    def test_destination_v45_draws_arcing_walks(self):
+        v44 = EXPERIMENTS["destination_v44"]["reward"]
+        v45 = EXPERIMENTS["destination_v45"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v45).items() if asdict(v44)[k] != v},
+            {"arc_fraction", "arc_yaw_choices_rad_s"},
+        )
+        self.assertEqual(v45.arc_fraction, 0.25)
+        self.assertEqual(v45.arc_yaw_choices_rad_s, (0.05, 0.2))
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v45"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v44"].items() if k != "reward"},
+        )
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v45"], "terrain_v2")
+        v45.validate()
+        for broken in (
+            {"arc_fraction": 0.0},
+            {"arc_fraction": 1.5},
+            {"arc_fraction": None},
+            {"arc_yaw_choices_rad_s": ()},
+            {"arc_yaw_choices_rad_s": (0.05, -0.2)},
+            {"arc_yaw_choices_rad_s": [0.05, 0.2]},
+        ):
+            with self.assertRaises(ValueError):
+                replace(v45, **broken).validate()
+        with self.assertRaises(ValueError):
+            # Arcing walks need a run mix to draw walks from.
+            replace(
+                EXPERIMENTS["destination_v26"]["reward"],
+                arc_fraction=0.25,
+                arc_yaw_choices_rad_s=(0.05, 0.2),
+            ).validate()
+        native = GaitDouble(8192)
+        native.cfg.episode_seconds, native.cfg.declaration = 32.0, dict
+        task = DestinationTrainingTask(native, TaskConfig(), None, v45)
+        task.reset()
+        command = native.commands
+        planar = torch.linalg.vector_norm(command[:, :2], dim=-1)
+        walks = planar > 0
+        arcs = walks & (command[:, 2] != 0)
+        rates = command[arcs, 2].abs()
+
+        def near(value):
+            return (rates - value).abs() < 1e-6
+
+        # Every arcing walk draws one of the two scored tiers, both signs, about a quarter of
+        # the walks; the pure turns keep the v44 turn rates and the walk shares hold.
+        self.assertTrue(bool((near(0.05) | near(0.2)).all()))
+        self.assertAlmostEqual(float(arcs.double().sum() / walks.double().sum()), 0.25, delta=0.03)
+        self.assertAlmostEqual(float(near(0.2).double().mean()), 0.5, delta=0.06)
+        self.assertAlmostEqual(float((command[arcs, 2] > 0).double().mean()), 0.5, delta=0.06)
+        self.assertAlmostEqual(float(walks.double().mean()), 0.70, delta=0.02)
+        turns = (planar == 0) & (command[:, 2] != 0)
+        turn_rates = command[turns, 2].abs()
+        self.assertTrue(
+            bool(
+                ((turn_rates - 0.3).abs() < 1e-6).logical_or((turn_rates - 0.4).abs() < 1e-6).all()
+            )
+        )
+        self.assertTrue(bool((planar[arcs] >= 0.05 - 1e-6).all()))
+        self.assertTrue(bool((planar[arcs] <= 0.17 + 1e-6).all()))
+
     def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
         v38 = EXPERIMENTS["destination_v38"]["reward"]
         v41 = EXPERIMENTS["destination_v41"]["reward"]

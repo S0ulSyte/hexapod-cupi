@@ -144,6 +144,8 @@ class DestinationRewardConfig(RewardConfig):
     walk_forward_only: bool | None = None
     walk_forward_bias: float | None = None
     turn_rate_choices_rad_s: tuple | None = None
+    arc_fraction: float | None = None
+    arc_yaw_choices_rad_s: tuple | None = None
     slope_inputs: str | None = None
     command_controls: int = 0
 
@@ -381,6 +383,22 @@ class DestinationRewardConfig(RewardConfig):
             raise ValueError(
                 "Turn-rate choices are a nonempty tuple of positive finite rad/s rates and "
                 "need a run mix"
+            )
+        arc = (self.arc_fraction, self.arc_yaw_choices_rad_s)
+        if any(value is not None for value in arc) and (
+            any(value is None for value in arc)
+            or self.run_mix is None
+            or not (math.isfinite(self.arc_fraction) and 0 < self.arc_fraction <= 1)
+            or type(self.arc_yaw_choices_rad_s) is not tuple
+            or not self.arc_yaw_choices_rad_s
+            or not all(
+                isinstance(rate, float) and math.isfinite(rate) and rate > 0
+                for rate in self.arc_yaw_choices_rad_s
+            )
+        ):
+            raise ValueError(
+                "Arcing walks need a fraction in (0, 1] of the drawn walks, a nonempty tuple "
+                "of positive finite rad/s yaw rates, and a run mix"
             )
         ceiling = (
             (self.linear_tracking_weight + self.yaw_tracking_weight)
@@ -923,6 +941,21 @@ EXPERIMENTS["destination_v44"] = {
     **EXPERIMENTS["destination_v42"],
     "reward": replace(EXPERIMENTS["destination_v42"]["reward"], landing_lift_weight=0.5),
 }
+# destination_v45 is destination_v44 with arcing walks: the run mix has only ever drawn pure
+# turns, stands and straight walks, so the scored turn-while-walk families were never in the
+# command distribution — v29's near-threshold misses and u600_002's demand-heavy arc failures
+# both say exposure is the binding lever (decisions.md, the 2026-11-03 arc scope ruling). A
+# quarter of the drawn walks now carry a signed yaw from the two scored arc tiers (0.05 rad/s
+# under gentle_arc, 0.2 rad/s under combined and the transition's diagonal turns); the stopping
+# walks arc too, so stops from an arc are practised. One change against v44.
+EXPERIMENTS["destination_v45"] = {
+    **EXPERIMENTS["destination_v44"],
+    "reward": replace(
+        EXPERIMENTS["destination_v44"]["reward"],
+        arc_fraction=0.25,
+        arc_yaw_choices_rad_s=(0.05, 0.2),
+    ),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
@@ -1220,15 +1253,33 @@ class DestinationTrainingTask(TrainingTask):
         fresh = indices[~torch.isin(indices, stopping)]
         if not len(fresh):
             return
-        # The third draw column exists only when turn rates are drawn, so the RNG stream of
-        # every experiment without the knob stays byte-identical.
+        # Extra draw columns exist only when their knobs are set, so the RNG stream of every
+        # experiment without them stays byte-identical.
         columns = 2 if config.turn_rate_choices_rad_s is None else 3
+        arc_columns = None
+        if config.arc_fraction is not None:
+            arc_columns = (columns, columns + 1)
+            columns += 2
         draws = torch.rand(len(fresh), columns, generator=self.rng).to(fresh.device)
         edges = torch.tensor(config.run_mix, dtype=torch.float64).cumsum(0).to(fresh.device)
         kind = torch.bucketize(draws[:, 0].double(), edges[:-1], right=True)  # 0 turn .. 3 walk
         self.run_length[fresh] = config.command_controls
         self.remaining_controls[fresh] = config.command_controls
         self._uniform_walks(fresh[kind >= 2])
+        if arc_columns is not None:
+            # A drawn share of the walks, stopping walks included, carries a signed yaw rate:
+            # one draw picks the arcing walks, the other their rate and sign together.
+            walking = kind >= 2
+            member = draws[walking, arc_columns[0]]
+            arcs = fresh[walking][member < config.arc_fraction]
+            choices = torch.tensor(config.arc_yaw_choices_rad_s).to(self.env.commands)
+            signed = (
+                draws[walking, arc_columns[1]][member < config.arc_fraction] * 2 * len(choices)
+            ).long()
+            signed = signed.clamp_(max=2 * len(choices) - 1)
+            rate = choices[signed % len(choices)]
+            sign = torch.where(signed >= len(choices), 1.0, -1.0).to(rate)
+            self.env.commands[arcs, 2] = sign * rate
         turns = fresh[kind == 0]
         sign = torch.where(draws[kind == 0, 1] < 0.5, -1.0, 1.0).to(self.env.commands)
         rate = self.config.yaw_rate_rad_s
