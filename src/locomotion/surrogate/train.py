@@ -400,6 +400,14 @@ def build_parser():
         "motor_scale=(0.9,1.1); without any the canonical dynamics stay bitwise unchanged.",
     )
     parser.add_argument(
+        "--latent-supervision",
+        type=float,
+        default=0.0,
+        help="Learning rate of the identification loss on the compensator's latent (the task "
+        "reward is untouched); 0 keeps the stock learner. Needs --randomize and the "
+        "locomotion.rl.sim2real:Sim2RealVecEnv wrapper.",
+    )
+    parser.add_argument(
         "--resume", type=Path, help="Checkpoint to continue from (same configuration)."
     )
     parser.add_argument(
@@ -515,6 +523,7 @@ def run(args, argv=None):
         "config": cfg.declaration(),
         "contact_model": asdict(contact),
         "randomization": None if randomization is None else asdict(randomization),
+        "latent_supervision": args.latent_supervision or None,
         "terrain": None
         if terrain is None
         else {
@@ -661,6 +670,13 @@ def run(args, argv=None):
             schedule.completed = first
             schedule.apply()
             runner.alg.update = schedule.update
+        if args.latent_supervision:
+            from locomotion.rl.sim2real import LatentSupervision
+
+            supervision = LatentSupervision(
+                runner.alg, wrapped, randomization, args.latent_supervision
+            )
+            runner.alg.update = supervision.update
 
         def checkpoint(update):
             path = args.output / f"checkpoint_update{update:06d}.pt"

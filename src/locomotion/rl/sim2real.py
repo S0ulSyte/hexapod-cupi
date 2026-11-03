@@ -18,10 +18,13 @@ import copy
 import hashlib
 from pathlib import Path
 
+import numpy as np
 import torch
 from rsl_rl.models import MLPModel
 from rsl_rl.utils import resolve_callable
 from torch import nn
+
+from locomotion.rl.destination_wrapper import DestinationVecEnv
 
 # The actor observation starts with five 42-value proprioception frames and, at 210:213 and
 # 213:231, the command and the executed-target feature (rl/wrapper.py records the layout).
@@ -173,3 +176,101 @@ class WarmStartedCritic(MLPModel):
             raise ValueError("Unknown core settings: " + ", ".join(sorted(extra)))
         checkpoint = _verified_checkpoint(core)
         self.load_state_dict(checkpoint["critic_state_dict"], strict=True)
+
+
+# The identification targets, in the order the wrapper stacks them and the readout reads them.
+TARGET_FIELDS = (
+    "friction_scale",
+    "mass_scale",
+    "motor_scale",
+    "kd_scale",
+    "action_delay_controls",
+    "sag_per_minute",
+)
+
+
+class Sim2RealVecEnv(DestinationVecEnv):
+    """``DestinationVecEnv`` that pairs each policy observation with the episode's dynamics draws.
+
+    Under a randomized environment it keeps a bounded buffer of (observation, draw) rows for
+    ``LatentSupervision``; without randomization the buffer stays empty and the wrapper behaves
+    exactly like its parent, so evaluation rebuilds recorded runs unchanged.
+    """
+
+    def __init__(self, task, tensor_dict=None, *, supervision_rows=8192, **options):
+        super().__init__(task, tensor_dict, **options)
+        self.supervision_rows = int(supervision_rows)
+        self._supervision_obs, self._supervision_draws = [], []
+
+    def observations(self, output):
+        observation = super().observations(output)
+        draws = getattr(self.task.env, "randomization_draws", None)
+        if draws is not None:
+            target = torch.from_numpy(
+                np.stack([draws[name] for name in TARGET_FIELDS], -1).astype(np.float32)
+            )
+            self._supervision_obs.append(observation["policy"].detach().clone())
+            self._supervision_draws.append(target)
+            kept = sum(len(rows) for rows in self._supervision_obs)
+            while kept - len(self._supervision_obs[0]) >= self.supervision_rows:
+                kept -= len(self._supervision_obs.pop(0))
+                self._supervision_draws.pop(0)
+        return observation
+
+    def supervision_batch(self):
+        """Every buffered (observation, draw) row, or ``None`` while the buffer is empty."""
+        if not self._supervision_obs:
+            return None
+        return torch.cat(self._supervision_obs), torch.cat(self._supervision_draws)
+
+
+class LatentSupervision:
+    """Teach the compensator's latent to identify the drawn dynamics (RMA-style supervision).
+
+    The task reward is untouched: after each PPO update this runs a few supervised steps on the
+    compensator's encoder and a readout head alone, regressing the wrapper's buffered draws
+    (scaled to [-1, 1] over their declared ranges) from the latent. The readout head lives here,
+    not in the checkpoint; the recorded instrument stays the offline held-out regression of the
+    readout suite — this loss only makes the information exist.
+    """
+
+    def __init__(self, algorithm, wrapper, randomization, rate, steps=4):
+        if not hasattr(algorithm.actor, "dynamics_latent"):
+            raise ValueError("Latent supervision needs a CompensatedActor")
+        if not hasattr(wrapper, "supervision_batch"):
+            raise ValueError("Latent supervision needs the Sim2RealVecEnv wrapper")
+        if randomization is None:
+            raise ValueError("Latent supervision needs a randomized environment")
+        self.actor, self.wrapper, self.steps = algorithm.actor, wrapper, int(steps)
+        centers, halves = [], []
+        for name in TARGET_FIELDS:
+            value = getattr(randomization, name)
+            low, high = (value, value) if isinstance(value, int) else value
+            centers.append((high + low) / 2.0)
+            # A degenerate range contributes nothing: its rows scale to zero error weight.
+            halves.append((high - low) / 2.0 or float("inf"))
+        self.center = torch.tensor(centers)
+        self.half = torch.tensor(halves)
+        latent_dim = self.actor.mlp.encoder[-1].out_features
+        self.readout = nn.Linear(latent_dim, len(TARGET_FIELDS))
+        self.optimizer = torch.optim.Adam(
+            [*self.actor.mlp.encoder.parameters(), *self.readout.parameters()], lr=float(rate)
+        )
+        self.inner_update = algorithm.update
+        self.last_loss = None
+
+    def update(self):
+        losses = self.inner_update()
+        batch = self.wrapper.supervision_batch()
+        if batch is not None:
+            observation, draws = batch
+            target = (draws - self.center) / self.half
+            for _ in range(self.steps):
+                self.optimizer.zero_grad()
+                loss = nn.functional.mse_loss(
+                    self.readout(self.actor.dynamics_latent(observation)), target
+                )
+                loss.backward()
+                self.optimizer.step()
+            self.last_loss = float(loss.detach())
+        return losses
