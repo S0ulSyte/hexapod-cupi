@@ -124,6 +124,7 @@ class CompensatedActor(MLPModel):
         observation_gain_limit=0.2,
         observation_bias_limit=0.25,
         action_delta_limit=0.25,
+        identification=False,
         **settings,
     ):
         if core is None:
@@ -152,10 +153,24 @@ class CompensatedActor(MLPModel):
         self.mlp = _CompensatedMean(
             frozen.mlp, nn.Sequential(*encoder), limits, output_dim, latent_dim
         )
+        # A separate identification encoder keeps supervision out of the control path entirely:
+        # s2r_b showed that supervising the control encoder stretches the latent under the heads
+        # (z std 0.67 -> 1.64) and shifts behavior incidentally. With this module the instrument
+        # and the gait cannot pull on each other.
+        self.identification = None
+        if identification:
+            stages, width = [], self.obs_dim
+            for size in encoder_hidden:
+                stages.extend((nn.Linear(width, int(size)), nn.ELU()))
+                width = int(size)
+            stages.append(nn.Linear(width, latent_dim))
+            self.identification = nn.Sequential(*stages)
 
     def dynamics_latent(self, obs):
-        """The compensator's latent for readout measurements, from the observation dict or tensor."""
+        """The identification latent when the actor keeps one, else the control-path latent."""
         latent = obs if torch.is_tensor(obs) else self.get_latent(obs)
+        if self.identification is not None:
+            return self.identification(latent)
         return self.mlp.latent(latent)
 
 
@@ -235,8 +250,11 @@ class LatentSupervision:
     """
 
     def __init__(self, algorithm, wrapper, randomization, rate, steps=4):
-        if not hasattr(algorithm.actor, "dynamics_latent"):
-            raise ValueError("Latent supervision needs a CompensatedActor")
+        if getattr(algorithm.actor, "identification", None) is None:
+            raise ValueError(
+                "Latent supervision needs a CompensatedActor with identification=True; "
+                "supervising the control encoder moves behavior (s2r_b, decisions.md)"
+            )
         if not hasattr(wrapper, "supervision_batch"):
             raise ValueError("Latent supervision needs the Sim2RealVecEnv wrapper")
         if randomization is None:
@@ -251,10 +269,11 @@ class LatentSupervision:
             halves.append((high - low) / 2.0 or float("inf"))
         self.center = torch.tensor(centers)
         self.half = torch.tensor(halves)
-        latent_dim = self.actor.mlp.encoder[-1].out_features
+        latent_dim = self.actor.identification[-1].out_features
         self.readout = nn.Linear(latent_dim, len(TARGET_FIELDS))
         self.optimizer = torch.optim.Adam(
-            [*self.actor.mlp.encoder.parameters(), *self.readout.parameters()], lr=float(rate)
+            [*self.actor.identification.parameters(), *self.readout.parameters()],
+            lr=float(rate),
         )
         self.inner_update = algorithm.update
         self.last_loss = None

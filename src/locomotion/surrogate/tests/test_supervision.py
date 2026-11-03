@@ -74,6 +74,7 @@ def composite_actor(tmp):
         },
         "encoder_hidden": (32,),
         "latent_dim": 6,
+        "identification": True,
         "hidden_dims": [32],
         "activation": "elu",
         "obs_normalization": False,
@@ -143,6 +144,12 @@ class LatentSupervisionTests(unittest.TestCase):
             LatentSupervision(SimpleNamespace(actor=plain, update=lambda: {}), wrapper, WIDE, 1e-3)
         with tempfile.TemporaryDirectory() as tmp:
             actor = composite_actor(tmp)
+            without = composite_actor(tmp)
+            without.identification = None
+            with self.assertRaises(ValueError):
+                LatentSupervision(
+                    SimpleNamespace(actor=without, update=lambda: {}), wrapper, WIDE, 1e-3
+                )
             algorithm = SimpleNamespace(actor=actor, update=lambda: {})
             with self.assertRaises(ValueError):
                 LatentSupervision(algorithm, SimpleNamespace(), WIDE, 1e-3)
