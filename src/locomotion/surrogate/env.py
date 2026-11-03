@@ -146,10 +146,30 @@ class DynamicsRandomization:
                 raise ValueError(name + " needs a finite low <= high range")
             if low < least or high > most:
                 raise ValueError(f"{name} must stay within ({least}, {most})")
-        if type(self.action_delay_controls) is not int or not 0 <= self.action_delay_controls <= 2:
-            raise ValueError("action_delay_controls is a whole count of 0 to 2 controls")
+        low, high = self.delay_range()
+        if not (type(low) is int and type(high) is int and 0 <= low <= high <= 2):
+            raise ValueError(
+                "action_delay_controls is a whole count or (low, high) range of 0 to 2 controls"
+            )
         if not 0.5 <= self.sag_floor <= 1.0:
             raise ValueError("sag_floor lies in [0.5, 1]")
+
+    def delay_range(self):
+        """The delay draw as a closed (low, high) range; the whole-count form means (0, count)."""
+        value = self.action_delay_controls
+        if type(value) is int:
+            return (0, value)
+        if isinstance(value, (tuple, list)) and len(value) == 2:
+            return (value[0], value[1])
+        return (value, value)
+
+    def field_range(self, name):
+        """The closed (low, high) range of a drawn field, for target scaling and calibration."""
+        if name == "action_delay_controls":
+            low, high = self.delay_range()
+            return (float(low), float(high))
+        low, high = getattr(self, name)
+        return (float(low), float(high))
 
 
 def randomization_overrides(items, base=None):
@@ -694,8 +714,8 @@ class SurrogateEnv:
             self._sag_rate = torch.zeros((cfg.num_envs, 1))
             # A row that drew delay d reads the action from d controls back, so the queue keeps
             # the largest delay plus the current control.
-            depth = self.randomization.action_delay_controls + 1
-            queued = self.randomization.action_delay_controls > 0
+            depth = self.randomization.delay_range()[1] + 1
+            queued = self.randomization.delay_range()[1] > 0
             self._delay_queue = torch.zeros((cfg.num_envs, depth, 18)) if queued else None
             self._delay_fill = torch.zeros(cfg.num_envs, dtype=torch.long) if queued else None
             self._delay_steps = torch.zeros(cfg.num_envs, dtype=torch.long) if queued else None
@@ -1010,9 +1030,8 @@ class SurrogateEnv:
                     r.sag_per_minute,
                 )
             )
-            delay = (
-                int(rng.integers(0, r.action_delay_controls + 1)) if r.action_delay_controls else 0
-            )
+            low_delay, high_delay = r.delay_range()
+            delay = int(rng.integers(low_delay, high_delay + 1)) if high_delay else 0
             model = self._models[row]
             model.body_mass[:] = self._base_body_mass * mass
             model.body_inertia[:] = self._base_body_inertia * mass

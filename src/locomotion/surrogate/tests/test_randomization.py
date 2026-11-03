@@ -60,11 +60,18 @@ class RandomizationTests(unittest.TestCase):
             dict(friction_scale=(0.1, 1.0)),
             dict(action_delay_controls=3),
             dict(action_delay_controls=1.0),
+            dict(action_delay_controls=(1, 0)),
+            dict(action_delay_controls=(0, 3)),
+            dict(action_delay_controls=(0.0, 1.0)),
             dict(sag_per_minute=(0.0, 0.6)),
             dict(sag_floor=0.4),
         ):
             with self.assertRaises(ValueError):
                 DynamicsRandomization(**bad)
+        self.assertEqual(DynamicsRandomization(action_delay_controls=1).delay_range(), (0, 1))
+        self.assertEqual(DynamicsRandomization(action_delay_controls=(1, 1)).delay_range(), (1, 1))
+        self.assertEqual(DynamicsRandomization().field_range("action_delay_controls"), (0.0, 0.0))
+        self.assertEqual(DynamicsRandomization().field_range("mass_scale"), (1.0, 1.0))
         # The touchdown correction reads one shared friction, so randomizing it needs the model off.
         with self.assertRaises(ValueError):
             build(1, DynamicsRandomization(friction_scale=(0.8, 1.2)))
@@ -168,6 +175,9 @@ class RandomizationTests(unittest.TestCase):
             delayed.step(second)
             plain.step(second)
             self.assertTrue(np.array_equal(delayed._state, plain._state))
+            fixed = build(2, DynamicsRandomization(action_delay_controls=(1, 1)))
+            self.assertEqual(fixed._delay_steps.tolist(), [1, 1])
+            fixed.close()
         finally:
             delayed.close()
             plain.close()

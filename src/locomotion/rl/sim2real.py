@@ -291,10 +291,11 @@ class LatentSupervision:
         self.actor, self.wrapper, self.steps = algorithm.actor, wrapper, int(steps)
         centers, halves = [], []
         for name in TARGET_FIELDS:
-            value = getattr(randomization, name)
-            low, high = (value, value) if isinstance(value, int) else value
+            low, high = randomization.field_range(name)
             centers.append((high + low) / 2.0)
             # A degenerate range contributes nothing: its rows scale to zero error weight.
+            # (The first arms passed the delay as a whole count, which this treated as
+            # degenerate — their supervision never trained the delay target; decisions.md.)
             halves.append((high - low) / 2.0 or float("inf"))
         self.center = torch.tensor(centers)
         self.half = torch.tensor(halves)
