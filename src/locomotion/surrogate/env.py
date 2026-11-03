@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import copy
 import hashlib
 import json
 import math
@@ -105,6 +106,62 @@ def contact_overrides(items, base=None):
             raise ValueError("Expected a ContactModel FIELD=VALUE, got " + item)
         options[key] = ast.literal_eval(value)
     return replace(ContactModel() if base is None else base, **options)
+
+
+@dataclass(frozen=True)
+class DynamicsRandomization:
+    """Per-episode dynamics draws for sim2real robustness training (design evidence only).
+
+    Each scale field is a closed ``(low, high)`` range on the canonical value, drawn uniformly
+    per episode and replica from a dedicated per-row stream, so draws are independent of batch
+    width, threading and the global torch/numpy generators. With ``randomization=None`` the
+    environment skips every branch below — no draw, no model copy, no extra tensor op — and the
+    trajectory stays bitwise identical to today's. ``action_delay_controls`` is the largest
+    whole-control transport delay a row may draw; ``sag_per_minute`` drains the torque ceiling
+    within an episode toward ``sag_floor``, keeping the drifting term separate from the slow
+    per-episode scales so a later hardware calibration can freeze the slow ones and keep
+    re-estimating the drift. The canonical motor, model and contact files stay untouched: the
+    scales act on this environment's per-replica copies alone.
+    """
+
+    friction_scale: tuple = (1.0, 1.0)
+    mass_scale: tuple = (1.0, 1.0)
+    motor_scale: tuple = (1.0, 1.0)
+    kd_scale: tuple = (1.0, 1.0)
+    action_delay_controls: int = 0
+    sag_per_minute: tuple = (0.0, 0.0)
+    sag_floor: float = 0.8
+
+    def __post_init__(self):
+        bounds = {
+            "friction_scale": (0.2, 3.0),
+            "mass_scale": (0.5, 1.5),
+            "motor_scale": (0.5, 1.5),
+            "kd_scale": (0.5, 1.5),
+            "sag_per_minute": (0.0, 0.5),
+        }
+        for name, (least, most) in bounds.items():
+            low, high = (float(value) for value in getattr(self, name))
+            if not (math.isfinite(low) and math.isfinite(high) and low <= high):
+                raise ValueError(name + " needs a finite low <= high range")
+            if low < least or high > most:
+                raise ValueError(f"{name} must stay within ({least}, {most})")
+        if type(self.action_delay_controls) is not int or not 0 <= self.action_delay_controls <= 2:
+            raise ValueError("action_delay_controls is a whole count of 0 to 2 controls")
+        if not 0.5 <= self.sag_floor <= 1.0:
+            raise ValueError("sag_floor lies in [0.5, 1]")
+
+
+def randomization_overrides(items, base=None):
+    """A ``DynamicsRandomization`` with ``FIELD=VALUE`` overrides; each value is a Python literal."""
+    names = {field.name for field in fields(DynamicsRandomization)}
+    options = {}
+    for item in items:
+        key, separator, value = item.partition("=")
+        if not separator or key not in names:
+            raise ValueError("Expected a DynamicsRandomization FIELD=VALUE, got " + item)
+        options[key] = ast.literal_eval(value)
+    return replace(DynamicsRandomization() if base is None else base, **options)
 
 
 @dataclass(frozen=True)
@@ -421,6 +478,7 @@ class SurrogateEnv:
         terrain=None,
         start=None,
         spawn=None,
+        randomization=None,
     ):
         """The constructor ignores ``asset`` (the native USD). ``reference_metadata``
         defaults to the repository stance.json, which native training passes.
@@ -460,6 +518,18 @@ class SurrogateEnv:
         if terrain is not None and self.contact_model.touchdown_overshoot:
             raise ValueError(
                 "A terrain needs touchdown_overshoot=False: the model assumes a flat floor"
+            )
+        # Per-episode dynamics draws (DynamicsRandomization); None keeps the canonical dynamics
+        # bitwise and skips every randomization branch below.
+        self.randomization = randomization
+        if (
+            randomization is not None
+            and randomization.friction_scale != (1.0, 1.0)
+            and self.contact_model.touchdown_overshoot
+        ):
+            raise ValueError(
+                "Friction randomization needs touchdown_overshoot=False: the touchdown "
+                "correction reads the one shared contact friction"
             )
         self.torch = lambda x: torch.as_tensor(x, dtype=torch.float32, device=self.device)
         self.joint_names = list(JOINT_NAMES)
@@ -560,7 +630,15 @@ class SurrogateEnv:
         self.threads = max(0, int(threads))
         self._pool = mj_rollout.Rollout(nthread=self.threads)
         self._datas = [mujoco.MjData(m) for _ in range(max(1, self.threads))]
-        self._models = [m] * cfg.num_envs
+        if self.randomization is None:
+            self._models = [m] * cfg.num_envs
+        else:
+            # Each replica owns a model copy so a reset can redraw its masses and friction alone;
+            # the canonical checks above ran on the shared base model first.
+            self._models = [copy.copy(m) for _ in range(cfg.num_envs)]
+            self._base_body_mass = m.body_mass.copy()
+            self._base_body_inertia = m.body_inertia.copy()
+            self._base_geom_friction = m.geom_friction.copy()
         self._chunk = max(1, math.ceil(cfg.num_envs / max(1, self.threads)))
         self._nstate = mujoco.mj_stateSize(m, mujoco.mjtState.mjSTATE_FULLPHYSICS)
         self._state = np.zeros((cfg.num_envs, self._nstate))
@@ -604,6 +682,31 @@ class SurrogateEnv:
         self.history = torch.zeros((cfg.num_envs, 5, 42))
         self.previous_action = torch.zeros((cfg.num_envs, 18))
         self.held = self.neutral.expand(cfg.num_envs, -1).clone()
+        if self.randomization is None:
+            self._kd_rows = self._motor_scale = self._sag_scale = self._sag_rate = None
+            self._delay_queue = self._delay_fill = self._delay_steps = None
+            self.randomization_draws = None
+        else:
+            self._episode_counter = np.zeros(cfg.num_envs, dtype=np.int64)
+            self._kd_rows = self.kd.expand(cfg.num_envs, -1).clone()
+            self._motor_scale = torch.ones((cfg.num_envs, 1))
+            self._sag_scale = torch.ones((cfg.num_envs, 1))
+            self._sag_rate = torch.zeros((cfg.num_envs, 1))
+            # A row that drew delay d reads the action from d controls back, so the queue keeps
+            # the largest delay plus the current control.
+            depth = self.randomization.action_delay_controls + 1
+            queued = self.randomization.action_delay_controls > 0
+            self._delay_queue = torch.zeros((cfg.num_envs, depth, 18)) if queued else None
+            self._delay_fill = torch.zeros(cfg.num_envs, dtype=torch.long) if queued else None
+            self._delay_steps = torch.zeros(cfg.num_envs, dtype=torch.long) if queued else None
+            self.randomization_draws = {
+                "friction_scale": np.ones(cfg.num_envs),
+                "mass_scale": np.ones(cfg.num_envs),
+                "motor_scale": np.ones(cfg.num_envs),
+                "kd_scale": np.ones(cfg.num_envs),
+                "action_delay_controls": np.zeros(cfg.num_envs),
+                "sag_per_minute": np.zeros(cfg.num_envs),
+            }
         self.commands = (
             self.torch([cfg.command_forward_mps, cfg.command_left_mps, cfg.command_yaw_rad_s])
             .expand(cfg.num_envs, -1)
@@ -635,6 +738,7 @@ class SurrogateEnv:
             "surrogate": {
                 "engine": "mujoco " + mujoco.__version__,
                 "contact_model": asdict(self.contact_model),
+                "randomization": None if self.randomization is None else asdict(self.randomization),
             },
             "config": cfg.declaration(),
         }
@@ -882,6 +986,68 @@ class SurrogateEnv:
         critic = torch.cat((obs, navigation(state["linear"])), dim=-1)
         return {"obs": obs, "critic": critic}
 
+    def _randomize(self, rows):
+        """Redraw the selected rows' dynamics from their dedicated streams (reset path only).
+
+        Each draw seeds its own generator from (seed, tag, row, episode), so a row's sequence is
+        reproducible from the run seed and independent of batch width, threading and the global
+        torch and numpy streams.
+        """
+        r = self.randomization
+        for row in rows:
+            row = int(row)
+            rng = np.random.default_rng(
+                (self.cfg.seed, 20811, row, int(self._episode_counter[row]))
+            )
+            self._episode_counter[row] += 1
+            friction, mass, motor, kd, sag = (
+                float(rng.uniform(low, high))
+                for low, high in (
+                    r.friction_scale,
+                    r.mass_scale,
+                    r.motor_scale,
+                    r.kd_scale,
+                    r.sag_per_minute,
+                )
+            )
+            delay = (
+                int(rng.integers(0, r.action_delay_controls + 1)) if r.action_delay_controls else 0
+            )
+            model = self._models[row]
+            model.body_mass[:] = self._base_body_mass * mass
+            model.body_inertia[:] = self._base_body_inertia * mass
+            model.geom_friction[:, 0] = self._base_geom_friction[:, 0] * friction
+            self._kd_rows[row] = self.kd * kd
+            self._motor_scale[row] = motor
+            self._sag_scale[row] = 1.0
+            self._sag_rate[row] = sag * self.cfg.control_dt / 60.0
+            if self._delay_queue is not None:
+                self._delay_queue[row] = 0.0
+                self._delay_fill[row] = 0
+                self._delay_steps[row] = delay
+            draws = self.randomization_draws
+            draws["friction_scale"][row] = friction
+            draws["mass_scale"][row] = mass
+            draws["motor_scale"][row] = motor
+            draws["kd_scale"][row] = kd
+            draws["action_delay_controls"][row] = delay
+            draws["sag_per_minute"][row] = sag
+
+    def _randomized_action(self, action):
+        """The action the servo sees under the drawn transport delay, advancing the sag drift."""
+        self._sag_scale = torch.clamp(
+            self._sag_scale - self._sag_rate, min=self.randomization.sag_floor
+        )
+        if self._delay_queue is None:
+            return action
+        depth = self._delay_queue.shape[1]
+        self._delay_queue = torch.roll(self._delay_queue, -1, dims=1)
+        self._delay_queue[:, -1] = action
+        # A row younger than its delay reads the newest slot, so an episode starts undelayed.
+        take = torch.minimum(self._delay_steps, self._delay_fill)
+        self._delay_fill = torch.clamp(self._delay_fill + 1, max=depth)
+        return self._delay_queue[torch.arange(self.num_envs), depth - 1 - take]
+
     # ----- OmniEnv interface ---------------------------------------------------------------
     def reset(self, indices=None):
         if self.native_errors:
@@ -914,6 +1080,8 @@ class SurrogateEnv:
             self._shaft[indices] = 0.0
             self._sensor[rows] = 0.0
             self._touching[rows] = False
+            if self.randomization is not None:
+                self._randomize(rows)
             self.held[indices] = self.neutral
             self.previous_action[indices] = 0
             self.episode_steps[indices] = 0
@@ -928,6 +1096,8 @@ class SurrogateEnv:
         action = torch.as_tensor(action, dtype=torch.float32, device=self.device)
         if action.shape != (self.num_envs, 18) or not bool(torch.isfinite(action).all()):
             raise ValueError("Policy action shape/finite check failed")
+        if self.randomization is not None:
+            action = self._randomized_action(action)
         target = emitted_target(
             action,
             self.held,
@@ -950,7 +1120,14 @@ class SurrogateEnv:
             q, dq = self._joint_state()
             if not bool(torch.isfinite(q).all() and torch.isfinite(dq).all()):
                 raise FloatingPointError("Nonfinite pre-servo state")
-            requested, applied, ceiling = motor_force(q, dq, target, self.kd)
+            requested, applied, ceiling = motor_force(
+                q, dq, target, self.kd if self._kd_rows is None else self._kd_rows
+            )
+            if self._motor_scale is not None:
+                # The drawn motor strength and the in-episode sag drain the ceiling together,
+                # reproducing the canonical clip (robots/rs05.py) against the scaled curve.
+                ceiling = ceiling * (self._motor_scale * self._sag_scale)
+                applied = torch.maximum(torch.minimum(requested, ceiling), -ceiling)
             forces = self._advance(applied)
             # The control endpoint needs link poses. Earlier substeps build a state for a capture
             # hook alone: full with substep_state, otherwise without link and toe poses.

@@ -392,6 +392,14 @@ def build_parser():
         help="ContactModel override for sensitivity runs, e.g. noslip_iterations=0.",
     )
     parser.add_argument(
+        "--randomize",
+        action="append",
+        default=[],
+        metavar="FIELD=VALUE",
+        help="DynamicsRandomization override for sim2real robustness runs, e.g. "
+        "motor_scale=(0.9,1.1); without any the canonical dynamics stay bitwise unchanged.",
+    )
+    parser.add_argument(
         "--resume", type=Path, help="Checkpoint to continue from (same configuration)."
     )
     parser.add_argument(
@@ -447,6 +455,7 @@ def run(args, argv=None):
         SurrogateConfig,
         SurrogateEnv,
         contact_overrides,
+        randomization_overrides,
         repository_state,
         sha,
     )
@@ -459,6 +468,7 @@ def run(args, argv=None):
         Path(overrides[1:]).read_text() if overrides.startswith("@") else overrides
     )
     contact = contact_overrides(args.contact)
+    randomization = randomization_overrides(args.randomize) if args.randomize else None
     terrain = None
     if args.terrain is not None:
         from locomotion.surrogate.terrain import Terrain
@@ -504,6 +514,7 @@ def run(args, argv=None):
         "geometry_sha256": sha(DEFAULT_GEOMETRY),
         "config": cfg.declaration(),
         "contact_model": asdict(contact),
+        "randomization": None if randomization is None else asdict(randomization),
         "terrain": None
         if terrain is None
         else {
@@ -565,6 +576,7 @@ def run(args, argv=None):
             substep_state=False,
             terrain=terrain,
             spawn=None if terrain is None else terrain.spawner(args.spawn_margin, args.seed),
+            randomization=randomization,
         )
         task = task_class(env, task_module.TaskConfig(seed=args.seed), args.output / "task")
         # A task class outside TrainingTask may report its own status.

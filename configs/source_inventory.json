@@ -353,6 +353,13 @@
       "purpose": "Append the gap to each command's destination and the time since the command began to the actor and critic inputs for experiments destination_v1 to destination_v10."
     },
     {
+      "path": "src/locomotion/rl/sim2real.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Locomotion lead",
+      "purpose": "Compensated actor for sim2real design runs: a frozen walking core behind bounded, latent-conditioned input gains and action deltas, trained by PPO under the surrogate's per-episode dynamics randomization."
+    },
+    {
       "path": "src/locomotion/rl/wrapper.py",
       "previous_path": "locomotion/omni/ppo.py",
       "classification": "current",
