@@ -969,6 +969,18 @@ EXPERIMENTS["destination_v46"] = {
         arc_yaw_choices_rad_s=(0.05, 0.2),
     ),
 }
+# destination_v48 is destination_v45 with the turn share halved (0.20 -> 0.10, returned to the
+# walks): the tw round showed the turn-heavy mix costs flat precision at long horizons
+# (tc9_d2 31/36 vs tw_ctrl2 25/36) while v46 showed the arc share NEEDS the turn mix for the
+# steps and crest synergies (tw_b lost both without it). This arm asks whether a lighter turn
+# share keeps the synergies at a smaller flat cost. One change against v45.
+EXPERIMENTS["destination_v48"] = {
+    **EXPERIMENTS["destination_v45"],
+    "reward": replace(
+        EXPERIMENTS["destination_v45"]["reward"],
+        run_mix=(0.10, 0.10, 0.45, 0.35),
+    ),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.

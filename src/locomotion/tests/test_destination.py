@@ -1968,6 +1968,18 @@ class TerrainCampaignTests(unittest.TestCase):
         self.assertEqual(EXPERIMENT_INPUTS["destination_v46"], "terrain_v2")
         v46.validate()
 
+    def test_destination_v48_halves_the_turn_share_on_the_arcing_recipe(self):
+        v45 = EXPERIMENTS["destination_v45"]["reward"]
+        v48 = EXPERIMENTS["destination_v48"]["reward"]
+        self.assertEqual({k for k, v in asdict(v48).items() if asdict(v45)[k] != v}, {"run_mix"})
+        self.assertEqual(v48.run_mix, (0.10, 0.10, 0.45, 0.35))
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v48"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v45"].items() if k != "reward"},
+        )
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v48"], "terrain_v2")
+        v48.validate()
+
     def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
         v38 = EXPERIMENTS["destination_v38"]["reward"]
         v41 = EXPERIMENTS["destination_v41"]["reward"]
