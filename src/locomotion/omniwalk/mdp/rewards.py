@@ -27,6 +27,10 @@ class RewardConfig:
     schedule_weight: float = 2.0
     schedule_period_controls: int = GAIT_CLOCK_CONTROLS
     schedule_swing_fraction: float = 0.4
+    # None keeps the historical fixed tripod order; True mirrors the schedule (and the footfall
+    # predictions that read it) on rows whose commanded yaw is negative, removing the gait's
+    # handedness that no checkpoint ever out-trained on turn_-0.40.
+    schedule_mirror_turns: bool | None = None
     schedule_load_n: float = 12.2
     swing_travel_weight: float = 1.0
     swing_travel_clip: float = 6.0
@@ -118,6 +122,8 @@ class RewardConfig:
             raise ValueError("Positive reward v4 scales required")
         if not 0 < self.schedule_swing_fraction <= 0.5:
             raise ValueError("Each tripod swings for at most half the schedule period")
+        if self.schedule_mirror_turns not in (None, True):
+            raise ValueError("schedule_mirror_turns is None or True")
         if not 0 < self.action_limit_onset < 1:
             raise ValueError("The action-limit onset lies inside the action range")
         if not 0 < self.over_rating_onset_nm < RATED_TORQUE_NM:

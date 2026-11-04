@@ -1980,6 +1980,52 @@ class TerrainCampaignTests(unittest.TestCase):
         self.assertEqual(EXPERIMENT_INPUTS["destination_v48"], "terrain_v2")
         v48.validate()
 
+    def test_destination_v47_mirrors_the_schedule_on_clockwise_turns(self):
+        import torch as _torch
+
+        from locomotion.omniwalk.mdp.footfall import touchdown_seconds
+        from locomotion.omniwalk.mdp.gait import GaitPhase, phase_swing
+
+        v45 = EXPERIMENTS["destination_v45"]["reward"]
+        v47 = EXPERIMENTS["destination_v47"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v47).items() if asdict(v45)[k] != v},
+            {"schedule_mirror_turns"},
+        )
+        self.assertIs(v47.schedule_mirror_turns, True)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v47"], "terrain_v2")
+        v47.validate()
+        with self.assertRaises(ValueError):
+            replace(v47, schedule_mirror_turns=False).validate()
+        # The mirrored rows swap tripods exactly; unmirrored rows and the default path are
+        # byte-identical to the historical schedule.
+        phase = _torch.tensor([0.1, 0.1, 0.6, 0.6], dtype=_torch.float64)
+        swing = _torch.full((4,), 0.4, dtype=_torch.float64)
+        base = phase_swing(phase, swing)
+        mirror = _torch.tensor([False, True, False, True])
+        swapped = phase_swing(phase, swing, mirror)
+        self.assertTrue(bool(_torch.equal(swapped[::2], base[::2])))
+        self.assertTrue(bool(_torch.equal(swapped[1::2], ~base[1::2])))
+        self.assertTrue(bool(_torch.equal(phase_swing(phase, swing, None), base)))
+        command = _torch.tensor(
+            [[0.1, 0.0, 0.3], [0.1, 0.0, -0.3], [0.0, 0.1, 0.3], [0.0, 0.1, -0.3]]
+        )
+        plain = touchdown_seconds(phase, command, "speed_v1")
+        mirrored = touchdown_seconds(phase, command, "speed_v1", mirror=True)
+        self.assertTrue(bool(_torch.equal(mirrored[::2], plain[::2])))
+        self.assertFalse(bool(_torch.equal(mirrored[1::2], plain[1::2])))
+        legs = _torch.tensor([True, False, True, False, True, False])
+        self.assertTrue(
+            bool(_torch.equal(mirrored[1][legs], plain[1][~legs]))
+            and bool(_torch.equal(mirrored[1][~legs], plain[1][legs]))
+        )
+        gait = GaitPhase(4, "speed_v1", "cpu")
+        gait.phase = phase.clone()
+        on, _ = gait.swing(command, True)
+        off, _ = gait.swing(command, False)
+        self.assertTrue(bool(_torch.equal(on[::2], off[::2])))
+        self.assertTrue(bool(_torch.equal(on[1::2], ~off[1::2])))
+
     def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
         v38 = EXPERIMENTS["destination_v38"]["reward"]
         v41 = EXPERIMENTS["destination_v41"]["reward"]

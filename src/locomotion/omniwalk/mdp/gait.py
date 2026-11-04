@@ -28,14 +28,21 @@ def gait_cycle(command, scaling):
     return between(periods), between(swings)
 
 
-def phase_swing(phase, swing):
-    """Six booleans per row: the feet the schedule wants off the floor at ``phase`` cycles."""
+def phase_swing(phase, swing, mirror=None):
+    """Six booleans per row: the feet the schedule wants off the floor at ``phase`` cycles.
+
+    ``mirror`` rows swap the tripods: the fixed first-tripod convention gives the gait a
+    handedness, and a clockwise turn fought it on every checkpoint ever scored (the
+    turn_-0.40 wall; decisions.md, turn chirality). ``None`` keeps the historical schedule
+    byte-identical."""
     fraction = torch.remainder(phase, 1.0)
     fraction = torch.where(fraction > 1 - PHASE_TOLERANCE, torch.zeros_like(fraction), fraction)
     swing = swing.to(fraction)
     first = torch.tensor(TRIPOD_A, device=phase.device)
     swing_a = fraction < swing - PHASE_TOLERANCE
     swing_b = (fraction >= 0.5 - PHASE_TOLERANCE) & (fraction < 0.5 + swing - PHASE_TOLERANCE)
+    if mirror is not None:
+        first = first[None, :] ^ mirror[:, None].to(first.device)
     return torch.where(first, swing_a[:, None], swing_b[:, None])
 
 
@@ -57,10 +64,12 @@ class GaitPhase:
         period, _ = gait_cycle(command.to(self.phase.device), self.scaling)
         self.phase = torch.remainder(self.phase + 1 / period, 1.0)
 
-    def swing(self, command):
+    def swing(self, command, mirror_turns=False):
         """The scheduled swing at the current phase under ``command``, and that command's cycle in seconds."""
-        period, swing = gait_cycle(command.to(self.phase.device), self.scaling)
-        return phase_swing(self.phase, swing), period * 0.02
+        command = command.to(self.phase.device)
+        period, swing = gait_cycle(command, self.scaling)
+        mirror = (command[:, 2] < 0) if mirror_turns else None
+        return phase_swing(self.phase, swing, mirror), period * 0.02
 
     def follow(self, command, episode_steps):
         """For evaluation: advance under the previous control's command, restart at an episode start and

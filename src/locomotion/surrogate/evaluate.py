@@ -38,9 +38,20 @@ class DeterministicPolicy:
     """The no-noise policy path of ``locomotion/scripts/play.py``: fixed scales, gait clock, actor mean, two-control mean."""
 
     def __init__(
-        self, actor, env, options, *, velocity_input_gain=1.0, action_mean2=False, adapter=None
+        self,
+        actor,
+        env,
+        options,
+        *,
+        velocity_input_gain=1.0,
+        action_mean2=False,
+        adapter=None,
+        schedule_mirror=False,
     ):
         self.actor, self.env, self.adapter = actor, env, adapter
+        # The mirrored tripod schedule changes the footfall predictions on clockwise turns;
+        # evaluation rebuilds them from the recorded task's reward flag (mdp/gait.phase_swing).
+        self.schedule_mirror = bool(schedule_mirror)
         self.scaling = options.get("observation_scaling", "none")
         self.period = options.get("gait_clock", 0)
         # A speed-scaled clock follows each probe's commands, as the training task does.
@@ -88,7 +99,11 @@ class DeterministicPolicy:
                 options["destination_input"]
             ]
             self.tracker = tracker(
-                env.num_envs, "cpu", env=env, scaling=options.get("gait_clock_scaling")
+                env.num_envs,
+                "cpu",
+                env=env,
+                scaling=options.get("gait_clock_scaling"),
+                mirror=self.schedule_mirror,
             )
 
     def record(self, options):
@@ -562,6 +577,10 @@ def evaluate_checkpoint(args):
             velocity_input_gain=args.velocity_input_gain,
             action_mean2=args.action_mean2,
             adapter=getattr(wrapped, "policy_for_evaluation", None),
+            schedule_mirror=bool(
+                getattr(getattr(task, "reward_config", None), "schedule_mirror_turns", None)
+                or False
+            ),
         )
         renderer = Renderer(env, view=args.view) if videos else None
         loads = FootLoad(env) if record_loads else None

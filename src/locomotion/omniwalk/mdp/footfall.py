@@ -68,8 +68,11 @@ class TerrainGrid:
         ).float()
 
 
-def touchdown_seconds(phase, command, scaling):
-    """Per-leg seconds until the next touchdown, [n, 6], from the tripod schedule at ``command``."""
+def touchdown_seconds(phase, command, scaling, mirror=False):
+    """Per-leg seconds until the next touchdown, [n, 6], from the tripod schedule at ``command``.
+
+    ``mirror`` swaps the tripods on rows whose commanded yaw is negative, matching the
+    mirrored schedule (``mdp/gait.phase_swing``); False keeps the prediction byte-identical."""
     period_controls, swing = gait_cycle(command, scaling)
     fraction = torch.remainder(phase.double(), 1.0)
     swing = swing.to(fraction)
@@ -77,6 +80,9 @@ def touchdown_seconds(phase, command, scaling):
     td_b = torch.remainder(0.5 + swing - fraction, 1.0)
     first = torch.tensor(TRIPOD_A, device=fraction.device)
     cycles = torch.where(first, td_a[:, None], td_b[:, None])
+    if mirror:
+        swapped = torch.where(first, td_b[:, None], td_a[:, None])
+        cycles = torch.where((command[:, 2] < 0)[:, None], swapped, cycles)
     return cycles * (period_controls.to(fraction) * CONTROL_DT_S)[:, None]
 
 
@@ -132,9 +138,9 @@ class SupportHeight:
         return self.height
 
 
-def footfall_features(grid, reference, root, command, toe_body, phase, scaling):
+def footfall_features(grid, reference, root, command, toe_body, phase, scaling, mirror=False):
     """The 30 ``terrain_v1`` values, [n, 30], for a support-height ``reference`` ([n], metres)."""
-    seconds = touchdown_seconds(phase, command, scaling)
+    seconds = touchdown_seconds(phase, command, scaling, mirror)
     points = touchdown_points(root, command, toe_body, seconds)
     ring = torch.tensor(RING_XY, dtype=torch.float64)
     x = points[:, :, None, 0] + ring[None, None, :, 0]
@@ -185,6 +191,8 @@ class FootfallInputs:
                 "terrain_v1 needs the task's speed-scaled gait clock (gait_clock_scaling)"
             )
         self.task, self.scaling, self.profile = task, scaling, profile
+        reward = getattr(task, "reward_config", None)
+        self.mirror = bool(getattr(reward, "schedule_mirror_turns", None) or False)
         self.width = FOOTFALL_FEATURES + (PROFILE_FEATURES if profile else 0)
         terrain = getattr(getattr(task, "env", None), "terrain", None)
         self.grid = None if terrain is None else TerrainGrid(terrain)
@@ -216,6 +224,7 @@ class FootfallInputs:
             toe_body,
             phase.detach().cpu(),
             self.scaling,
+            self.mirror,
         )
         if not self.profile:
             return values
@@ -229,10 +238,11 @@ class TerrainV1Tracker(GhostV11Tracker):
 
     profile = False
 
-    def __init__(self, num_envs, device, *, env=None, scaling=None):
+    def __init__(self, num_envs, device, *, env=None, scaling=None, mirror=False):
         super().__init__(num_envs, device)
         if scaling not in GAIT_CLOCK_SCALINGS:
             raise ValueError("terrain_v1 needs the recorded gait_clock_scaling")
+        self.mirror = bool(mirror)
         self.env, self.gait = env, GaitPhase(num_envs, scaling, device)
         self.scaling = scaling
         self.width = FOOTFALL_FEATURES + (PROFILE_FEATURES if self.profile else 0)
@@ -261,6 +271,7 @@ class TerrainV1Tracker(GhostV11Tracker):
             toe_body,
             phase.detach().cpu(),
             self.scaling,
+            self.mirror,
         )
         if self.profile:
             ahead = profile_features(self.grid, self.support.height, root, cpu_command)

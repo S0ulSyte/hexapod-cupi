@@ -981,6 +981,20 @@ EXPERIMENTS["destination_v48"] = {
         run_mix=(0.10, 0.10, 0.45, 0.35),
     ),
 }
+# destination_v47 is destination_v45 with the mirrored tripod schedule on clockwise turns:
+# the chirality probe measured counter-clockwise 0.40 rad/s tracking at 98 percent while
+# clockwise stalls at 43 percent with tilt spikes, on the native baseline too, and round B
+# showed practice cannot fix it — the fixed first-tripod convention hands the gait a
+# preferred spin. Mirroring swaps the tripods (schedule reward and footfall predictions
+# together) on rows whose commanded yaw is negative; straight walks, stands and
+# counter-clockwise turns are byte-identical. One change against v45.
+EXPERIMENTS["destination_v47"] = {
+    **EXPERIMENTS["destination_v45"],
+    "reward": replace(
+        EXPERIMENTS["destination_v45"]["reward"],
+        schedule_mirror_turns=True,
+    ),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
@@ -1133,7 +1147,7 @@ class DestinationTrainingTask(TrainingTask):
         telemetry = super().reward_telemetry(command)
         if self.gait is not None:
             # The schedule at the phase this control ran under, with its command's cycle.
-            swing, period = self.gait.swing(command)
+            swing, period = self.gait.swing(command, bool(self.reward_config.schedule_mirror_turns))
             device = telemetry["scheduled_swing"].device
             telemetry["scheduled_swing"] = swing.to(device)
             telemetry["schedule_period_s"] = period.to(device, torch.float32)
@@ -1181,7 +1195,10 @@ class DestinationTrainingTask(TrainingTask):
         state = self.env.current
         cpu_command = command.detach().cpu()
         seconds = touchdown_seconds(
-            self.gait.phase.detach().cpu(), cpu_command, self.reward_config.gait_clock_scaling
+            self.gait.phase.detach().cpu(),
+            cpu_command,
+            self.reward_config.gait_clock_scaling,
+            bool(self.reward_config.schedule_mirror_turns),
         )
         points = touchdown_points(
             state["root"].detach().cpu(), cpu_command, state["toe_body"].detach().cpu(), seconds

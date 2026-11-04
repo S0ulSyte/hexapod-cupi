@@ -387,7 +387,14 @@ class Robot:
             observations.update(actor_observation(wrapped.current["obs"]))
         actor, _ = algorithms.load_actor(checkpoint, config, observations, "cpu")
         policy = DeterministicPolicy(
-            actor, self.env, options, adapter=getattr(wrapped, "policy_for_evaluation", None)
+            actor,
+            self.env,
+            options,
+            adapter=getattr(wrapped, "policy_for_evaluation", None),
+            schedule_mirror=bool(
+                getattr(getattr(task, "reward_config", None), "schedule_mirror_turns", None)
+                or False
+            ),
         )
         return policy, digest, getattr(task.reward_config, "slope_inputs", None)
 

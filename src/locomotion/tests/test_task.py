@@ -89,10 +89,12 @@ class ActiveTaskTests(unittest.TestCase):
                 "landing_lift_weight",
                 "landing_lift_target_m",
                 "landing_lift_rise_m",
+                "schedule_mirror_turns",
             },
         )
         self.assertEqual(active["swing_clearance_weight"], 0.0)
         self.assertEqual(active["landing_lift_weight"], 0.0)
+        self.assertIsNone(active["schedule_mirror_turns"])
         self.assertEqual({k: v for k, v in active.items() if k in expected}, expected)
         baseline = importlib.import_module("_active_task_baseline.task")
         self.assertEqual(command_bank(TaskConfig()), baseline.command_bank(baseline.TaskConfig()))
