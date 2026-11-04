@@ -1030,6 +1030,17 @@ EXPERIMENTS["destination_v52"] = {
     **EXPERIMENTS["destination_v51"],
     "reward": replace(EXPERIMENTS["destination_v51"]["reward"], walk_forward_bias=None),
 }
+# destination_v53 puts real weight on standing tilt. The stage2c formal screen bounds
+# tilt RMS at 0.50 deg (speed 0.00) and 0.90 deg (0.16); the whole v29_terrain_v2 lineage
+# sits at 0.84-0.88 deg regardless of length (u200 through u1200) or terrain, while the
+# terrain-master lineage holds 0.33-0.44 — under v45's tilt term (weight 0.5 at a 5 deg
+# scale) that wobble costs ~0.014 reward units, so nothing ever ground it down. Weight 15
+# prices 0.84 deg at ~0.42 units and leaves the bound itself at ~0.15. One field against
+# v45, judged against tw_o/tw_p, its single-change parents at u200 and u1200.
+EXPERIMENTS["destination_v53"] = {
+    **EXPERIMENTS["destination_v45"],
+    "reward": replace(EXPERIMENTS["destination_v45"]["reward"], tilt_weight=15.0),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.

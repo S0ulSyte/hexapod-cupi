@@ -2081,6 +2081,21 @@ class TerrainCampaignTests(unittest.TestCase):
         )
         EXPERIMENTS["destination_v52"]["reward"].validate()
 
+    def test_destination_v53_puts_weight_on_stand_tilt(self):
+        v45 = EXPERIMENTS["destination_v45"]["reward"]
+        v53 = EXPERIMENTS["destination_v53"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v53).items() if asdict(v45)[k] != v}, {"tilt_weight"}
+        )
+        self.assertEqual(v53.tilt_weight, 15.0)
+        self.assertEqual(v53.tilt_scale_rad, v45.tilt_scale_rad)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v53"], "terrain_v2")
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v53"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v45"].items() if k != "reward"},
+        )
+        EXPERIMENTS["destination_v53"]["reward"].validate()
+
     def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
         v38 = EXPERIMENTS["destination_v38"]["reward"]
         v41 = EXPERIMENTS["destination_v41"]["reward"]
