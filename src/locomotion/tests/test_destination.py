@@ -2026,6 +2026,26 @@ class TerrainCampaignTests(unittest.TestCase):
         self.assertTrue(bool(_torch.equal(on[::2], off[::2])))
         self.assertTrue(bool(_torch.equal(on[1::2], ~off[1::2])))
 
+    def test_destination_v49_and_v50_are_the_flat_polish_arms(self):
+        v45 = EXPERIMENTS["destination_v45"]["reward"]
+        v49 = EXPERIMENTS["destination_v49"]["reward"]
+        v50 = EXPERIMENTS["destination_v50"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v49).items() if asdict(v45)[k] != v}, {"roll_pitch_weight"}
+        )
+        self.assertEqual(v49.roll_pitch_weight, 0.3)
+        self.assertEqual(
+            {k for k, v in asdict(v50).items() if asdict(v45)[k] != v}, {"walk_forward_bias"}
+        )
+        self.assertIsNone(v50.walk_forward_bias)
+        for name in ("destination_v49", "destination_v50"):
+            self.assertEqual(EXPERIMENT_INPUTS[name], "terrain_v2")
+            self.assertEqual(
+                {k: v for k, v in EXPERIMENTS[name].items() if k != "reward"},
+                {k: v for k, v in EXPERIMENTS["destination_v45"].items() if k != "reward"},
+            )
+            EXPERIMENTS[name]["reward"].validate()
+
     def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
         v38 = EXPERIMENTS["destination_v38"]["reward"]
         v41 = EXPERIMENTS["destination_v41"]["reward"]

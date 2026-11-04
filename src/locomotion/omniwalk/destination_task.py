@@ -995,6 +995,22 @@ EXPERIMENTS["destination_v47"] = {
         schedule_mirror_turns=True,
     ),
 }
+# destination_v49 raises the roll-pitch rate penalty on the arcing recipe for the anchored
+# flat polish (the two-phase consolidation's second phase): the formal cases fail on a
+# ~0.73-0.95 degree tilt rms — the recorded standing lean — and tw_g's levelest-ever turn
+# (0.53 degrees) came from flat polish alone. One change against v45.
+EXPERIMENTS["destination_v49"] = {
+    **EXPERIMENTS["destination_v45"],
+    "reward": replace(EXPERIMENTS["destination_v45"]["reward"], roll_pitch_weight=0.3),
+}
+# destination_v50 drops the forward walk bias (uniform bearings) for the anchored flat
+# polish: the two surviving translate misses are the rear bearings the 0.25 forward bias
+# under-practises, and the omni demand failures sit at the side and rear too. One change
+# against v45.
+EXPERIMENTS["destination_v50"] = {
+    **EXPERIMENTS["destination_v45"],
+    "reward": replace(EXPERIMENTS["destination_v45"]["reward"], walk_forward_bias=None),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
