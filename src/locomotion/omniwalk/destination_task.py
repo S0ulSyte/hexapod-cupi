@@ -1021,6 +1021,15 @@ EXPERIMENTS["destination_v51"] = {
     **EXPERIMENTS["destination_v45"],
     "reward": replace(EXPERIMENTS["destination_v45"]["reward"], arc_fraction=0.5),
 }
+# destination_v52 composes the two proven single-change polish levers: v51's doubled arc
+# share (tw_l: the first fully consistent crest, 6/6 at full distance) and v50's uniform
+# bearings (tw_i: the first rear-translate pass, translate_0.10_180). Each bought its case
+# and paid terrain or turn elsewhere; this asks whether the gains compose. One change
+# against v51, judged against tw_l and tw_i, its single-change parents.
+EXPERIMENTS["destination_v52"] = {
+    **EXPERIMENTS["destination_v51"],
+    "reward": replace(EXPERIMENTS["destination_v51"]["reward"], walk_forward_bias=None),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
