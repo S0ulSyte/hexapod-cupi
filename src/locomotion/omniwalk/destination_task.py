@@ -1011,6 +1011,16 @@ EXPERIMENTS["destination_v50"] = {
     **EXPERIMENTS["destination_v45"],
     "reward": replace(EXPERIMENTS["destination_v45"]["reward"], walk_forward_bias=None),
 }
+# destination_v51 doubles the arc share for the anchored flat polish: tw_g's gentle and
+# combined misses are near-threshold (planar 0.024-0.044 vs 0.03, yaw 0.053-0.061, demand
+# 0.006-0.009 vs 0.005) with the demand bound co-failing on all sixteen gentle cases, and
+# the anchor holds displacement only where gradients are strong and persistent — so the
+# polish mix itself must carry the arc gradient. Half the drawn walks now arc. One change
+# against v45.
+EXPERIMENTS["destination_v51"] = {
+    **EXPERIMENTS["destination_v45"],
+    "reward": replace(EXPERIMENTS["destination_v45"]["reward"], arc_fraction=0.5),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.

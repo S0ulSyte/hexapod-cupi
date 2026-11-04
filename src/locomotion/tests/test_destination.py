@@ -2046,6 +2046,21 @@ class TerrainCampaignTests(unittest.TestCase):
             )
             EXPERIMENTS[name]["reward"].validate()
 
+    def test_destination_v51_doubles_the_arc_share_for_the_flat_polish(self):
+        v45 = EXPERIMENTS["destination_v45"]["reward"]
+        v51 = EXPERIMENTS["destination_v51"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v51).items() if asdict(v45)[k] != v}, {"arc_fraction"}
+        )
+        self.assertEqual(v51.arc_fraction, 0.5)
+        self.assertEqual(v51.arc_yaw_choices_rad_s, v45.arc_yaw_choices_rad_s)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v51"], "terrain_v2")
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v51"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v45"].items() if k != "reward"},
+        )
+        EXPERIMENTS["destination_v51"]["reward"].validate()
+
     def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
         v38 = EXPERIMENTS["destination_v38"]["reward"]
         v41 = EXPERIMENTS["destination_v41"]["reward"]
