@@ -6,4 +6,8 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   publicDir: path.resolve(__dirname, '../robot'),
+  // The Runs and Scene pages open ?run= / ?scene= URLs via /@fs; the viewer's own
+  // package-lock makes Vite stop its workspace search here, so allow the whole
+  // checkout, where run files live in the gitignored tmp/.
+  server: { fs: { allow: [path.resolve(__dirname, '..')] } },
 });
