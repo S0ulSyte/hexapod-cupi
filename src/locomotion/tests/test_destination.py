@@ -1950,6 +1950,24 @@ class TerrainCampaignTests(unittest.TestCase):
         self.assertTrue(bool((planar[arcs] >= 0.05 - 1e-6).all()))
         self.assertTrue(bool((planar[arcs] <= 0.17 + 1e-6).all()))
 
+    def test_destination_v46_arcs_the_lift_champion_without_the_turn_mix(self):
+        v43 = EXPERIMENTS["destination_v43"]["reward"]
+        v46 = EXPERIMENTS["destination_v46"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v46).items() if asdict(v43)[k] != v},
+            {"arc_fraction", "arc_yaw_choices_rad_s"},
+        )
+        self.assertEqual(v46.arc_fraction, 0.25)
+        self.assertEqual(v46.arc_yaw_choices_rad_s, (0.05, 0.2))
+        self.assertEqual(v46.run_mix, v43.run_mix)
+        self.assertEqual(v46.turn_rate_choices_rad_s, v43.turn_rate_choices_rad_s)
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v46"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v43"].items() if k != "reward"},
+        )
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v46"], "terrain_v2")
+        v46.validate()
+
     def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
         v38 = EXPERIMENTS["destination_v38"]["reward"]
         v41 = EXPERIMENTS["destination_v41"]["reward"]

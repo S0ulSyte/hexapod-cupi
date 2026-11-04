@@ -956,6 +956,19 @@ EXPERIMENTS["destination_v45"] = {
         arc_yaw_choices_rad_s=(0.05, 0.2),
     ),
 }
+# destination_v46 is destination_v43 (v38 + landing lift, the 31/36 flat champion at the
+# 1000-update surrogate horizon) with the arcing walks alone — no v42 turn-mix change, which
+# the tw round showed costs flat precision at long horizons (tw_ctrl2 25/36 vs tc9_d2 31/36).
+# The arc share is the reproduced steps-2.5 lever (tw_a2/tw_a3, 2/6 each vs controls 0/6);
+# tc9_d2 is this experiment's matched-experience control. One change against v43.
+EXPERIMENTS["destination_v46"] = {
+    **EXPERIMENTS["destination_v43"],
+    "reward": replace(
+        EXPERIMENTS["destination_v43"]["reward"],
+        arc_fraction=0.25,
+        arc_yaw_choices_rad_s=(0.05, 0.2),
+    ),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
