@@ -135,6 +135,39 @@ class DeviationSchedule:
         return losses
 
 
+class ActorAnchor:
+    """Pull the actor toward its initialization after each update (decoupled from the optimizer).
+
+    Long surrogate continuations drift away from a native init's precision — the recorded
+    quiet/formal/omni tax — while the levers that matter ride strong reward gradients. The
+    anchor removes a fraction of each parameter's displacement from its post-initialization
+    value after every update, so weak-gradient directions decay back to the init while strong
+    gradients hold their ground at a displacement of roughly step/weight. Distribution
+    parameters are excluded: the deviation schedule owns them.
+    """
+
+    def __init__(self, algorithm, weight):
+        weight = float(weight)
+        if not 0 < weight < 1:
+            raise ValueError("The anchor weight is a fraction in (0, 1)")
+        self.weight = weight
+        self.anchored = [
+            (parameter, parameter.detach().clone())
+            for name, parameter in algorithm.actor.named_parameters()
+            if "distribution" not in name and parameter.requires_grad
+        ]
+        if not self.anchored:
+            raise ValueError("The actor anchor found no trainable non-distribution parameters")
+        self.inner_update = algorithm.update
+
+    def update(self):
+        losses = self.inner_update()
+        with torch.no_grad():
+            for parameter, init in self.anchored:
+                parameter.add_(init - parameter, alpha=self.weight)
+        return losses
+
+
 # An empirical normalizer's statistics for an added input start as RSL-RL starts them: mean 0, variance and
 # deviation 1, so the input passes unscaled until the normalizer updates; a zero deviation would divide by eps.
 NORMALIZER_FILL = {"_mean": 0.0, "_var": 1.0, "_std": 1.0}

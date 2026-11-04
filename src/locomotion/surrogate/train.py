@@ -400,6 +400,14 @@ def build_parser():
         "motor_scale=(0.9,1.1); without any the canonical dynamics stay bitwise unchanged.",
     )
     parser.add_argument(
+        "--anchor-weight",
+        type=float,
+        default=0.0,
+        help="Per-update fraction pulling the actor back toward its initialization "
+        "(locomotion.rl.ppo:ActorAnchor); 0 keeps the stock learner. Holds a native init's "
+        "precision through long surrogate legs while strong reward gradients still move.",
+    )
+    parser.add_argument(
         "--latent-supervision",
         type=float,
         default=0.0,
@@ -524,6 +532,7 @@ def run(args, argv=None):
         "contact_model": asdict(contact),
         "randomization": None if randomization is None else asdict(randomization),
         "latent_supervision": args.latent_supervision or None,
+        "anchor_weight": args.anchor_weight or None,
         "terrain": None
         if terrain is None
         else {
@@ -677,6 +686,10 @@ def run(args, argv=None):
                 runner.alg, wrapped, randomization, args.latent_supervision
             )
             runner.alg.update = supervision.update
+        if args.anchor_weight:
+            # Installed after --initialize-from, so the anchor holds the widened, loaded start.
+            anchor = algorithms.ActorAnchor(runner.alg, args.anchor_weight)
+            runner.alg.update = anchor.update
 
         def checkpoint(update):
             path = args.output / f"checkpoint_update{update:06d}.pt"
