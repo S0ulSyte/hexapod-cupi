@@ -1074,6 +1074,15 @@ EXPERIMENTS["destination_v56"] = {
         EXPERIMENTS["destination_v53"]["reward"], situation_tracking=1.0, termination_weight=71.5
     ),
 }
+# destination_v57 keeps v56's situation-priced tracking and prices the stand fidget it pays
+# for: tw_z (round 17) moved every alignment axis forward but stage2_long's quiet joint
+# range (0.0217 at u1200, 0.0309 at u1400 against the 0.02 quiet gate). quiet_target_weight
+# is the term that prices target wander while still, so it carries the raise - and being
+# gated by stillness it cannot touch the moving families v56 just won.
+EXPERIMENTS["destination_v57"] = {
+    **EXPERIMENTS["destination_v56"],
+    "reward": replace(EXPERIMENTS["destination_v56"]["reward"], quiet_target_weight=2.0),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
