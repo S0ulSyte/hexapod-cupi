@@ -58,13 +58,19 @@ def ghost(pose, command, start):
     return out
 
 
-def robot_case(trace, row, joints):
+def robot_case(trace, row, joints, lateral_m=0.0):
     pose = trace["root_pose_xyzw"].astype(float)
     command = trace["command"].astype(float)
     x, y, _, heading = row["start_world_xy_ground_yaw"]
-    points = leg_points(
-        pose, trace["joint_position_rad"].astype(float), trace["toe_xyz_world_m"], joints
-    )
+    toes = trace["toe_xyz_world_m"].astype(float)
+    if lateral_m:
+        # Display-only lane offset (--spread): the world's x axis is the course's left.
+        pose = pose.copy()
+        pose[:, 0] += lateral_m
+        toes = toes.copy()
+        toes[..., 0] += lateral_m
+        x += lateral_m
+    points = leg_points(pose, trace["joint_position_rad"].astype(float), toes, joints)
     nav = np.concatenate((navigation(points[..., :2]), points[..., 2:]), -1)
     destination = ghost(pose, command, (x, y, heading))
     index = np.arange(0, len(pose), STEP)
@@ -89,16 +95,17 @@ def robot_case(trace, row, joints):
     }
 
 
-def build(folder, model=None):
+def build(folder, model=None, spread=0.0):
     folder = Path(folder)
     summary = json.loads((folder / "scene.json").read_text())
     active = json.loads((ROOT / "robot/active_model.json").read_text())
     model = Path(model) if model else ROOT / active["model"]["path"]
     joints = {j["name"]: j for j in json.loads(model.read_text())["joints"]}
     cases, blocks, contacts, poses, angles = [], [], [], [], []
-    for row in summary["robots"]:
+    count = len(summary["robots"])
+    for k, row in enumerate(summary["robots"]):
         with np.load(folder / row["trace"]) as trace:
-            case = robot_case(trace, row, joints)
+            case = robot_case(trace, row, joints, lateral_m=(k - (count - 1) / 2) * spread)
         case["points_offset"] = sum(len(b) for b in blocks)
         case["contacts_offset"] = sum(len(c) for c in contacts)
         case["pose_offset"] = sum(len(b) for b in poses)
@@ -149,8 +156,15 @@ def main(argv=None):
     parser.add_argument("folder", type=Path, help="Output folder of locomotion.surrogate.scene")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--model", type=Path, help="Robot model JSON; the active model by default")
+    parser.add_argument(
+        "--spread",
+        type=float,
+        default=0.0,
+        help="Metres between robots across the course: display-only lanes, so near-coincident"
+        " starts (an evaluation's repeated trials) play side by side instead of stacked",
+    )
     args = parser.parse_args(argv)
-    value = build(args.folder, args.model)
+    value = build(args.folder, args.model, args.spread)
     args.output.write_text(json.dumps(value, separators=(",", ":")) + "\n")
     print(f"{args.output}: {len(value['cases'])} robots, {value['seconds']:.1f} s")
 
