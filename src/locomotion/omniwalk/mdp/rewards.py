@@ -105,9 +105,10 @@ class RewardConfig:
     situation_speed_ref_mps: float = 0.2
     situation_yaw_ref_rad_s: float = 0.4
     # Quiet pose hold (0 keeps the reward byte-identical): while still, each joint pays for its
-    # squared deviation from the position it held when the quiet command began (the wrapper's
-    # quiet_anchor_joint_rad). The quiet gate bounds the window RANGE of joint positions, and
-    # the rate and step prices are quadratically blind to the slow wander that moves it.
+    # squared deviation from the pose it settled into — the wrapper's quiet_anchor_joint_rad,
+    # captured on the first still control, so the hold never fights the settle. The quiet gate
+    # bounds the window RANGE of joint positions, and the rate and step prices are
+    # quadratically blind to the slow wander that moves it.
     quiet_hold_weight: float = 0.0
     quiet_hold_scale_rad: float = 0.01
 

@@ -1087,7 +1087,9 @@ EXPERIMENTS["destination_v57"] = {
 # joint range at 0.0211-0.0309 against the 0.02 quiet gate while quiet_target x4 (v57) and
 # anchor x2/x4 (rounds 19-20) never moved it: the gate bounds the window RANGE of positions,
 # and the rate and step prices are quadratically blind to slow wander (~0.002 rad/s costs
-# ~1e-5 units). quiet_hold prices deviation from the quiet-onset pose itself; at the observed
+# ~1e-5 units). quiet_hold prices deviation from the settled pose, captured on the first
+# still control (anchoring at quiet onset fought the settle and cost formal: tw_q, round 21);
+# at the observed
 # half-ranges (0.011-0.016 rad over the 0.01 scale) weight 3 costs 3.6-7.7 units per still
 # control, the scale of price that cracked formal.
 EXPERIMENTS["destination_v58"] = {
