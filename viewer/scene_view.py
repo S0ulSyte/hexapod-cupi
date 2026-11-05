@@ -118,6 +118,20 @@ def build(folder, model=None, spread=0.0):
     points, contact_bytes = b"".join(blocks), b"".join(contacts)
     with np.load(folder / "terrain.npz") as grid:
         heights, xs, ys = grid["heights"], grid["xs"], grid["ys"]
+    if spread:
+        # Widen the drawn ground to cover the lanes: tile the course's centre cross-section
+        # (the profile every trial actually walked) across the new width, display only.
+        half = abs(spread) * (count - 1) / 2 + 0.9
+        if half > float(xs[-1]):
+            resolution = float(xs[1] - xs[0])
+            centre = heights[:, [int(np.argmin(np.abs(xs)))]]
+            xs = np.arange(-half, half + resolution / 2, resolution)
+            heights = np.repeat(centre, len(xs), 1)
+            summary["scene"]["terrain"]["size_m"][1] = round(2 * half, 2)
+            for feature in summary["scene"]["terrain"].get("features", []):
+                size = feature.get("size")
+                if isinstance(size, list) and len(size) == 2:
+                    size[1] = round(2 * half, 2)
     terrain_bytes = np.round(heights * 1000).astype("<i2").tobytes()
     # Padding keeps the terrain's int16 view and the float32 views aligned.
     pad = b"\0" * ((len(points) + len(contact_bytes)) % 2)
