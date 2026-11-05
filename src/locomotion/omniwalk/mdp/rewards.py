@@ -104,6 +104,12 @@ class RewardConfig:
     situation_tracking: float = 0.0
     situation_speed_ref_mps: float = 0.2
     situation_yaw_ref_rad_s: float = 0.4
+    # Quiet pose hold (0 keeps the reward byte-identical): while still, each joint pays for its
+    # squared deviation from the position it held when the quiet command began (the wrapper's
+    # quiet_anchor_joint_rad). The quiet gate bounds the window RANGE of joint positions, and
+    # the rate and step prices are quadratically blind to the slow wander that moves it.
+    quiet_hold_weight: float = 0.0
+    quiet_hold_scale_rad: float = 0.01
 
     def validate(self):
         for key, low in (
@@ -537,6 +543,32 @@ def measured_reward(telemetry, commands, terminated, config=REWARD_CONFIG, nomin
             config.landing_lift_weight * walking * (rising * swing * airborne * height).sum(-1) / 3
         )
         reward = reward + components["landing_lift"]
+    if config.quiet_hold_weight:
+        anchor = telemetry.get("quiet_anchor_joint_rad")
+        position = telemetry.get("joint_position_rad")
+        if (
+            not torch.is_tensor(anchor)
+            or tuple(anchor.shape) != (len(commands), 18)
+            or not bool(torch.isfinite(anchor.to(torch.float32)).all())
+            or not torch.is_tensor(position)
+            or tuple(position.shape) != (len(commands), 18)
+            or not bool(torch.isfinite(position.to(torch.float32)).all())
+        ):
+            raise ValueError(
+                "Missing/nonfinite quiet-hold telemetry: quiet_anchor_joint_rad, joint_position_rad"
+            )
+        quiet = (commands == 0).all(-1).to(torch.float32)
+        age = telemetry.get("command_age_controls")
+        still = (
+            quiet
+            if age is None
+            else quiet * (age.to(device) > config.quiet_grace_controls).to(torch.float32)
+        )
+        deviation = (
+            position.to(device, torch.float32) - anchor.to(device, torch.float32)
+        ) / config.quiet_hold_scale_rad
+        components["quiet_hold"] = -config.quiet_hold_weight * still * deviation.square().mean(-1)
+        reward = reward + components["quiet_hold"]
     if not bool(torch.isfinite(reward).all()):
         raise FloatingPointError("Nonfinite yaw-gated reward v4")
     return reward, components

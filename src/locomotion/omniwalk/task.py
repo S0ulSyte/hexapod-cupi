@@ -51,6 +51,8 @@ class TrainingTask:
         self.air_time = torch.zeros(n, 6, device=device)
         self.in_contact = torch.ones(n, 6, dtype=torch.bool, device=device)
         self.command_age = torch.zeros(n, dtype=torch.long, device=device)
+        self.quiet_anchor = torch.zeros(n, 18, device=device)
+        self.anchor_stale = torch.ones(n, dtype=torch.bool, device=device)
 
         self.env = env
         self.config = task_config
@@ -92,6 +94,7 @@ class TrainingTask:
         )
         self.window.restart(selected, self.env.commands[selected])
         self.command_age[selected] = 0
+        self.anchor_stale[selected] = True
         self.air_time[selected] = 0
         self.in_contact[selected] = True
 
@@ -196,6 +199,13 @@ class TrainingTask:
             / self.env.cfg.action_scale_rad,
             "command_age_controls": self.command_age.clone(),
         }
+        if self.reward_config.quiet_hold_weight:
+            # The pose each quiet hold is priced against: captured on the completed control
+            # closest to each command change (quiet onsets included) and after every reset.
+            stale = self.anchor_stale | changed.to(self.anchor_stale.device)
+            self.quiet_anchor = torch.where(stale.to(q.device)[:, None], q, self.quiet_anchor.to(q))
+            self.anchor_stale = torch.zeros_like(self.anchor_stale)
+            base["quiet_anchor_joint_rad"] = self.quiet_anchor.clone()
         return {
             **base,
             "gate_yaw_rate_rad_s": stride_yaw,

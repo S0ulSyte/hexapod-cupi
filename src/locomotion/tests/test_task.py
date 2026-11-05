@@ -93,11 +93,14 @@ class ActiveTaskTests(unittest.TestCase):
                 "situation_tracking",
                 "situation_speed_ref_mps",
                 "situation_yaw_ref_rad_s",
+                "quiet_hold_weight",
+                "quiet_hold_scale_rad",
             },
         )
         self.assertEqual(active["swing_clearance_weight"], 0.0)
         self.assertEqual(active["landing_lift_weight"], 0.0)
         self.assertEqual(active["situation_tracking"], 0.0)
+        self.assertEqual(active["quiet_hold_weight"], 0.0)
         self.assertIsNone(active["schedule_mirror_turns"])
         self.assertEqual({k: v for k, v in active.items() if k in expected}, expected)
         baseline = importlib.import_module("_active_task_baseline.task")
@@ -183,6 +186,42 @@ class ActiveTaskTests(unittest.TestCase):
         )
         changed = {key for key in base if not torch.equal(base[key], priced[key])}
         self.assertEqual(changed, {"linear_tracking", "yaw_tracking"})
+
+    def test_quiet_hold_prices_wander_from_the_anchor_while_still(self):
+        commands = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.1, 0.0, 0.0]])
+        values = telemetry(commands)
+        values["joint_position_rad"] = torch.zeros(3, 18)
+        anchor = torch.zeros(3, 18)
+        anchor[0] = -0.01  # one scale of deviation on every joint of the settled stand
+        anchor[2] = -0.02
+        values.update(
+            quiet_anchor_joint_rad=anchor,
+            command_age_controls=torch.tensor([100, 10, 100]),
+            gate_yaw_rate_rad_s=torch.zeros(3),
+            stride_velocity_nav=torch.zeros(3, 3),
+            stride_touchdown=torch.zeros(3, 6, dtype=torch.bool),
+            stride_displacement_nav=torch.zeros(3, 6, 2),
+        )
+        config = replace(reward.REWARD_CONFIG, quiet_hold_weight=3.0)
+        _, components = reward.measured_reward(
+            values, commands, torch.zeros(3, dtype=torch.bool), config, 0.1
+        )
+        # Row 0 is still and one scale off its anchor; row 1 sits inside the grace window;
+        # row 2 is moving, however far from its stale anchor.
+        torch.testing.assert_close(components["quiet_hold"], torch.tensor([-3.0, 0.0, 0.0]))
+
+    def test_quiet_hold_telemetry_flows_through_the_task(self):
+        env = GaitDouble(3)
+        wrapped = task.TrainingTask(
+            env,
+            TaskConfig(seed=20260917),
+            reward_config=replace(reward.REWARD_CONFIG, quiet_hold_weight=3.0),
+        )
+        wrapped.reset()
+        for _ in range(3):
+            wrapped.remaining_controls[:] = 2
+            wrapped.step(torch.zeros(3, 18))
+        self.assertIn("quiet_hold", wrapped.last_components)
 
     def test_terminal_rows_keep_the_final_command_until_selected_reset(self):
         env = GaitDouble(3)

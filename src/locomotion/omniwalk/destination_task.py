@@ -1083,6 +1083,17 @@ EXPERIMENTS["destination_v57"] = {
     **EXPERIMENTS["destination_v56"],
     "reward": replace(EXPERIMENTS["destination_v56"]["reward"], quiet_target_weight=2.0),
 }
+# destination_v58 adds the quiet pose hold to v56. Every v56 point carries stage2_long's
+# joint range at 0.0211-0.0309 against the 0.02 quiet gate while quiet_target x4 (v57) and
+# anchor x2/x4 (rounds 19-20) never moved it: the gate bounds the window RANGE of positions,
+# and the rate and step prices are quadratically blind to slow wander (~0.002 rad/s costs
+# ~1e-5 units). quiet_hold prices deviation from the quiet-onset pose itself; at the observed
+# half-ranges (0.011-0.016 rad over the 0.01 scale) weight 3 costs 3.6-7.7 units per still
+# control, the scale of price that cracked formal.
+EXPERIMENTS["destination_v58"] = {
+    **EXPERIMENTS["destination_v56"],
+    "reward": replace(EXPERIMENTS["destination_v56"]["reward"], quiet_hold_weight=3.0),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
