@@ -402,6 +402,7 @@ class DestinationRewardConfig(RewardConfig):
             )
         ceiling = (
             (self.linear_tracking_weight + self.yaw_tracking_weight)
+            * (1 + self.situation_tracking)
             * (1 + self.stride_tracking_weight)
             + 6 * self.stride_length_weight / self.schedule_period_controls
             + self.destination_weight
@@ -1057,6 +1058,21 @@ EXPERIMENTS["destination_v54"] = {
 EXPERIMENTS["destination_v55"] = {
     **EXPERIMENTS["destination_v53"],
     "reward": replace(EXPERIMENTS["destination_v53"]["reward"], acceleration_weight=0.2),
+}
+# destination_v56 prices each tracking axis by how hard the row's command exercises it
+# (rewards.situation_weights): up to twice the registered weight at the manifest's maxima
+# (0.20 m/s, 0.40 rad/s), unchanged where the axis is idle. The global raises moved whiskers
+# instead of removing them (v54 round 14: new yaw misses at 225/270 and omni -3; v55: demand
+# misses traded 135 for 292.5) because a flat price also buys stillness where nothing is
+# commanded; a situation price pays turn_-0.40 at x2 yaw, combined yaw at x1.5 and a quiet
+# stand at x1. One field against v53.
+EXPERIMENTS["destination_v56"] = {
+    **EXPERIMENTS["destination_v53"],
+    # One lever, two coupled fields: the full factor lifts the validator's tracking ceiling
+    # from 5.15 to 7.1, so termination must reach 71.
+    "reward": replace(
+        EXPERIMENTS["destination_v53"]["reward"], situation_tracking=1.0, termination_weight=71.5
+    ),
 }
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips

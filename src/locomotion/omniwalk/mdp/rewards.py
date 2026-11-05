@@ -96,6 +96,14 @@ class RewardConfig:
     landing_lift_weight: float = 0.0
     landing_lift_target_m: float = 0.02
     landing_lift_rise_m: float = 0.01
+    # Situation-priced tracking (0 keeps the reward byte-identical): each tracking term's weight
+    # grows with how hard its own axis is commanded — up to (1 + the factor) times the registered
+    # weight at the reference command — so the price lands on the rows that exercise the axis and
+    # every other situation keeps the base price. Both validators count the ceiling at the full
+    # factor, and the stride-tracking term prices its inner weights the same way.
+    situation_tracking: float = 0.0
+    situation_speed_ref_mps: float = 0.2
+    situation_yaw_ref_rad_s: float = 0.4
 
     def validate(self):
         for key, low in (
@@ -117,6 +125,8 @@ class RewardConfig:
             "quiet_load_n",
             "swing_clearance_target_m",
             "landing_lift_target_m",
+            "situation_speed_ref_mps",
+            "situation_yaw_ref_rad_s",
         ]
         if any(getattr(self, key) <= 0 for key in positive):
             raise ValueError("Positive reward v4 scales required")
@@ -129,7 +139,9 @@ class RewardConfig:
         if not 0 < self.over_rating_onset_nm < RATED_TORQUE_NM:
             raise ValueError("The over-rating onset lies below 1.6 N.m")
         # A fall must cost more than the discounted loss of the largest per-control tracking reward.
-        if self.termination_weight < 10 * (self.linear_tracking_weight + self.yaw_tracking_weight):
+        if self.termination_weight < 10 * (
+            self.linear_tracking_weight + self.yaw_tracking_weight
+        ) * (1 + self.situation_tracking):
             raise ValueError("The termination weight must reach ten times the tracking ceiling")
         if not math.isfinite(self.yaw_gate_scale_rad_s) or self.yaw_gate_scale_rad_s <= 0:
             raise ValueError("The yaw gate needs a positive finite scale")
@@ -152,8 +164,10 @@ class RewardConfig:
         if not math.isfinite(self.stride_length_weight) or self.stride_length_weight < 0:
             raise ValueError("stride_length_weight must be finite and nonnegative")
         ceiling = (self.linear_tracking_weight + self.yaw_tracking_weight) * (
-            1 + self.stride_tracking_weight
-        ) + 6 * self.stride_length_weight / self.schedule_period_controls
+            1 + self.situation_tracking
+        ) * (1 + self.stride_tracking_weight) + 6 * self.stride_length_weight / (
+            self.schedule_period_controls
+        )
         if self.termination_weight < 10 * ceiling:
             raise ValueError(
                 "The termination weight must reach ten times the tracking ceiling, stride term included"
@@ -215,6 +229,21 @@ def scheduled_swing(episode_steps, config=REWARD_CONFIG):
     swing_a = fraction < config.schedule_swing_fraction
     swing_b = (fraction >= 0.5) & (fraction < 0.5 + config.schedule_swing_fraction)
     return torch.where(first, swing_a[:, None], swing_b[:, None])
+
+
+def situation_weights(commands, config=REWARD_CONFIG):
+    """The tracking weights, each grown with how hard its axis is commanded when situation
+    pricing is on; zero situation_tracking returns the registered scalars unchanged."""
+    if not config.situation_tracking:
+        return config.linear_tracking_weight, config.yaw_tracking_weight
+    speed_share = (
+        torch.linalg.vector_norm(commands[:, :2], dim=-1) / config.situation_speed_ref_mps
+    ).clamp(0, 1)
+    yaw_share = (commands[:, 2].abs() / config.situation_yaw_ref_rad_s).clamp(0, 1)
+    return (
+        config.linear_tracking_weight * (1 + config.situation_tracking * speed_share),
+        config.yaw_tracking_weight * (1 + config.situation_tracking * yaw_share),
+    )
 
 
 def tracking_errors(tracked, commands, config=REWARD_CONFIG):
@@ -315,9 +344,10 @@ def base_reward(telemetry, commands, terminated, config=REWARD_CONFIG, nominal_h
         .clamp(0, 1)
         .mean(-1)
     )
+    linear_weight, yaw_weight = situation_weights(commands, c)
     components = {
-        "linear_tracking": c.linear_tracking_weight * kernel(linear_error, c),
-        "yaw_tracking": c.yaw_tracking_weight * kernel(yaw_error, c),
+        "linear_tracking": linear_weight * kernel(linear_error, c),
+        "yaw_tracking": yaw_weight * kernel(yaw_error, c),
         "gait_schedule": c.schedule_weight
         * moving
         * (unloaded * (2 * wanted_swing - 1)).sum(-1)
@@ -415,12 +445,13 @@ def measured_reward(telemetry, commands, terminated, config=REWARD_CONFIG, nomin
             stride.to(device, torch.float32), commands, config
         )
         moving = (commands != 0).any(-1).to(torch.float32)
+        linear_weight, yaw_weight = situation_weights(commands, config)
         components["stride_tracking"] = (
             config.stride_tracking_weight
             * moving
             * (
-                config.linear_tracking_weight * kernel(linear_error, config)
-                + config.yaw_tracking_weight * kernel(yaw_error, config)
+                linear_weight * kernel(linear_error, config)
+                + yaw_weight * kernel(yaw_error, config)
             )
         )
         reward = reward + components["stride_tracking"]

@@ -2127,6 +2127,23 @@ class TerrainCampaignTests(unittest.TestCase):
         )
         EXPERIMENTS["destination_v55"]["reward"].validate()
 
+    def test_destination_v56_prices_tracking_by_situation(self):
+        v53 = EXPERIMENTS["destination_v53"]["reward"]
+        v56 = EXPERIMENTS["destination_v56"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v56).items() if asdict(v53)[k] != v},
+            {"situation_tracking", "termination_weight"},
+        )
+        self.assertEqual(v56.situation_tracking, 1.0)
+        # The validator couples termination to the ceiling the full situation factor lifts.
+        self.assertEqual(v56.termination_weight, 71.5)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v56"], "terrain_v2")
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v56"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v53"].items() if k != "reward"},
+        )
+        EXPERIMENTS["destination_v56"]["reward"].validate()
+
     def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
         v38 = EXPERIMENTS["destination_v38"]["reward"]
         v41 = EXPERIMENTS["destination_v41"]["reward"]

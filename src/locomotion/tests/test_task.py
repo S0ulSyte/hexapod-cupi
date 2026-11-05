@@ -8,7 +8,7 @@ import tarfile
 import tempfile
 import types
 import unittest
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 import torch
@@ -90,10 +90,14 @@ class ActiveTaskTests(unittest.TestCase):
                 "landing_lift_target_m",
                 "landing_lift_rise_m",
                 "schedule_mirror_turns",
+                "situation_tracking",
+                "situation_speed_ref_mps",
+                "situation_yaw_ref_rad_s",
             },
         )
         self.assertEqual(active["swing_clearance_weight"], 0.0)
         self.assertEqual(active["landing_lift_weight"], 0.0)
+        self.assertEqual(active["situation_tracking"], 0.0)
         self.assertIsNone(active["schedule_mirror_turns"])
         self.assertEqual({k: v for k, v in active.items() if k in expected}, expected)
         baseline = importlib.import_module("_active_task_baseline.task")
@@ -156,6 +160,29 @@ class ActiveTaskTests(unittest.TestCase):
         )
         actual = reward.measured_reward(values, commands, terminated, reward.REWARD_CONFIG, 0.1)
         self.exact(actual, expected)
+
+    def test_situation_tracking_prices_each_axis_by_its_command(self):
+        commands = torch.tensor(
+            [[0.0, 0.0, 0.0], [0.2, 0.0, 0.0], [0.0, 0.0, -0.4], [0.15, 0.0, 0.05]]
+        )
+        values = telemetry(commands)
+        # Perfect tracking keeps both kernels at one, so the factors are read off directly.
+        values["tracked_velocity_nav"] = commands.clone()
+        terminated = torch.zeros(len(commands), dtype=torch.bool)
+        base = reward.base_reward(values, commands, terminated, reward.REWARD_CONFIG, 0.1)[1]
+        config = replace(reward.REWARD_CONFIG, situation_tracking=1.0, termination_weight=44.0)
+        config.validate()
+        priced = reward.base_reward(values, commands, terminated, config, 0.1)[1]
+        torch.testing.assert_close(
+            priced["linear_tracking"],
+            base["linear_tracking"] * torch.tensor([1.0, 2.0, 1.0, 1.75]),
+        )
+        torch.testing.assert_close(
+            priced["yaw_tracking"],
+            base["yaw_tracking"] * torch.tensor([1.0, 1.0, 2.0, 1.125]),
+        )
+        changed = {key for key in base if not torch.equal(base[key], priced[key])}
+        self.assertEqual(changed, {"linear_tracking", "yaw_tracking"})
 
     def test_terminal_rows_keep_the_final_command_until_selected_reset(self):
         env = GaitDouble(3)
