@@ -2100,9 +2100,12 @@ class TerrainCampaignTests(unittest.TestCase):
         v53 = EXPERIMENTS["destination_v53"]["reward"]
         v54 = EXPERIMENTS["destination_v54"]["reward"]
         self.assertEqual(
-            {k for k, v in asdict(v54).items() if asdict(v53)[k] != v}, {"yaw_tracking_weight"}
+            {k for k, v in asdict(v54).items() if asdict(v53)[k] != v},
+            {"yaw_tracking_weight", "termination_weight"},
         )
         self.assertEqual(v54.yaw_tracking_weight, 1.0)
+        # The validator couples termination to the tracking ceiling the yaw raise lifts.
+        self.assertEqual(v54.termination_weight, 58.5)
         self.assertEqual(EXPERIMENT_INPUTS["destination_v54"], "terrain_v2")
         self.assertEqual(
             {k: v for k, v in EXPERIMENTS["destination_v54"].items() if k != "reward"},

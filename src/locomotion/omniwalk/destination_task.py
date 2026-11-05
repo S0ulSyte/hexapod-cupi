@@ -1048,7 +1048,11 @@ EXPERIMENTS["destination_v53"] = {
 # One field each against v53, judged against tw_u_u1200 at matched length and seed.
 EXPERIMENTS["destination_v54"] = {
     **EXPERIMENTS["destination_v53"],
-    "reward": replace(EXPERIMENTS["destination_v53"]["reward"], yaw_tracking_weight=1.0),
+    # One lever, two coupled fields: the validator requires termination to stay ten times
+    # the tracking ceiling, which the yaw raise lifts from 5.15 to 5.8.
+    "reward": replace(
+        EXPERIMENTS["destination_v53"]["reward"], yaw_tracking_weight=1.0, termination_weight=58.5
+    ),
 }
 EXPERIMENTS["destination_v55"] = {
     **EXPERIMENTS["destination_v53"],
