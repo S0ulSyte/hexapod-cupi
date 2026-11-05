@@ -1041,6 +1041,19 @@ EXPERIMENTS["destination_v53"] = {
     **EXPERIMENTS["destination_v45"],
     "reward": replace(EXPERIMENTS["destination_v45"]["reward"], tilt_weight=15.0),
 }
+# v54/v55 each price one residual whisker class of the v53 plateau (round 13): every
+# in-goal miss at the plateau's best points is a near-threshold yaw-tracking error
+# (turn_-0.40 +4.8%, gentle_arc_315 pair +1-3%, combined yaw +11%) or an instantaneous
+# torque spike past the 1.6 Nm rating (gentle_135 pair, omni15 135/315 deg, +4-20%).
+# One field each against v53, judged against tw_u_u1200 at matched length and seed.
+EXPERIMENTS["destination_v54"] = {
+    **EXPERIMENTS["destination_v53"],
+    "reward": replace(EXPERIMENTS["destination_v53"]["reward"], yaw_tracking_weight=1.0),
+}
+EXPERIMENTS["destination_v55"] = {
+    **EXPERIMENTS["destination_v53"],
+    "reward": replace(EXPERIMENTS["destination_v53"]["reward"], acceleration_weight=0.2),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.

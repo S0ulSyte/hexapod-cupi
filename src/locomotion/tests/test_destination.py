@@ -2096,6 +2096,34 @@ class TerrainCampaignTests(unittest.TestCase):
         )
         EXPERIMENTS["destination_v53"]["reward"].validate()
 
+    def test_destination_v54_doubles_yaw_tracking_on_the_tilt_recipe(self):
+        v53 = EXPERIMENTS["destination_v53"]["reward"]
+        v54 = EXPERIMENTS["destination_v54"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v54).items() if asdict(v53)[k] != v}, {"yaw_tracking_weight"}
+        )
+        self.assertEqual(v54.yaw_tracking_weight, 1.0)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v54"], "terrain_v2")
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v54"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v53"].items() if k != "reward"},
+        )
+        EXPERIMENTS["destination_v54"]["reward"].validate()
+
+    def test_destination_v55_doubles_acceleration_pricing_on_the_tilt_recipe(self):
+        v53 = EXPERIMENTS["destination_v53"]["reward"]
+        v55 = EXPERIMENTS["destination_v55"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v55).items() if asdict(v53)[k] != v}, {"acceleration_weight"}
+        )
+        self.assertEqual(v55.acceleration_weight, 0.2)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v55"], "terrain_v2")
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v55"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v53"].items() if k != "reward"},
+        )
+        EXPERIMENTS["destination_v55"]["reward"].validate()
+
     def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
         v38 = EXPERIMENTS["destination_v38"]["reward"]
         v41 = EXPERIMENTS["destination_v41"]["reward"]
