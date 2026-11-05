@@ -95,6 +95,7 @@ class ActiveTaskTests(unittest.TestCase):
                 "situation_yaw_ref_rad_s",
                 "quiet_hold_weight",
                 "quiet_hold_scale_rad",
+                "quiet_hold_grace_controls",
             },
         )
         self.assertEqual(active["swing_clearance_weight"], 0.0)
@@ -209,6 +210,15 @@ class ActiveTaskTests(unittest.TestCase):
         # Row 0 is still and one scale off its anchor; row 1 sits inside the grace window;
         # row 2 is moving, however far from its stale anchor.
         torch.testing.assert_close(components["quiet_hold"], torch.tensor([-3.0, 0.0, 0.0]))
+        # With the hold's own longer settle, age 100 has not yet reached the hold.
+        _, delayed = reward.measured_reward(
+            values,
+            commands,
+            torch.zeros(3, dtype=torch.bool),
+            replace(config, quiet_hold_grace_controls=120),
+            0.1,
+        )
+        torch.testing.assert_close(delayed["quiet_hold"], torch.zeros(3))
 
     def test_quiet_hold_telemetry_flows_through_the_task(self):
         env = GaitDouble(3)

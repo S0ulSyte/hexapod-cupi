@@ -203,7 +203,12 @@ class TrainingTask:
             # hold starts at zero deviation and prices only the wander that follows. Anchoring
             # at quiet onset instead fights the settle itself (tw_q, round 21: formal 0/4).
             settled = (command == 0).all(-1).to(self.command_age.device) & (
-                self.command_age == self.reward_config.quiet_grace_controls + 1
+                self.command_age
+                == max(
+                    self.reward_config.quiet_grace_controls,
+                    self.reward_config.quiet_hold_grace_controls,
+                )
+                + 1
             )
             self.quiet_anchor = torch.where(settled.to(q.device)[:, None], q, self.quiet_anchor.to(q))
             base["quiet_anchor_joint_rad"] = self.quiet_anchor.clone()

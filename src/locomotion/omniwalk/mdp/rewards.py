@@ -111,12 +111,18 @@ class RewardConfig:
     # quadratically blind to the slow wander that moves it.
     quiet_hold_weight: float = 0.0
     quiet_hold_scale_rad: float = 0.01
+    # The hold's own settle: capture the anchor and start pricing this many controls into the
+    # quiet hold instead of at the quiet grace (0 keeps the grace timing). A pose frozen after
+    # one second still carries the settle's lean, and a held lean cannot be corrected once
+    # holding is cheaper than the tilt it saves.
+    quiet_hold_grace_controls: int = 0
 
     def validate(self):
         for key, low in (
             ("tracking_window_controls", 1),
             ("schedule_period_controls", 10),
             ("quiet_grace_controls", 0),
+            ("quiet_hold_grace_controls", 0),
         ):
             if type(getattr(self, key)) is not int or not low <= getattr(self, key) <= 250:
                 raise ValueError(f"{key} needs {low} to 250 controls")
@@ -560,15 +566,16 @@ def measured_reward(telemetry, commands, terminated, config=REWARD_CONFIG, nomin
             )
         quiet = (commands == 0).all(-1).to(torch.float32)
         age = telemetry.get("command_age_controls")
-        still = (
+        hold_age = max(config.quiet_grace_controls, config.quiet_hold_grace_controls)
+        held = (
             quiet
             if age is None
-            else quiet * (age.to(device) > config.quiet_grace_controls).to(torch.float32)
+            else quiet * (age.to(device) > hold_age).to(torch.float32)
         )
         deviation = (
             position.to(device, torch.float32) - anchor.to(device, torch.float32)
         ) / config.quiet_hold_scale_rad
-        components["quiet_hold"] = -config.quiet_hold_weight * still * deviation.square().mean(-1)
+        components["quiet_hold"] = -config.quiet_hold_weight * held * deviation.square().mean(-1)
         reward = reward + components["quiet_hold"]
     if not bool(torch.isfinite(reward).all()):
         raise FloatingPointError("Nonfinite yaw-gated reward v4")

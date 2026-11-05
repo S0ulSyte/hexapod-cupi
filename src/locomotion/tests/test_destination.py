@@ -2174,6 +2174,21 @@ class TerrainCampaignTests(unittest.TestCase):
         )
         EXPERIMENTS["destination_v58"]["reward"].validate()
 
+    def test_destination_v59_settles_three_seconds_before_the_hold(self):
+        v58 = EXPERIMENTS["destination_v58"]["reward"]
+        v59 = EXPERIMENTS["destination_v59"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v59).items() if asdict(v58)[k] != v},
+            {"quiet_hold_grace_controls"},
+        )
+        self.assertEqual(v59.quiet_hold_grace_controls, 150)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v59"], "terrain_v2")
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v59"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v58"].items() if k != "reward"},
+        )
+        EXPERIMENTS["destination_v59"]["reward"].validate()
+
     def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
         v38 = EXPERIMENTS["destination_v38"]["reward"]
         v41 = EXPERIMENTS["destination_v41"]["reward"]

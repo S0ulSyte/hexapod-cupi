@@ -1096,6 +1096,16 @@ EXPERIMENTS["destination_v58"] = {
     **EXPERIMENTS["destination_v56"],
     "reward": replace(EXPERIMENTS["destination_v56"]["reward"], quiet_hold_weight=3.0),
 }
+# destination_v59 gives the hold its own three-second settle. The settled-pose hold (tw_q2,
+# round 22) cured the quiet range at every length and unlocked gentle 16/16 and omni 16/16,
+# but the pose frozen after one second still leans: formal 0.00 tilt 0.57-0.71 deg against
+# the 0.50 bound, and once held, a 0.02 rad correction costs ~12 hold units against ~0.14
+# tilt units saved, so the lean is locked in. Capturing at 150 controls hands the hold the
+# level pose the tilt price has had three seconds to find.
+EXPERIMENTS["destination_v59"] = {
+    **EXPERIMENTS["destination_v58"],
+    "reward": replace(EXPERIMENTS["destination_v58"]["reward"], quiet_hold_grace_controls=150),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
