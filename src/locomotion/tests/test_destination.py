@@ -2203,6 +2203,35 @@ class TerrainCampaignTests(unittest.TestCase):
         )
         EXPERIMENTS["destination_v60"]["reward"].validate()
 
+    def test_destination_v61_prices_each_scorer_bound_slightly_early(self):
+        v59 = EXPERIMENTS["destination_v59"]["reward"]
+        v61 = EXPERIMENTS["destination_v61"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v61).items() if asdict(v59)[k] != v}, {"bound_margin_weight"}
+        )
+        self.assertEqual(v61.bound_margin_weight, 1.0)
+        self.assertEqual(v61.bound_margin_fraction, 0.8)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v61"], "terrain_v2")
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v61"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v59"].items() if k != "reward"},
+        )
+        EXPERIMENTS["destination_v61"]["reward"].validate()
+
+    def test_destination_v62_triples_the_bound_margin_price(self):
+        v61 = EXPERIMENTS["destination_v61"]["reward"]
+        v62 = EXPERIMENTS["destination_v62"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v62).items() if asdict(v61)[k] != v}, {"bound_margin_weight"}
+        )
+        self.assertEqual(v62.bound_margin_weight, 3.0)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v62"], "terrain_v2")
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v62"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v59"].items() if k != "reward"},
+        )
+        EXPERIMENTS["destination_v62"]["reward"].validate()
+
     def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
         v38 = EXPERIMENTS["destination_v38"]["reward"]
         v41 = EXPERIMENTS["destination_v41"]["reward"]

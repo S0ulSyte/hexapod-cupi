@@ -116,6 +116,15 @@ class RewardConfig:
     # one second still carries the settle's lean, and a held lean cannot be corrected once
     # holding is cheaper than the tilt it saves.
     quiet_hold_grace_controls: int = 0
+    # Early bound-margin pricing (0 keeps the reward byte-identical): each control pays once a
+    # scorer-judged quantity crosses a fraction of its own case bound — planar velocity error
+    # against max(0.025, 0.25 x commanded speed), yaw rate error against max(0.06, 0.25 x
+    # |commanded yaw|), and the mean over-rating torque fraction against 0.005 — so the penalty
+    # for going over each limit starts slightly earlier than the limit itself. Each family's
+    # excess is normalized by its margin band and capped at two band-widths, keeping the
+    # gradient alive from the fraction to past the bound and the term bounded.
+    bound_margin_weight: float = 0.0
+    bound_margin_fraction: float = 0.8
 
     def validate(self):
         for key, low in (
@@ -151,6 +160,8 @@ class RewardConfig:
             raise ValueError("The action-limit onset lies inside the action range")
         if not 0 < self.over_rating_onset_nm < RATED_TORQUE_NM:
             raise ValueError("The over-rating onset lies below 1.6 N.m")
+        if not 0.05 <= self.bound_margin_fraction <= 0.95:
+            raise ValueError("The bound-margin fraction lies between 0.05 and 0.95")
         # A fall must cost more than the discounted loss of the largest per-control tracking reward.
         if self.termination_weight < 10 * (
             self.linear_tracking_weight + self.yaw_tracking_weight
@@ -405,6 +416,27 @@ def base_reward(telemetry, commands, terminated, config=REWARD_CONFIG, nominal_h
         / RATED_TORQUE_NM**2,
         "termination": -c.termination_weight * terminated.to(torch.float32),
     }
+    if c.bound_margin_weight:
+        band = 1 - c.bound_margin_fraction
+
+        def crossing(error, bound):
+            return ((error / bound - c.bound_margin_fraction) / band).clamp(0, 2).square()
+
+        components["bound_margin"] = (
+            -c.bound_margin_weight
+            * (
+                crossing(
+                    torch.linalg.vector_norm(tracked[:, :2] - commands[:, :2], dim=-1),
+                    (0.25 * speed).clamp_min(0.025),
+                )
+                + crossing(
+                    (tracked[:, 2] - commands[:, 2]).abs(),
+                    (0.25 * commands[:, 2].abs()).clamp_min(0.06),
+                )
+                + crossing((demand / RATED_TORQUE_NM - 1).clamp_min(0).mean(-1), 0.005)
+            )
+            / 3
+        )
     reward = sum(components.values())
     if not bool(torch.isfinite(reward).all()):
         raise FloatingPointError("Nonfinite reward v4")

@@ -1114,6 +1114,22 @@ EXPERIMENTS["destination_v60"] = {
     **EXPERIMENTS["destination_v59"],
     "reward": replace(EXPERIMENTS["destination_v59"]["reward"], quiet_hold_weight=1.5),
 }
+# destination_v61 starts each bound's price slightly before the bound. Rounds 25-26 plateau at
+# 58/96 with every goal miss a whisker just past its scorer bound (combined_180_-0.20 planar
+# 0.026-0.033 against 0.025 across the whole chain, combined_0_-0.20 yaw 0.062-0.067 against
+# 0.06, gentle_315/omni-translate demand 0.005-0.0075 against 0.005), and the tracking kernels'
+# broad pull never prices that band specifically. The bound-margin term mirrors each case's own
+# scorer bound and starts charging at 80% of it, so the penalty for going over each limit
+# begins earlier than the limit and the band the cases lose in carries its own gradient.
+EXPERIMENTS["destination_v61"] = {
+    **EXPERIMENTS["destination_v59"],
+    "reward": replace(EXPERIMENTS["destination_v59"]["reward"], bound_margin_weight=1.0),
+}
+# destination_v62 is the same term at triple price, the dose arm of the v61 round.
+EXPERIMENTS["destination_v62"] = {
+    **EXPERIMENTS["destination_v59"],
+    "reward": replace(EXPERIMENTS["destination_v59"]["reward"], bound_margin_weight=3.0),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.

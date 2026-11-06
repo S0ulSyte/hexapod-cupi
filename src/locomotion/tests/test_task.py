@@ -96,12 +96,15 @@ class ActiveTaskTests(unittest.TestCase):
                 "quiet_hold_weight",
                 "quiet_hold_scale_rad",
                 "quiet_hold_grace_controls",
+                "bound_margin_weight",
+                "bound_margin_fraction",
             },
         )
         self.assertEqual(active["swing_clearance_weight"], 0.0)
         self.assertEqual(active["landing_lift_weight"], 0.0)
         self.assertEqual(active["situation_tracking"], 0.0)
         self.assertEqual(active["quiet_hold_weight"], 0.0)
+        self.assertEqual(active["bound_margin_weight"], 0.0)
         self.assertIsNone(active["schedule_mirror_turns"])
         self.assertEqual({k: v for k, v in active.items() if k in expected}, expected)
         baseline = importlib.import_module("_active_task_baseline.task")
@@ -187,6 +190,40 @@ class ActiveTaskTests(unittest.TestCase):
         )
         changed = {key for key in base if not torch.equal(base[key], priced[key])}
         self.assertEqual(changed, {"linear_tracking", "yaw_tracking"})
+
+    def test_bound_margin_prices_each_scorer_bound_slightly_early(self):
+        commands = torch.tensor(
+            [
+                [0.1, 0.0, -0.2],  # planar error exactly at its bound
+                [0.1, 0.0, -0.2],  # planar error below the 80% start
+                [0.1, 0.0, -0.2],  # planar error past the bound, into the cap
+                [0.0, 0.0, -0.4],  # yaw error at 90% of its bound
+                [0.2, 0.0, 0.0],  # torque demand fraction exactly at 0.005
+            ]
+        )
+        values = telemetry(commands)
+        offsets = torch.zeros(5, 3)
+        offsets[0, 0], offsets[1, 0], offsets[2, 0] = 0.025, 0.019, 0.035
+        offsets[3, 2] = 0.09
+        values["tracked_velocity_nav"] = commands + offsets
+        torque = torch.zeros(5, 18)
+        torque[4] = 1.005 * reward.RATED_TORQUE_NM
+        values["computed_torque_nm"] = torque
+        terminated = torch.zeros(5, dtype=torch.bool)
+        base = reward.base_reward(values, commands, terminated, reward.REWARD_CONFIG, 0.1)[1]
+        self.assertNotIn("bound_margin", base)
+        config = replace(reward.REWARD_CONFIG, bound_margin_weight=3.0)
+        config.validate()
+        priced = reward.base_reward(values, commands, terminated, config, 0.1)[1]
+        # Bounds: planar max(.025, .25x0.1)=.025, yaw max(.06, .25x0.4)=.10, demand .005; the
+        # price starts at 80% of each and the normalized crossing caps at 2 (squared: 4).
+        torch.testing.assert_close(
+            priced["bound_margin"],
+            torch.tensor([-1.0, 0.0, -4.0, -0.25, -1.0]),
+            rtol=0.0,
+            atol=1e-3,
+        )
+        self.assertEqual({key for key in base if not torch.equal(base[key], priced[key])}, set())
 
     def test_quiet_hold_prices_wander_from_the_anchor_while_still(self):
         commands = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.1, 0.0, 0.0]])
