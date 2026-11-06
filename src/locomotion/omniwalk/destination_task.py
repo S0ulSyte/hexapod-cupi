@@ -1106,6 +1106,14 @@ EXPERIMENTS["destination_v59"] = {
     **EXPERIMENTS["destination_v58"],
     "reward": replace(EXPERIMENTS["destination_v58"]["reward"], quiet_hold_grace_controls=150),
 }
+# destination_v60 halves the hold. Under v59 the quiet range sits at 0.0076-0.0107 against
+# the 0.02 gate (tw_q3, round 23) - 2.6x more stillness than the gate asks - while
+# turn_-0.40 and two combined whiskers sit just outside their bounds. Half the price keeps
+# the cure's margin and hands the capacity back to the tracking classes.
+EXPERIMENTS["destination_v60"] = {
+    **EXPERIMENTS["destination_v59"],
+    "reward": replace(EXPERIMENTS["destination_v59"]["reward"], quiet_hold_weight=1.5),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.

@@ -2189,6 +2189,20 @@ class TerrainCampaignTests(unittest.TestCase):
         )
         EXPERIMENTS["destination_v59"]["reward"].validate()
 
+    def test_destination_v60_halves_the_quiet_hold(self):
+        v59 = EXPERIMENTS["destination_v59"]["reward"]
+        v60 = EXPERIMENTS["destination_v60"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v60).items() if asdict(v59)[k] != v}, {"quiet_hold_weight"}
+        )
+        self.assertEqual(v60.quiet_hold_weight, 1.5)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v60"], "terrain_v2")
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v60"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v59"].items() if k != "reward"},
+        )
+        EXPERIMENTS["destination_v60"]["reward"].validate()
+
     def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
         v38 = EXPERIMENTS["destination_v38"]["reward"]
         v41 = EXPERIMENTS["destination_v41"]["reward"]
