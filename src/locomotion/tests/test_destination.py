@@ -12,6 +12,7 @@ from locomotion.omniwalk.destination_task import (
     EXPERIMENTS,
     DestinationRewardConfig,
     DestinationTrainingTask,
+    evolved_command,
 )
 from locomotion.omniwalk.mdp.commands import TaskConfig
 from locomotion.omniwalk.mdp.destination import (
@@ -2247,6 +2248,66 @@ class TerrainCampaignTests(unittest.TestCase):
             {k: v for k, v in EXPERIMENTS["destination_v59"].items() if k != "reward"},
         )
         EXPERIMENTS["destination_v63"]["reward"].validate()
+
+    def test_destination_v64_adds_varying_walks_to_the_margin_recipe(self):
+        v63 = EXPERIMENTS["destination_v63"]["reward"]
+        v64 = EXPERIMENTS["destination_v64"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v64).items() if asdict(v63)[k] != v},
+            {
+                "vary_fraction",
+                "vary_bend_choices_rad_s",
+                "vary_sweep_amplitude_rad_s",
+                "vary_sweep_period_controls",
+            },
+        )
+        self.assertEqual(v64.vary_fraction, 0.25)
+        self.assertEqual(v64.vary_bend_choices_rad_s, (0.1, 0.2))
+        self.assertEqual(v64.vary_sweep_amplitude_rad_s, 0.15)
+        self.assertEqual(v64.vary_sweep_period_controls, 500)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v64"], "terrain_v2")
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v64"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v59"].items() if k != "reward"},
+        )
+        EXPERIMENTS["destination_v64"]["reward"].validate()
+
+    def test_destination_v65_is_the_varying_walks_margin_ablation(self):
+        v59 = EXPERIMENTS["destination_v59"]["reward"]
+        v65 = EXPERIMENTS["destination_v65"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v65).items() if asdict(v59)[k] != v},
+            {
+                "vary_fraction",
+                "vary_bend_choices_rad_s",
+                "vary_sweep_amplitude_rad_s",
+                "vary_sweep_period_controls",
+            },
+        )
+        self.assertEqual(v65.vary_fraction, 0.25)
+        self.assertEqual(v65.bound_margin_weight, 0.0)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v65"], "terrain_v2")
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v65"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v59"].items() if k != "reward"},
+        )
+        EXPERIMENTS["destination_v65"]["reward"].validate()
+
+    def test_evolved_command_follows_the_two_transition_shapes(self):
+        base = torch.tensor([[0.10, 0.0, 0.0], [0.10, 0.0, 0.0], [0.12, 0.0, 0.0]])
+        bend = torch.tensor([0.0, 0.5 * math.pi, 0.0])
+        sweep = torch.tensor([0.0, 0.0, 0.15])
+        held = evolved_command(base, bend, sweep, 500, torch.zeros(3, dtype=torch.long))
+        torch.testing.assert_close(held, base)
+        elapsed = torch.tensor([100, 50, 125])  # 2 s, 1 s, a quarter period
+        moved = evolved_command(base, bend, sweep, 500, elapsed)
+        torch.testing.assert_close(moved[0], base[0])
+        # One second at pi/2 rad/s turns the 0.10 m/s walk fully to the left.
+        torch.testing.assert_close(
+            moved[1], torch.tensor([0.0, 0.10, 0.0]), atol=1e-6, rtol=0.0
+        )
+        # A quarter period in, the sweep replaces the drawn yaw with its full amplitude.
+        torch.testing.assert_close(moved[2], torch.tensor([0.12, 0.0, 0.15]))
 
     def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
         v38 = EXPERIMENTS["destination_v38"]["reward"]

@@ -125,7 +125,12 @@ class OmniVecEnv:
         # A physical termination overrides a coincident episode timeout.
         extras = {"time_outs": output["truncated"] & ~output["terminated"]}
         if held is not None:
-            switched = (output["obs"][:, 210:213] != held).any(-1) & ~done
+            # A task whose commands evolve within a run publishes the true resample flag;
+            # comparing values cannot tell that evolution from a drawn switch.
+            switched = output.get("command_switched")
+            switched = (
+                (output["obs"][:, 210:213] != held).any(-1) if switched is None else switched
+            ) & ~done
             if bool(switched.any()):
                 # Capture the post-action state under the held command before any selected reset.
                 critic = output["critic"].clone()

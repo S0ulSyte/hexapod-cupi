@@ -106,5 +106,40 @@ class CommandBootstrapTests(unittest.TestCase):
                 )
 
 
+class VaryingTask(MixedTask):
+    """Row 1's command evolves within its run; row 3's run truly switches; row 2 terminates."""
+
+    def step(self, action):
+        self.position += 6.0
+        self.episode_steps += 1
+        self.commands[1] = torch.tensor([0.05, 0.01, 0.0])
+        self.commands[3] = 0.0
+        return {
+            **self.output(),
+            "reward": torch.ones(4),
+            "terminated": torch.tensor([False, False, True, False]),
+            "truncated": torch.tensor([False, False, False, False]),
+            "command_switched": torch.tensor([False, False, False, True]),
+        }
+
+
+class VaryingCommandSwitchTests(unittest.TestCase):
+    def test_published_switch_flag_overrides_value_comparison(self):
+        task = VaryingTask()
+        wrapped = wrapper.OmniVecEnv(
+            task,
+            command_segments="bootstrap",
+            observation_scaling="fixed",
+            gait_clock=60,
+            velocity_noise=0.5,
+        )
+        wrapped.get_observations()
+        _, _, done, extras = wrapped.step(torch.zeros(4, 18))
+        self.assertEqual(done.tolist(), [0, 0, 1, 1])
+        self.assertEqual(extras["command_time_outs"].tolist(), [False, False, False, True])
+        self.assertEqual(extras["time_outs"].tolist(), [False, False, False, True])
+        self.assertIn("command_bootstrap_observation", extras)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -77,6 +77,7 @@ import torch
 
 from locomotion.omniwalk.mdp.commands import GAIT_CLOCK_SCALINGS
 from locomotion.omniwalk.mdp.destination import (
+    CONTROL_DT_S,
     advance_destination,
     destination_distance,
     planar_pose,
@@ -146,6 +147,10 @@ class DestinationRewardConfig(RewardConfig):
     turn_rate_choices_rad_s: tuple | None = None
     arc_fraction: float | None = None
     arc_yaw_choices_rad_s: tuple | None = None
+    vary_fraction: float | None = None
+    vary_bend_choices_rad_s: tuple | None = None
+    vary_sweep_amplitude_rad_s: float | None = None
+    vary_sweep_period_controls: int | None = None
     slope_inputs: str | None = None
     command_controls: int = 0
 
@@ -399,6 +404,32 @@ class DestinationRewardConfig(RewardConfig):
             raise ValueError(
                 "Arcing walks need a fraction in (0, 1] of the drawn walks, a nonempty tuple "
                 "of positive finite rad/s yaw rates, and a run mix"
+            )
+        vary = (
+            self.vary_fraction,
+            self.vary_bend_choices_rad_s,
+            self.vary_sweep_amplitude_rad_s,
+            self.vary_sweep_period_controls,
+        )
+        if any(value is not None for value in vary) and (
+            any(value is None for value in vary)
+            or self.run_mix is None
+            or not (math.isfinite(self.vary_fraction) and 0 < self.vary_fraction <= 1)
+            or type(self.vary_bend_choices_rad_s) is not tuple
+            or not self.vary_bend_choices_rad_s
+            or not all(
+                isinstance(rate, float) and math.isfinite(rate) and rate > 0
+                for rate in self.vary_bend_choices_rad_s
+            )
+            or type(self.vary_sweep_amplitude_rad_s) is not float
+            or not 0 < self.vary_sweep_amplitude_rad_s <= 0.4
+            or type(self.vary_sweep_period_controls) is not int
+            or not 100 <= self.vary_sweep_period_controls <= 5000
+        ):
+            raise ValueError(
+                "Varying walks need a fraction in (0, 1] of the drawn walks, positive finite "
+                "bend rates, a sweep amplitude in (0, 0.4] rad/s, a sweep period of 100 to "
+                "5000 controls, and a run mix"
             )
         ceiling = (
             (self.linear_tracking_weight + self.yaw_tracking_weight)
@@ -1144,6 +1175,37 @@ EXPERIMENTS["destination_v63"] = {
         bound_margin_fraction=0.95,
     ),
 }
+# destination_v64 adds varying walks to the margin recipe. Round 30 rescored the full_program
+# traces: every lead checkpoint fails exactly the two segments whose command changes within the
+# segment (s_curve last-second planar 0.0307-0.0338 and fixed_heading_bend 0.0278-0.0313 against
+# 0.03) while every constant-command segment settles to 0.008-0.024, and training commands are
+# piecewise constant everywhere — the v45 arc ruling's exposure gap, one step further. A quarter
+# of the drawn walks now evolves per control, half bending (the planar command rotates at a
+# signed 0.1 or 0.2 rad/s, bracketing the bend's 0.196), half sweeping (the yaw command follows
+# a 0.15 rad/s sinusoid over 500 controls, the s_curve's own shape).
+EXPERIMENTS["destination_v64"] = {
+    **EXPERIMENTS["destination_v63"],
+    "reward": replace(
+        EXPERIMENTS["destination_v63"]["reward"],
+        vary_fraction=0.25,
+        vary_bend_choices_rad_s=(0.1, 0.2),
+        vary_sweep_amplitude_rad_s=0.15,
+        vary_sweep_period_controls=500,
+    ),
+}
+# destination_v65 is the same varying walks on v59 — the margin ablation: round 30 showed
+# prolonged training under the margin term decays the forward_fast sprint from either start, so
+# this arm asks whether the vary exposure alone holds the banked whisker gains.
+EXPERIMENTS["destination_v65"] = {
+    **EXPERIMENTS["destination_v59"],
+    "reward": replace(
+        EXPERIMENTS["destination_v59"]["reward"],
+        vary_fraction=0.25,
+        vary_bend_choices_rad_s=(0.1, 0.2),
+        vary_sweep_amplitude_rad_s=0.15,
+        vary_sweep_period_controls=500,
+    ),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
@@ -1190,6 +1252,22 @@ def linear_tail(distance, closeness, config):
     return torch.where(distance > start, tail.to(closeness), closeness)
 
 
+def evolved_command(base, bend_rate, sweep_amplitude, period_controls, elapsed):
+    """The varying command ``elapsed`` controls after ``base`` was drawn. A bending walk's planar
+    command rotates at its signed rate with the magnitude kept; a sweeping walk's yaw follows a
+    sinusoid from zero — the evaluator's fixed_heading_bend and s_curve shapes
+    (``evaluation/scoring.py``)."""
+    time = elapsed.to(base.dtype) * CONTROL_DT_S
+    angle = bend_rate.to(base.dtype) * time
+    result = base.clone()
+    result[:, 0] = base[:, 0] * angle.cos() - base[:, 1] * angle.sin()
+    result[:, 1] = base[:, 0] * angle.sin() + base[:, 1] * angle.cos()
+    sweep = sweep_amplitude.to(base.dtype)
+    phase = 2 * math.pi * elapsed.to(base.dtype) / period_controls
+    result[:, 2] = torch.where(sweep != 0, sweep * phase.sin(), base[:, 2])
+    return result
+
+
 class DestinationTrainingTask(TrainingTask):
     """The canonical task plus each command's destination and the per-control destination pay."""
 
@@ -1204,6 +1282,12 @@ class DestinationTrainingTask(TrainingTask):
         self.hold_mean = torch.zeros(env.num_envs, 18, device=env.device)
         self.stop_pending = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
         self.stop_rest = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
+        # Each varying walk's drawn command, its signed bend rate or sweep amplitude (zero when
+        # not varying), and the controls since the draw.
+        self.vary_base = torch.zeros(env.num_envs, 3, device=env.device)
+        self.vary_bend_rate = torch.zeros(env.num_envs, device=env.device)
+        self.vary_sweep = torch.zeros(env.num_envs, device=env.device)
+        self.vary_elapsed = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
         # Each run's planned length and the controls it has run, for the run-end pay and the run mix.
         self.run_length = torch.full(
             (env.num_envs,), chosen.command_controls, dtype=torch.long, device=env.device
@@ -1381,6 +1465,12 @@ class DestinationTrainingTask(TrainingTask):
             # A run shorter than the episode times out at its planned length.
             ended = (self.run_elapsed >= self.run_length) & ~result["terminated"]
             result["truncated"] = result["truncated"] | ended.to(result["truncated"].device)
+        if self.reward_config.vary_fraction is not None:
+            # The bootstrap wrapper cannot tell a within-run evolution from a drawn switch by
+            # comparing command values, so the task publishes the true resample flag.
+            result["command_switched"] = self.command_started.clone()
+            if self._evolve_commands():
+                result = self._next_command_observation(result)
         return result
 
     def _resample(self, indices):
@@ -1412,6 +1502,23 @@ class DestinationTrainingTask(TrainingTask):
                 self.drift_halfway[indices] = False
                 self.drift_fell[indices] = False
 
+    def _evolve_commands(self):
+        """Move each varying command one control along its shape; a fresh draw keeps its value."""
+        moving = (self.vary_bend_rate != 0) | (self.vary_sweep != 0)
+        moving &= ~self.command_started
+        if not bool(moving.any()):
+            return False
+        rows = moving.nonzero(as_tuple=False).squeeze(-1)
+        self.vary_elapsed[rows] += 1
+        self.env.commands[rows] = evolved_command(
+            self.vary_base[rows],
+            self.vary_bend_rate[rows],
+            self.vary_sweep[rows],
+            self.reward_config.vary_sweep_period_controls,
+            self.vary_elapsed[rows],
+        ).to(self.env.commands)
+        return True
+
     def _uniform_walks(self, indices):
         """Make every fresh command a walk in a uniform direction at a uniform speed between the bounds."""
         config = self.reward_config
@@ -1441,6 +1548,10 @@ class DestinationTrainingTask(TrainingTask):
         self.env.commands[stopping] = 0
         self.remaining_controls[stopping] = self.stop_rest[stopping].to(self.remaining_controls)
         self.stop_pending[stopping] = False
+        if config.vary_fraction is not None:
+            # Every resampled row stops varying; the fresh walks below may draw it again.
+            self.vary_bend_rate[indices] = 0
+            self.vary_sweep[indices] = 0
         fresh = indices[~torch.isin(indices, stopping)]
         if not len(fresh):
             return
@@ -1450,6 +1561,10 @@ class DestinationTrainingTask(TrainingTask):
         arc_columns = None
         if config.arc_fraction is not None:
             arc_columns = (columns, columns + 1)
+            columns += 2
+        vary_columns = None
+        if config.vary_fraction is not None:
+            vary_columns = (columns, columns + 1)
             columns += 2
         draws = torch.rand(len(fresh), columns, generator=self.rng).to(fresh.device)
         edges = torch.tensor(config.run_mix, dtype=torch.float64).cumsum(0).to(fresh.device)
@@ -1471,6 +1586,34 @@ class DestinationTrainingTask(TrainingTask):
             rate = choices[signed % len(choices)]
             sign = torch.where(signed >= len(choices), 1.0, -1.0).to(rate)
             self.env.commands[arcs, 2] = sign * rate
+        if vary_columns is not None:
+            # A drawn share of the walks evolves per control, half bending (the planar command
+            # rotates at a signed drawn rate), half sweeping (the yaw command follows one
+            # sinusoid): one draw picks the varying walks, the other their shape, sign and rate.
+            walking = kind >= 2
+            member = draws[walking, vary_columns[0]]
+            varying = fresh[walking][member < config.vary_fraction]
+            if len(varying):
+                shape = draws[walking, vary_columns[1]][member < config.vary_fraction]
+                bending = shape < 0.5
+                inner = torch.where(bending, shape * 2, shape * 2 - 1)
+                choices = torch.tensor(config.vary_bend_choices_rad_s).to(self.env.commands)
+                signed = (inner * 2 * len(choices)).long().clamp_(max=2 * len(choices) - 1)
+                rate = choices[signed % len(choices)] * torch.where(
+                    signed >= len(choices), 1.0, -1.0
+                ).to(choices)
+                sweep = config.vary_sweep_amplitude_rad_s * torch.where(
+                    inner < 0.5, -1.0, 1.0
+                ).to(choices)
+                zero = torch.zeros_like(rate)
+                # A sweeping run starts on its sinusoid, so a drawn arc's yaw is cleared.
+                self.env.commands[varying[~bending], 2] = 0
+                self.vary_base[varying] = self.env.commands[varying].to(self.vary_base)
+                self.vary_bend_rate[varying] = torch.where(bending, rate, zero).to(
+                    self.vary_bend_rate
+                )
+                self.vary_sweep[varying] = torch.where(bending, zero, sweep).to(self.vary_sweep)
+                self.vary_elapsed[varying] = 0
         turns = fresh[kind == 0]
         sign = torch.where(draws[kind == 0, 1] < 0.5, -1.0, 1.0).to(self.env.commands)
         rate = self.config.yaw_rate_rad_s
