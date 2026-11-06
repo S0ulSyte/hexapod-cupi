@@ -151,6 +151,10 @@ class DestinationRewardConfig(RewardConfig):
     vary_bend_choices_rad_s: tuple | None = None
     vary_sweep_amplitude_rad_s: float | None = None
     vary_sweep_period_controls: int | None = None
+    # While a row's command varies, its two planar tracking prices (the linear tracking kernel
+    # and the planar-error charge) are multiplied by this scale, so the situation that fails
+    # carries the weight while the row is in it; None keeps the reward byte-identical.
+    vary_tracking_scale: float | None = None
     slope_inputs: str | None = None
     command_controls: int = 0
 
@@ -431,8 +435,19 @@ class DestinationRewardConfig(RewardConfig):
                 "bend rates, a sweep amplitude in (0, 0.4] rad/s, a sweep period of 100 to "
                 "5000 controls, and a run mix"
             )
+        if self.vary_tracking_scale is not None and (
+            self.vary_fraction is None
+            or type(self.vary_tracking_scale) is not float
+            or not 1 < self.vary_tracking_scale <= 4
+        ):
+            raise ValueError(
+                "The varying-walk tracking scale needs the varying walks and lies in (1, 4]"
+            )
         ceiling = (
-            (self.linear_tracking_weight + self.yaw_tracking_weight)
+            (
+                self.linear_tracking_weight * (self.vary_tracking_scale or 1.0)
+                + self.yaw_tracking_weight
+            )
             * (1 + self.situation_tracking)
             * (1 + self.stride_tracking_weight)
             + 6 * self.stride_length_weight / self.schedule_period_controls
@@ -1204,6 +1219,30 @@ EXPERIMENTS["destination_v65"] = {
         vary_bend_choices_rad_s=(0.1, 0.2),
         vary_sweep_amplitude_rad_s=0.15,
         vary_sweep_period_controls=500,
+    ),
+}
+# destination_v66 doubles the planar prices while a row's command varies: round 31's exposure
+# alone left the curving segments' deficit in place, and the trace decomposition shows it is a
+# speed lag (bend speed 0.066-0.072 against the commanded 0.100 with the direction lag under
+# 3 degrees) that the kernel's flat top prices at 8 percent of the term while the 95 percent
+# margin band sits fully clamped, so the varying situation carries the weight while a row is
+# in it. The termination weight keeps the tenfold dominance over the scaled ceiling.
+EXPERIMENTS["destination_v66"] = {
+    **EXPERIMENTS["destination_v64"],
+    "reward": replace(
+        EXPERIMENTS["destination_v64"]["reward"],
+        vary_tracking_scale=2.0,
+        termination_weight=100.0,
+    ),
+}
+# destination_v67 brackets the dose at triple prices, so one round says whether the situation
+# price moves the curve speed and how much the gradient buys.
+EXPERIMENTS["destination_v67"] = {
+    **EXPERIMENTS["destination_v66"],
+    "reward": replace(
+        EXPERIMENTS["destination_v66"]["reward"],
+        vary_tracking_scale=3.0,
+        termination_weight=125.0,
     ),
 }
 
@@ -2009,6 +2048,16 @@ class DestinationTrainingTask(TrainingTask):
             alive = (~terminated).to(closeness.device).to(closeness)
             components["heading"] = (config.heading_weight * alive * closeness).to(reward)
             reward = reward + components["heading"]
+        if config.vary_tracking_scale is not None:
+            # The curving segments fail on a speed deficit the flat kernel top underprices
+            # while the margin band sits clamped, so the varying situation pays its planar
+            # prices at the scale while a row's command is evolving.
+            varying = ((self.vary_bend_rate != 0) | (self.vary_sweep != 0)).to(reward)
+            priced = components["linear_tracking"].to(reward)
+            if config.planar_error_weight is not None:
+                priced = priced + components["planar_error"]
+            components["vary_tracking"] = (config.vary_tracking_scale - 1) * varying * priced
+            reward = reward + components["vary_tracking"]
         return reward, components, telemetry
 
     def _planar_error(self, command, telemetry):

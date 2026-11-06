@@ -2293,6 +2293,38 @@ class TerrainCampaignTests(unittest.TestCase):
         )
         EXPERIMENTS["destination_v65"]["reward"].validate()
 
+    def test_destination_v66_prices_the_varying_situation(self):
+        v64 = EXPERIMENTS["destination_v64"]["reward"]
+        v66 = EXPERIMENTS["destination_v66"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v66).items() if asdict(v64)[k] != v},
+            {"vary_tracking_scale", "termination_weight"},
+        )
+        self.assertEqual(v66.vary_tracking_scale, 2.0)
+        self.assertEqual(v66.termination_weight, 100.0)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v66"], "terrain_v2")
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v66"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v64"].items() if k != "reward"},
+        )
+        v66.validate()
+        with self.assertRaises(ValueError):
+            replace(EXPERIMENTS["destination_v59"]["reward"], vary_tracking_scale=2.0).validate()
+        with self.assertRaises(ValueError):
+            replace(v66, termination_weight=71.5).validate()
+
+    def test_destination_v67_triples_the_varying_situation_price(self):
+        v66 = EXPERIMENTS["destination_v66"]["reward"]
+        v67 = EXPERIMENTS["destination_v67"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v67).items() if asdict(v66)[k] != v},
+            {"vary_tracking_scale", "termination_weight"},
+        )
+        self.assertEqual(v67.vary_tracking_scale, 3.0)
+        self.assertEqual(v67.termination_weight, 125.0)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v67"], "terrain_v2")
+        v67.validate()
+
     def test_evolved_command_follows_the_two_transition_shapes(self):
         base = torch.tensor([[0.10, 0.0, 0.0], [0.10, 0.0, 0.0], [0.12, 0.0, 0.0]])
         bend = torch.tensor([0.0, 0.5 * math.pi, 0.0])
