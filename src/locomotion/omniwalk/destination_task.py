@@ -1130,6 +1130,20 @@ EXPERIMENTS["destination_v62"] = {
     **EXPERIMENTS["destination_v59"],
     "reward": replace(EXPERIMENTS["destination_v59"]["reward"], bound_margin_weight=3.0),
 }
+# destination_v63 narrows the margin band to a 95% start, per the user's directive after
+# round 28: the 80% start at weight 1.0 aligned combined_180_-0.20 (first pass ever) and omni,
+# but its band reshaped the forward_fast sprint into a fall, and the triple dose turned
+# caution into new planar misses. At 0.95 the active zone hugs 95-105% of each bound (the
+# capped plateau prices everything past that), so in-bound behavior a full margin below the
+# limit — the sprint included — pays nothing.
+EXPERIMENTS["destination_v63"] = {
+    **EXPERIMENTS["destination_v59"],
+    "reward": replace(
+        EXPERIMENTS["destination_v59"]["reward"],
+        bound_margin_weight=1.0,
+        bound_margin_fraction=0.95,
+    ),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.

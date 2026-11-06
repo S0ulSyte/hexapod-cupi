@@ -2232,6 +2232,22 @@ class TerrainCampaignTests(unittest.TestCase):
         )
         EXPERIMENTS["destination_v62"]["reward"].validate()
 
+    def test_destination_v63_starts_the_bound_margin_at_95_percent(self):
+        v59 = EXPERIMENTS["destination_v59"]["reward"]
+        v63 = EXPERIMENTS["destination_v63"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v63).items() if asdict(v59)[k] != v},
+            {"bound_margin_weight", "bound_margin_fraction"},
+        )
+        self.assertEqual(v63.bound_margin_weight, 1.0)
+        self.assertEqual(v63.bound_margin_fraction, 0.95)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v63"], "terrain_v2")
+        self.assertEqual(
+            {k: v for k, v in EXPERIMENTS["destination_v63"].items() if k != "reward"},
+            {k: v for k, v in EXPERIMENTS["destination_v59"].items() if k != "reward"},
+        )
+        EXPERIMENTS["destination_v63"]["reward"].validate()
+
     def test_destination_v41_prices_swing_clearance_over_rough_ground_only(self):
         v38 = EXPERIMENTS["destination_v38"]["reward"]
         v41 = EXPERIMENTS["destination_v41"]["reward"]
