@@ -1278,6 +1278,12 @@ EXPERIMENTS["destination_v68"] = {
 # terrain blocks (269 inputs) while the critic keeps the full privileged set. The reward is
 # v59's unchanged; the input split is the whole experiment.
 EXPERIMENTS["destination_v69"] = {**EXPERIMENTS["destination_v59"]}
+# destination_v70 is v59 with the actor's ghost computed from leg odometry (review item 1's
+# replacement option, the reviewer's own sketch): the same nine features, same scales and
+# layout, sourced from stance-toe dead reckoning and the gyro (mdp/odometry.py) instead of the
+# simulator's world pose; the critic keeps the true privileged ghost. Widths are unchanged, so
+# terrain_v2 policies warm-start directly. Recorded odometry drift: 0.3-6 mm/s.
+EXPERIMENTS["destination_v70"] = {**EXPERIMENTS["destination_v59"]}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.

@@ -96,17 +96,20 @@ class DeterministicPolicy:
             "terrain_v1",
             "terrain_v2",
             "terrain_v2_ghost_critic",
+            "terrain_v2_odom",
         ):
             from locomotion.omniwalk.mdp.footfall import (
                 TerrainV1Tracker,
                 TerrainV2GhostCriticTracker,
                 TerrainV2Tracker,
             )
+            from locomotion.omniwalk.mdp.odometry import OdomTerrainTracker
 
             tracker = {
                 "terrain_v1": TerrainV1Tracker,
                 "terrain_v2": TerrainV2Tracker,
                 "terrain_v2_ghost_critic": TerrainV2GhostCriticTracker,
+                "terrain_v2_odom": OdomTerrainTracker,
             }[options["destination_input"]]
             self.tracker = tracker(
                 env.num_envs,

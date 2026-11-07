@@ -43,10 +43,11 @@ class DestinationVecEnv(OmniVecEnv):
             "terrain_v2",
             "terrain_v2_critic",
             "terrain_v2_ghost_critic",
+            "terrain_v2_odom",
         ):
             raise ValueError(
                 "DestinationVecEnv applies the ghost, ghost_v10, ghost_v11, terrain_v1, "
-                "terrain_v2, terrain_v2_critic or terrain_v2_ghost_critic input"
+                "terrain_v2, terrain_v2_critic, terrain_v2_ghost_critic or terrain_v2_odom input"
             )
         if not hasattr(task, "destination"):
             raise ValueError("The destination inputs need a DestinationTrainingTask")
@@ -68,11 +69,17 @@ class DestinationVecEnv(OmniVecEnv):
         # simulator's world pose, which the robot cannot supply, so the actor keeps only the
         # terrain blocks and the ghost stays the critic's privileged signal.
         self.ghost_critic = destination_input == "terrain_v2_ghost_critic"
+        # terrain_v2_odom replaces the actor's nine world-pose ghost values with the same nine
+        # features computed from leg odometry (mdp/odometry.py) — quantities the robot has — while
+        # the critic keeps the true privileged ghost. Same widths, so terrain_v2 policies warm-start.
+        self.odometry = None
+        self._odometry_fresh = True
         if destination_input in (
             "terrain_v1",
             "terrain_v2",
             "terrain_v2_critic",
             "terrain_v2_ghost_critic",
+            "terrain_v2_odom",
         ):
             from locomotion.omniwalk.mdp.footfall import FootfallInputs
 
@@ -81,6 +88,10 @@ class DestinationVecEnv(OmniVecEnv):
             self.footfall = FootfallInputs(
                 task, gait_clock_scaling or kept, profile=destination_input != "terrain_v1"
             )
+        if destination_input == "terrain_v2_odom":
+            from locomotion.omniwalk.mdp.odometry import OdometryGhost
+
+            self.odometry = OdometryGhost(task.num_envs, task.device)
         super().__init__(task, tensor_dict, **options)
 
     def destination_inputs(self, pending, command=None):
@@ -121,13 +132,34 @@ class DestinationVecEnv(OmniVecEnv):
             shown = extra[..., :GHOST_V11_FEATURES]
         elif self.ghost_critic:
             shown = extra[..., GHOST_V11_FEATURES:]
+        elif self.odometry is not None:
+            pending = self.task.command_started
+            odom = self.odometry.features(pending, self.task.command_elapsed, self.task.commands)
+            shown = torch.cat((odom.to(extra), extra[..., GHOST_V11_FEATURES:]), -1)
         policy = torch.cat((base["policy"], shown.to(base["policy"])), -1)
         critic = torch.cat((base["critic"], extra.to(base["critic"])), -1)
         return self.tensor_dict({"policy": policy, "critic": critic}, batch_size=[self.num_envs])
 
     def step(self, action):
         held_command = self.task.commands.clone()
+        pre_started = self.task.command_started.clone()
         observation, rewards, done, extras = super().step(action)
+        if self.odometry is not None:
+            task = self.task
+            root = task.current["root"]
+            toes = task.env.telemetry["toe_xyz_world"]
+            force = task.env.telemetry["tibia_floor_force_world_n"]
+            every = torch.arange(task.num_envs, device=task.device)
+            if self._odometry_fresh:
+                self.odometry.reset(every, root, toes, force)
+                self._odometry_fresh = False
+            # The executed command and the pre-step start flags mirror _advance_destination's
+            # timing; rows the learner reset re-align their odometry frame with the fresh pose.
+            self.odometry.advance(root, toes, force, held_command, pre_started)
+            reset_rows = every[done.bool().to(task.device)]
+            if len(reset_rows):
+                self.odometry.reset(reset_rows, root, toes, force)
+            observation = self.get_observations()
         bootstrap = extras.get("command_bootstrap_observation")
         if bootstrap is not None:
             # A switched row has not reset: its pose is post-action and the task moves its destination

@@ -2456,6 +2456,73 @@ class TerrainCampaignTests(unittest.TestCase):
             observation["critic"][:, 236 + GHOST_V11_FEATURES :],
         )
 
+    def test_destination_v70_sources_the_ghost_from_leg_odometry(self):
+        from locomotion.omniwalk.destination_task import experiment_task
+        from locomotion.omniwalk.mdp.destination import GHOST_V11_FEATURES
+
+        v59 = EXPERIMENTS["destination_v59"]["reward"]
+        v70 = EXPERIMENTS["destination_v70"]["reward"]
+        self.assertEqual(asdict(v70), asdict(v59))
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v70"], "terrain_v2_odom")
+        torch.manual_seed(11)
+        native = GaitDouble(4)
+        native.cfg.episode_seconds, native.cfg.declaration = 32.0, dict
+        task = experiment_task("destination_v70")(native)
+        env = DestinationVecEnv(
+            task,
+            observation_scaling="fixed",
+            command_segments="bootstrap",
+            gait_clock=60,
+            gait_clock_scaling="speed_v1",
+            velocity_noise=0.0,
+            destination_input="terrain_v2_odom",
+        )
+        env.get_observations()
+        observation, *_ = env.step(torch.zeros(4, 18))
+        # Same widths as terrain_v2, so terrain_v2 policies warm-start unchanged.
+        self.assertEqual(observation["policy"].shape[-1], 233 + 9 + 36)
+        self.assertEqual(observation["critic"].shape[-1], 236 + 9 + 36)
+        # With zero accumulated drift the odometry features equal the privileged ones.
+        torch.testing.assert_close(
+            observation["policy"][:, 233 : 233 + GHOST_V11_FEATURES],
+            observation["critic"][:, 236 : 236 + GHOST_V11_FEATURES],
+            atol=5e-4,
+            rtol=0,
+        )
+
+    def test_leg_odometry_tracks_translation_and_rotation(self):
+        from locomotion.omniwalk.mdp.odometry import OdometryGhost
+
+        odom = OdometryGhost(1, "cpu")
+        root = torch.tensor([[0.0, 0.0, 0.1, 0.0, 0.0, 0.0, 1.0]])
+        toes = torch.tensor(
+            [
+                [
+                    [0.15, 0.1, 0.0],
+                    [0.15, -0.1, 0.0],
+                    [-0.15, 0.1, 0.0],
+                    [-0.15, -0.1, 0.0],
+                    [0.0, 0.2, 0.0],
+                    [0.0, -0.2, 0.0],
+                ]
+            ]
+        )
+        force = torch.full((1, 6, 3), 2.0)
+        odom.reset(torch.tensor([0]), root, toes, force)
+        # The body slides 10 mm along world x; the planted toes stay put.
+        moved = root.clone()
+        moved[0, 0] += 0.01
+        odom.advance(moved, toes, force, torch.zeros(1, 3), torch.zeros(1, dtype=torch.bool))
+        torch.testing.assert_close(odom.xy, torch.tensor([[0.01, 0.0]]), atol=1e-6, rtol=0)
+        # A pure 0.1 rad yaw about the body centre leaves the position in place.
+        import math
+
+        turned = moved.clone()
+        turned[0, 5], turned[0, 6] = math.sin(0.05), math.cos(0.05)
+        odom.advance(turned, toes, force, torch.zeros(1, 3), torch.zeros(1, dtype=torch.bool))
+        torch.testing.assert_close(odom.xy, torch.tensor([[0.01, 0.0]]), atol=1e-6, rtol=0)
+        torch.testing.assert_close(odom.theta, torch.tensor([0.1]), atol=1e-6, rtol=0)
+
     def test_evolved_command_follows_the_two_transition_shapes(self):
         base = torch.tensor([[0.10, 0.0, 0.0], [0.10, 0.0, 0.0], [0.12, 0.0, 0.0]])
         bend = torch.tensor([0.0, 0.5 * math.pi, 0.0])
