@@ -42,10 +42,11 @@ class DestinationVecEnv(OmniVecEnv):
             "terrain_v1",
             "terrain_v2",
             "terrain_v2_critic",
+            "terrain_v2_ghost_critic",
         ):
             raise ValueError(
                 "DestinationVecEnv applies the ghost, ghost_v10, ghost_v11, terrain_v1, "
-                "terrain_v2 or terrain_v2_critic input"
+                "terrain_v2, terrain_v2_critic or terrain_v2_ghost_critic input"
             )
         if not hasattr(task, "destination"):
             raise ValueError("The destination inputs need a DestinationTrainingTask")
@@ -63,7 +64,16 @@ class DestinationVecEnv(OmniVecEnv):
         # terrain_v2_critic gives the terrain values to the critic alone: the actor keeps the nine
         # ghost_v11 inputs it could run on the robot with, the ablation docs/TRAINING.md asks for.
         self.critic_only = destination_input == "terrain_v2_critic"
-        if destination_input in ("terrain_v1", "terrain_v2", "terrain_v2_critic"):
+        # terrain_v2_ghost_critic is the inverse split: the nine ghost values come from the
+        # simulator's world pose, which the robot cannot supply, so the actor keeps only the
+        # terrain blocks and the ghost stays the critic's privileged signal.
+        self.ghost_critic = destination_input == "terrain_v2_ghost_critic"
+        if destination_input in (
+            "terrain_v1",
+            "terrain_v2",
+            "terrain_v2_critic",
+            "terrain_v2_ghost_critic",
+        ):
             from locomotion.omniwalk.mdp.footfall import FootfallInputs
 
             # The recorded option names the clock; a task may carry none (the flat suites
@@ -106,7 +116,11 @@ class DestinationVecEnv(OmniVecEnv):
         # rows must read the destination at the body with age zero here too.
         pending = getattr(self.task, "ghost_pending", None)
         extra = self.destination_inputs(self.task.command_started if pending is None else pending)
-        shown = extra[..., :GHOST_V11_FEATURES] if self.critic_only else extra
+        shown = extra
+        if self.critic_only:
+            shown = extra[..., :GHOST_V11_FEATURES]
+        elif self.ghost_critic:
+            shown = extra[..., GHOST_V11_FEATURES:]
         policy = torch.cat((base["policy"], shown.to(base["policy"])), -1)
         critic = torch.cat((base["critic"], extra.to(base["critic"])), -1)
         return self.tensor_dict({"policy": policy, "critic": critic}, batch_size=[self.num_envs])

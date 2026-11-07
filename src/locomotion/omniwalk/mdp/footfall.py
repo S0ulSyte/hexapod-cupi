@@ -283,3 +283,14 @@ class TerrainV2Tracker(TerrainV1Tracker):
     """``TerrainV1Tracker`` plus the 6 forward-profile values (``terrain_v2``)."""
 
     profile = True
+
+
+class TerrainV2GhostCriticTracker(TerrainV2Tracker):
+    """Evaluation-side ``terrain_v2_ghost_critic``: the actor reads the terrain blocks alone.
+    The nine ghost values come from the simulator's world pose, which the robot cannot supply,
+    so they are the critic's privileged training signal and never reach the policy."""
+
+    def inputs(self, pose, command, episode_steps):
+        from locomotion.omniwalk.mdp.destination import GHOST_V11_FEATURES
+
+        return super().inputs(pose, command, episode_steps)[..., GHOST_V11_FEATURES:]

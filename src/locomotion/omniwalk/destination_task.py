@@ -1272,6 +1272,12 @@ EXPERIMENTS["destination_v68"] = {
         vary_ghost_matches_eval=True,
     ),
 }
+# destination_v69 is v59 with the ghost moved off the actor (review item 1 on the v29 PR): the
+# nine ghost values come from the simulator's world pose, which the robot cannot supply at the
+# judged millimetre scale, so the actor keeps proprioception, the command, the clock and the
+# terrain blocks (269 inputs) while the critic keeps the full privileged set. The reward is
+# v59's unchanged; the input split is the whole experiment.
+EXPERIMENTS["destination_v69"] = {**EXPERIMENTS["destination_v59"]}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.

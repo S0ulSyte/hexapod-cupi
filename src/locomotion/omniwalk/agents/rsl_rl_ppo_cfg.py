@@ -83,10 +83,11 @@ def ppo_config(
         "terrain_v1",
         "terrain_v2",
         "terrain_v2_critic",
+        "terrain_v2_ghost_critic",
     ):
         raise ValueError(
             "The destination input is none, ghost, ghost_v10, ghost_v11, terrain_v1, "
-            "terrain_v2 or terrain_v2_critic"
+            "terrain_v2, terrain_v2_critic or terrain_v2_ghost_critic"
         )
     if gait_clock_scaling not in (None, "speed_v1") or (gait_clock_scaling and not gait_clock):
         raise ValueError("The gait clock scaling is None or speed_v1 and needs the gait clock")
@@ -271,6 +272,7 @@ EXPERIMENT_INPUTS = {
     "destination_v66": "terrain_v2",
     "destination_v67": "terrain_v2",
     "destination_v68": "terrain_v2",
+    "destination_v69": "terrain_v2_ghost_critic",
 }
 # The speed-scaled gait clock of each named experiment that uses one (its reward's gait_clock_scaling;
 # locomotion/tests/test_destination.py checks the two agree). Its wrapper records and applies it.
@@ -317,6 +319,7 @@ EXPERIMENT_CLOCKS = {
             66,
             67,
             68,
+            69,
         )
     )
 }

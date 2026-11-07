@@ -2426,6 +2426,36 @@ class TerrainCampaignTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             replace(v68, vary_ghost_matches_eval=False).validate()
 
+    def test_destination_v69_moves_the_ghost_to_the_critic(self):
+        from locomotion.omniwalk.destination_task import experiment_task
+        from locomotion.omniwalk.mdp.destination import GHOST_V11_FEATURES
+
+        v59 = EXPERIMENTS["destination_v59"]["reward"]
+        v69 = EXPERIMENTS["destination_v69"]["reward"]
+        self.assertEqual(asdict(v69), asdict(v59))
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v69"], "terrain_v2_ghost_critic")
+        torch.manual_seed(9)
+        native = GaitDouble(4)
+        native.cfg.episode_seconds, native.cfg.declaration = 32.0, dict
+        task = experiment_task("destination_v69")(native)
+        env = DestinationVecEnv(
+            task,
+            observation_scaling="fixed",
+            command_segments="bootstrap",
+            gait_clock=60,
+            gait_clock_scaling="speed_v1",
+            velocity_noise=0.0,
+            destination_input="terrain_v2_ghost_critic",
+        )
+        observation = env.get_observations()
+        # The actor loses exactly the nine ghost values; the critic keeps the full set.
+        self.assertEqual(observation["policy"].shape[-1], 233 + 36)
+        self.assertEqual(observation["critic"].shape[-1], 236 + 9 + 36)
+        torch.testing.assert_close(
+            observation["policy"][:, 233:],
+            observation["critic"][:, 236 + GHOST_V11_FEATURES :],
+        )
+
     def test_evolved_command_follows_the_two_transition_shapes(self):
         base = torch.tensor([[0.10, 0.0, 0.0], [0.10, 0.0, 0.0], [0.12, 0.0, 0.0]])
         bend = torch.tensor([0.0, 0.5 * math.pi, 0.0])
