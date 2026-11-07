@@ -45,6 +45,12 @@ def parse_args(argv=None):
         default="configured",
         help="Restart the adaptive learning rate at its configured value or continue the checkpoint's.",
     )
+    parser.add_argument(
+        "--anchor-weight",
+        type=float,
+        help="Fraction in (0, 1) of each actor parameter's displacement from its loaded start "
+        "removed after every update (rl/ppo.py ActorAnchor), as the surrogate trainer applies it.",
+    )
     add_app_arguments(parser, argv)
     args = resolve_options(parser.parse_args(argv), "train")
     starting = (
@@ -232,6 +238,12 @@ def training_runner(env, args, config, identity, state, started):
             args.action_std_final,
             decay_updates(args.updates, args.action_std_decay_updates),
         ).update
+    if args.anchor_weight:
+        from locomotion.rl.ppo import ActorAnchor
+
+        # Installed after --initialize-from, so the anchor holds the widened, loaded start.
+        runner.alg.update = ActorAnchor(runner.alg, args.anchor_weight).update
+    identity["anchor_weight"] = args.anchor_weight or None
     loads = TrainingLoads(env)
     if args.learner == "amp":
         wrapped.collision.inner = loads

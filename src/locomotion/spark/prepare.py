@@ -79,6 +79,7 @@ def prepare(
     extended_updates=False,
     action_std_decay_updates=None,
     steps_per_env=None,
+    anchor_weight=None,
     experiment=None,
     terrain=None,
     terrain_sha=None,
@@ -245,6 +246,13 @@ def prepare(
         raise ValueError("Episode length selection applies to training, between 5 and 32 seconds")
     if initialize_from is not None and (mode != "train" or learner != "ppo"):
         raise ValueError("A starting checkpoint applies to PPO training")
+    if anchor_weight is not None and (
+        mode != "train"
+        or learner != "ppo"
+        or type(anchor_weight) is not float
+        or not 0 < anchor_weight < 1
+    ):
+        raise ValueError("The anchor weight applies to PPO training as a fraction in (0, 1)")
     starting = (initialize_from, initialize_from_sha, initialize_from_declaration_sha)
     if len({value is None for value in starting}) != 1 or initialize_rate not in (
         "configured",
@@ -441,6 +449,8 @@ def prepare(
         binding["command_args"] += ["--video-case", video_case]
     if episode_seconds != 20.0:
         binding["command_args"] += ["--episode-seconds", str(episode_seconds)]
+    if anchor_weight is not None:
+        binding["command_args"] += ["--anchor-weight", str(anchor_weight)]
     if checkpoint is not None:
         binding["extra_mounts"].append([str(checkpoint.parent), "/checkpoint"])
         binding["input_files"][str(checkpoint)] = checkpoint_sha
@@ -514,6 +524,7 @@ def prepare(
             **selected_options,
             **({} if video_case is None else {"video_case": video_case}),
             **({} if episode_seconds == 20.0 else {"episode_seconds": episode_seconds}),
+            **({} if anchor_weight is None else {"anchor_weight": anchor_weight}),
             **({"extended_updates": True} if extended_updates else {}),
             **({} if experiment is None else {"experiment": experiment}),
             **(
@@ -589,6 +600,7 @@ def main():
     parser.add_argument("--action-std-final", type=float)
     parser.add_argument("--action-std-decay-updates", type=int)
     parser.add_argument("--steps-per-env", type=int)
+    parser.add_argument("--anchor-weight", type=float)
     parser.add_argument("--gait-clock", type=int)
     parser.add_argument("--action-smoothing", choices=["none", "mean2"])
     parser.add_argument("--velocity-noise", type=float)
