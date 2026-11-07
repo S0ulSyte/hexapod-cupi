@@ -599,11 +599,7 @@ def measured_reward(telemetry, commands, terminated, config=REWARD_CONFIG, nomin
         quiet = (commands == 0).all(-1).to(torch.float32)
         age = telemetry.get("command_age_controls")
         hold_age = max(config.quiet_grace_controls, config.quiet_hold_grace_controls)
-        held = (
-            quiet
-            if age is None
-            else quiet * (age.to(device) > hold_age).to(torch.float32)
-        )
+        held = quiet if age is None else quiet * (age.to(device) > hold_age).to(torch.float32)
         deviation = (
             position.to(device, torch.float32) - anchor.to(device, torch.float32)
         ) / config.quiet_hold_scale_rad

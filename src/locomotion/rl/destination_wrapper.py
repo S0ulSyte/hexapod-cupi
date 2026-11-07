@@ -105,9 +105,7 @@ class DestinationVecEnv(OmniVecEnv):
         # mask; the evaluation trackers restart at the body on every command change, so those
         # rows must read the destination at the body with age zero here too.
         pending = getattr(self.task, "ghost_pending", None)
-        extra = self.destination_inputs(
-            self.task.command_started if pending is None else pending
-        )
+        extra = self.destination_inputs(self.task.command_started if pending is None else pending)
         shown = extra[..., :GHOST_V11_FEATURES] if self.critic_only else extra
         policy = torch.cat((base["policy"], shown.to(base["policy"])), -1)
         critic = torch.cat((base["critic"], extra.to(base["critic"])), -1)

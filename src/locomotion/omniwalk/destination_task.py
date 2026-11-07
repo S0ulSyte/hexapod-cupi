@@ -1282,6 +1282,7 @@ WALK_CHECKS = (
     "tilt_rms_degrees",
     "vertical_velocity_rms_mps",
     "computed_demand_over_rating_fraction",
+    "nonfoot_fraction",
     "joint_speed_limit",
     "terminated",
 )
@@ -1290,8 +1291,8 @@ JOINT_SPEED_LIMIT_RAD_S = 50.26548245743669
 
 def walk_failures(sums, counted, speed, fast, fell, planar_scale=1.0):
     """Each row's failed walking checks, as booleans in ``WALK_CHECKS`` order, from the per-control sums of
-    planar error, yaw-rate error, squared tilt, squared vertical velocity and share of joints above 1.6 Nm.
-    ``planar_scale`` multiplies the evaluator's planar-error bound."""
+    planar error, yaw-rate error, squared tilt, squared vertical velocity, share of joints above 1.6 Nm and
+    non-foot contact. ``planar_scale`` multiplies the evaluator's planar-error bound."""
     mean = sums / counted.clamp_min(1)[:, None]
     return torch.stack(
         (
@@ -1300,6 +1301,7 @@ def walk_failures(sums, counted, speed, fast, fell, planar_scale=1.0):
             torch.rad2deg(mean[:, 2].sqrt()) > 5.0,
             mean[:, 3].sqrt() > 0.04,
             mean[:, 4] > 0.005,
+            mean[:, 5] > 0.001,
             fast,
             fell,
         ),
@@ -1408,7 +1410,7 @@ class DestinationTrainingTask(TrainingTask):
             self.check_failures = dict.fromkeys(WALK_CHECKS, 0)
             n, device = env.num_envs, env.device
             self.walk_counted = torch.zeros(n, dtype=torch.float64, device=device)
-            self.walk_sums = torch.zeros(n, 5, dtype=torch.float64, device=device)
+            self.walk_sums = torch.zeros(n, 6, dtype=torch.float64, device=device)
             self.walk_fast = torch.zeros(n, dtype=torch.bool, device=device)
             self.walk_fell = torch.zeros(n, dtype=torch.bool, device=device)
             # Each walk's planned length, its gap to the ghost at halfway and now, and whether it fell.
@@ -1533,12 +1535,17 @@ class DestinationTrainingTask(TrainingTask):
         critic[:, : obs.shape[1]] = obs
         return {**output, "obs": obs, "critic": critic}
 
-    def step(self, action):
-        result = super().step(action)
+    def _final_flags(self, output):
+        """Add the run-mix timeout before the base step notifies the observer, so the observer
+        and the returned transition carry the same flags."""
         if self.reward_config.run_mix is not None:
             # A run shorter than the episode times out at its planned length.
-            ended = (self.run_elapsed >= self.run_length) & ~result["terminated"]
-            result["truncated"] = result["truncated"] | ended.to(result["truncated"].device)
+            ended = (self.run_elapsed >= self.run_length) & ~output["terminated"]
+            output["truncated"] = output["truncated"] | ended.to(output["truncated"].device)
+        return output
+
+    def step(self, action):
+        result = super().step(action)
         if self.reward_config.vary_fraction is not None:
             # The bootstrap wrapper cannot tell a within-run evolution from a drawn switch by
             # comparing command values, so the task publishes the true resample flag.
@@ -1680,9 +1687,9 @@ class DestinationTrainingTask(TrainingTask):
                 rate = choices[signed % len(choices)] * torch.where(
                     signed >= len(choices), 1.0, -1.0
                 ).to(choices)
-                sweep = config.vary_sweep_amplitude_rad_s * torch.where(
-                    inner < 0.5, -1.0, 1.0
-                ).to(choices)
+                sweep = config.vary_sweep_amplitude_rad_s * torch.where(inner < 0.5, -1.0, 1.0).to(
+                    choices
+                )
                 zero = torch.zeros_like(rate)
                 # A sweeping run starts on its sinusoid, so a drawn arc's yaw is cleared.
                 self.env.commands[varying[~bending], 2] = 0
@@ -1767,6 +1774,9 @@ class DestinationTrainingTask(TrainingTask):
                 (t["computed_torque_nm"].to(self.walk_sums).abs() > 1.6)
                 .to(self.walk_sums)
                 .mean(-1),
+                # The evaluator's non-foot contact fraction: a control counts when any non-toe
+                # body carries force, the recorded 1 N replay equivalence (surrogate/replay.py).
+                (t["other_body_force_max_400hz"].to(self.walk_sums) > 1.0).to(self.walk_sums),
             ),
             -1,
         )

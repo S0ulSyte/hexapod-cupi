@@ -117,6 +117,9 @@ class TrainingTask:
         expired = ((self.remaining_controls == 0) & ~done).nonzero(as_tuple=False).squeeze(-1)
         self._resample(expired)
         self.controls_completed += 1
+        # Subclass truncations (the run-mix timeout) join here, before the observer reads the
+        # flags, so the observer and the returned transition see the same final flags.
+        output = self._final_flags(output)
         if self.observer is not None:
             self.observer.step(
                 command, output, reward, components, metric_previous_target, telemetry
@@ -124,6 +127,10 @@ class TrainingTask:
         result = self._next_command_observation(output)
         result["reward"] = reward
         return result
+
+    def _final_flags(self, output):
+        """The transition's final termination flags; subclasses add their own truncations here."""
+        return output
 
     def reward_telemetry(self, command):
         velocity = displacement_velocity(
@@ -210,7 +217,9 @@ class TrainingTask:
                 )
                 + 1
             )
-            self.quiet_anchor = torch.where(settled.to(q.device)[:, None], q, self.quiet_anchor.to(q))
+            self.quiet_anchor = torch.where(
+                settled.to(q.device)[:, None], q, self.quiet_anchor.to(q)
+            )
             base["quiet_anchor_joint_rad"] = self.quiet_anchor.clone()
         return {
             **base,

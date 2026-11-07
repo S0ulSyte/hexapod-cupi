@@ -801,7 +801,7 @@ class GaitClockTests(unittest.TestCase):
         self.assertEqual(EXPERIMENT_INPUTS["destination_v18"], "ghost")
         # The evaluator's bounds: 0.0316 m/s of mean planar error fails a 0.125 m/s walk (bound 0.03125)
         # and torque above 1.6 Nm in 0.6% of joint-controls fails any walk.
-        sums = torch.tensor([[0.0316, 0.0, 0.0, 0.0, 0.0], [0.031, 0.0, 0.0, 0.0, 0.006]])
+        sums = torch.tensor([[0.0316, 0.0, 0.0, 0.0, 0.0, 0.0], [0.031, 0.0, 0.0, 0.0, 0.006, 0.0]])
         failed = walk_failures(
             sums,
             torch.ones(2),
@@ -828,6 +828,7 @@ class GaitClockTests(unittest.TestCase):
             "angular_velocity_body": torch.zeros(4, 3),
             "computed_torque_nm": torch.zeros(4, 18),
             "joint_velocity_rad_s": torch.zeros(4, 18),
+            "other_body_force_max_400hz": torch.zeros(4),
         }
         task.command_elapsed[:] = 0
         for _ in range(150):
@@ -902,7 +903,7 @@ class GaitClockTests(unittest.TestCase):
         )
         # At 0.125 m/s the walking check now allows 62.5 mm/s of mean planar error.
         failed = walk_failures(
-            torch.tensor([[0.06, 0, 0, 0, 0], [0.065, 0, 0, 0, 0]]),
+            torch.tensor([[0.06, 0, 0, 0, 0, 0], [0.065, 0, 0, 0, 0, 0]]),
             torch.ones(2),
             torch.full((2,), 0.125),
             torch.zeros(2, dtype=torch.bool),
@@ -2325,6 +2326,87 @@ class TerrainCampaignTests(unittest.TestCase):
         self.assertEqual(EXPERIMENT_INPUTS["destination_v67"], "terrain_v2")
         v67.validate()
 
+    def test_nonfoot_contact_fails_the_gate_and_the_evaluator_alike(self):
+        from locomotion.omniwalk.destination_task import WALK_CHECKS, walk_failures
+        from locomotion.tests.test_evaluation import fixture, score
+
+        # One trace: perfect tracking, continuous non-foot contact. The evaluator rejects it.
+        data = fixture(1000, command=(0.05, 0.0, 0.0))
+        data["nonfoot_contact"][:] = 1
+        result = score(data, "omni_static")
+        self.assertFalse(result["pass"])
+        self.assertIn("nonfoot_fraction", result["failed_bounds"])
+        # The curriculum gate accumulates the same measurement against the same 0.001 bound.
+        sums = torch.zeros(1, 6, dtype=torch.float64)
+        sums[0, 5] = float(data["nonfoot_contact"][100:].sum())
+        failed = walk_failures(
+            sums,
+            torch.tensor([900.0]),
+            torch.tensor([0.05]),
+            torch.zeros(1, dtype=torch.bool),
+            torch.zeros(1, dtype=torch.bool),
+        )
+        named = [c for c, f in zip(WALK_CHECKS, failed[0].tolist()) if f]
+        self.assertEqual(named, ["nonfoot_fraction"])
+        # The clean version of the same trace passes both paths.
+        clean = fixture(1000, command=(0.05, 0.0, 0.0))
+        self.assertTrue(score(clean, "omni_static")["pass"])
+        self.assertFalse(
+            walk_failures(
+                torch.zeros(1, 6, dtype=torch.float64),
+                torch.tensor([900.0]),
+                torch.tensor([0.05]),
+                torch.zeros(1, dtype=torch.bool),
+                torch.zeros(1, dtype=torch.bool),
+            ).any()
+        )
+
+    def test_record_walks_accumulates_the_nonfoot_measurement(self):
+        from locomotion.omniwalk.destination_task import experiment_task
+
+        torch.manual_seed(4)
+        native = GaitDouble(2)
+        native.cfg.episode_seconds, native.cfg.declaration = 20.0, dict
+        task = experiment_task("destination_v18")(native)
+        task.reset()
+        task.command_elapsed[:] = 200
+        native.current["root_velocity"] = torch.zeros(2, 6)
+        command = torch.tensor([[0.05, 0.0, 0.0], [0.05, 0.0, 0.0]])
+        identity = torch.tensor([[0.0, 0.0, 0.1, 0.0, 0.0, 0.0, 1.0]]).repeat(2, 1)
+        telemetry = {
+            "root_pose_xyzw": identity,
+            "angular_velocity_body": torch.zeros(2, 3),
+            "computed_torque_nm": torch.zeros(2, 18),
+            "joint_velocity_rad_s": torch.zeros(2, 18),
+            "other_body_force_max_400hz": torch.tensor([2.0, 0.0]),
+        }
+        task._record_walks(command, telemetry, torch.zeros(2, dtype=torch.bool))
+        self.assertEqual(task.walk_sums[:, 5].tolist(), [1.0, 0.0])
+
+    def test_run_mix_truncation_reaches_the_observer(self):
+        from locomotion.omniwalk.destination_task import experiment_task
+
+        torch.manual_seed(5)
+        task = experiment_task("destination_v59")(GaitDouble(8))
+        seen = {}
+
+        class Observer:
+            def reset(self, selected):
+                pass
+
+            def step(self, command, output, reward, components, previous_target, telemetry):
+                seen["truncated"] = output["truncated"].clone()
+                seen["terminated"] = output["terminated"].clone()
+
+        task.observer = Observer()
+        task.reset()
+        # Every row's run ends on this control; the observer must see the same final flags.
+        task.run_length[:] = task.run_elapsed + 1
+        out = task.step(torch.zeros(8, 18))
+        self.assertTrue(bool((out["truncated"] | out["terminated"]).all()))
+        torch.testing.assert_close(out["truncated"], seen["truncated"])
+        torch.testing.assert_close(out["terminated"], seen["terminated"])
+
     def test_destination_v68_trains_varying_rows_on_the_evaluator_ghost(self):
         v65 = EXPERIMENTS["destination_v65"]["reward"]
         v68 = EXPERIMENTS["destination_v68"]["reward"]
@@ -2338,7 +2420,9 @@ class TerrainCampaignTests(unittest.TestCase):
         self.assertEqual(EXPERIMENT_INPUTS["destination_v68"], "terrain_v2")
         v68.validate()
         with self.assertRaises(ValueError):
-            replace(EXPERIMENTS["destination_v59"]["reward"], vary_ghost_matches_eval=True).validate()
+            replace(
+                EXPERIMENTS["destination_v59"]["reward"], vary_ghost_matches_eval=True
+            ).validate()
         with self.assertRaises(ValueError):
             replace(v68, vary_ghost_matches_eval=False).validate()
 
@@ -2352,9 +2436,7 @@ class TerrainCampaignTests(unittest.TestCase):
         moved = evolved_command(base, bend, sweep, 500, elapsed)
         torch.testing.assert_close(moved[0], base[0])
         # One second at pi/2 rad/s turns the 0.10 m/s walk fully to the left.
-        torch.testing.assert_close(
-            moved[1], torch.tensor([0.0, 0.10, 0.0]), atol=1e-6, rtol=0.0
-        )
+        torch.testing.assert_close(moved[1], torch.tensor([0.0, 0.10, 0.0]), atol=1e-6, rtol=0.0)
         # A quarter period in, the sweep replaces the drawn yaw with its full amplitude.
         torch.testing.assert_close(moved[2], torch.tensor([0.12, 0.0, 0.15]))
 
