@@ -270,6 +270,7 @@ EXPERIMENT_INPUTS = {
     "destination_v65": "terrain_v2",
     "destination_v66": "terrain_v2",
     "destination_v67": "terrain_v2",
+    "destination_v68": "terrain_v2",
 }
 # The speed-scaled gait clock of each named experiment that uses one (its reward's gait_clock_scaling;
 # locomotion/tests/test_destination.py checks the two agree). Its wrapper records and applies it.
@@ -315,6 +316,7 @@ EXPERIMENT_CLOCKS = {
             65,
             66,
             67,
+            68,
         )
     )
 }

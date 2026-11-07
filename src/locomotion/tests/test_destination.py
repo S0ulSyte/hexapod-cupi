@@ -2325,6 +2325,23 @@ class TerrainCampaignTests(unittest.TestCase):
         self.assertEqual(EXPERIMENT_INPUTS["destination_v67"], "terrain_v2")
         v67.validate()
 
+    def test_destination_v68_trains_varying_rows_on_the_evaluator_ghost(self):
+        v65 = EXPERIMENTS["destination_v65"]["reward"]
+        v68 = EXPERIMENTS["destination_v68"]["reward"]
+        self.assertEqual(
+            {k for k, v in asdict(v68).items() if asdict(v65)[k] != v},
+            {"vary_ghost_matches_eval"},
+        )
+        self.assertIs(v68.vary_ghost_matches_eval, True)
+        self.assertEqual(v68.bound_margin_weight, 0.0)
+        self.assertIsNone(v68.vary_tracking_scale)
+        self.assertEqual(EXPERIMENT_INPUTS["destination_v68"], "terrain_v2")
+        v68.validate()
+        with self.assertRaises(ValueError):
+            replace(EXPERIMENTS["destination_v59"]["reward"], vary_ghost_matches_eval=True).validate()
+        with self.assertRaises(ValueError):
+            replace(v68, vary_ghost_matches_eval=False).validate()
+
     def test_evolved_command_follows_the_two_transition_shapes(self):
         base = torch.tensor([[0.10, 0.0, 0.0], [0.10, 0.0, 0.0], [0.12, 0.0, 0.0]])
         bend = torch.tensor([0.0, 0.5 * math.pi, 0.0])

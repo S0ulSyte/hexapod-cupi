@@ -155,6 +155,12 @@ class DestinationRewardConfig(RewardConfig):
     # and the planar-error charge) are multiplied by this scale, so the situation that fails
     # carries the weight while the row is in it; None keeps the reward byte-identical.
     vary_tracking_scale: float | None = None
+    # True presents varying rows the evaluator's own ghost: the eval trackers restart at the body
+    # on every command change (mdp/destination.py DestinationTracker), so a per-control evolution
+    # pins the ghost at the body with age zero, an input the smoothly advancing training
+    # destination never produced. The reward keeps the advancing destination; only the policy's
+    # inputs pin. None keeps the observations byte-identical.
+    vary_ghost_matches_eval: bool | None = None
     slope_inputs: str | None = None
     command_controls: int = 0
 
@@ -442,6 +448,12 @@ class DestinationRewardConfig(RewardConfig):
         ):
             raise ValueError(
                 "The varying-walk tracking scale needs the varying walks and lies in (1, 4]"
+            )
+        if self.vary_ghost_matches_eval is not None and (
+            self.vary_fraction is None or self.vary_ghost_matches_eval is not True
+        ):
+            raise ValueError(
+                "Eval-matched ghost inputs are True or None and need the varying walks"
             )
         ceiling = (
             (
@@ -1245,6 +1257,21 @@ EXPERIMENTS["destination_v67"] = {
         termination_weight=125.0,
     ),
 }
+# destination_v68 gives the varying walks the evaluator's own ghost: rounds 31-33 trained the
+# varying situation against a smoothly advancing destination, while the evaluation trackers
+# (mdp/destination.py DestinationTracker and its ghost/terrain subclasses) restart at the body on
+# every command change, so the two curving segments run with the ghost pinned at the body and the
+# command age at zero — an input training never contained, and exposure (v64/v65), doubled and
+# tripled planar prices (v66/v67) and anchors down to 0.0015 (round 33) all left the segments
+# unmoved or worse. Varying rows now train on that pinned ghost while the reward keeps the
+# advancing destination, so the speed through a curve must come from the command inputs.
+EXPERIMENTS["destination_v68"] = {
+    **EXPERIMENTS["destination_v65"],
+    "reward": replace(
+        EXPERIMENTS["destination_v65"]["reward"],
+        vary_ghost_matches_eval=True,
+    ),
+}
 
 # The evaluator's moving checks (``evaluation/scoring.py``, profile omni_static) and the controls it skips
 # at the start of each case; the surrogate clamps joints at the native speed limit.
@@ -1327,6 +1354,10 @@ class DestinationTrainingTask(TrainingTask):
         self.vary_bend_rate = torch.zeros(env.num_envs, device=env.device)
         self.vary_sweep = torch.zeros(env.num_envs, device=env.device)
         self.vary_elapsed = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
+        # When set, the destination wrapper reads this mask in place of command_started, so a
+        # varying row's ghost inputs sit at the body with age zero, as the evaluator's tracker
+        # serves them (mdp/destination.py DestinationTracker restarts on every command change).
+        self.ghost_pending = None
         # Each run's planned length and the controls it has run, for the run-end pay and the run mix.
         self.run_length = torch.full(
             (env.num_envs,), chosen.command_controls, dtype=torch.long, device=env.device
@@ -1413,6 +1444,10 @@ class DestinationTrainingTask(TrainingTask):
         self.control_start_pose[selected] = (
             self.env.current["root"][selected].detach().to(self.control_start_pose)
         )
+        if self.reward_config.vary_ghost_matches_eval:
+            self.ghost_pending = (
+                self.command_started | (self.vary_bend_rate != 0) | (self.vary_sweep != 0)
+            )
         return output
 
     def reward_telemetry(self, command):
@@ -1510,6 +1545,10 @@ class DestinationTrainingTask(TrainingTask):
             result["command_switched"] = self.command_started.clone()
             if self._evolve_commands():
                 result = self._next_command_observation(result)
+            if self.reward_config.vary_ghost_matches_eval:
+                self.ghost_pending = (
+                    self.command_started | (self.vary_bend_rate != 0) | (self.vary_sweep != 0)
+                )
         return result
 
     def _resample(self, indices):
