@@ -27,6 +27,28 @@ from locomotion.omniwalk.mdp.destination import (
 CONTACT_FORCE_N = 0.5
 
 
+def observed(env):
+    """(root, body planar toes, contact or None) from an environment's always-present state.
+
+    ``current['toe_body']`` is the joint forward kinematics the robot computes; the contact read
+    comes from the toe-force telemetry, which some environments only populate after the first
+    control — a missing read keeps the previous stance."""
+    root = env.current["root"]
+    toe_body = env.current.get("toe_body")
+    toes = (
+        toe_body[..., :2].to(root)
+        if toe_body is not None
+        else _body_planar_toes(root, env.telemetry["toe_xyz_world"].to(root))
+    )
+    force = getattr(env, "telemetry", {}).get("tibia_floor_force_world_n")
+    contact = (
+        None
+        if force is None
+        else torch.linalg.vector_norm(force.to(root), dim=-1) > CONTACT_FORCE_N
+    )
+    return root, toes, contact
+
+
 def _heading(root):
     return planar_pose(root)[:, 2]
 
@@ -61,7 +83,7 @@ class OdometryGhost:
         self.prev_contact = torch.zeros(num_envs, 6, dtype=torch.bool, device=device)
         self.prev_heading = torch.zeros(num_envs, device=device)
 
-    def reset(self, rows, root, toe_world, tibia_force):
+    def reset(self, rows, root, toes_body, contact):
         """Align the odometry frame with the true pose on reset rows (an arbitrary frame choice)."""
         root = root.to(self.xy)
         pose = planar_pose(root)
@@ -70,13 +92,14 @@ class OdometryGhost:
         self.previous_xy[rows] = pose[rows, :2]
         self.previous_theta[rows] = pose[rows, 2]
         self.destination[rows] = pose[rows]
-        self.prev_toes[rows] = _body_planar_toes(root, toe_world.to(root))[rows]
-        self.prev_contact[rows] = (
-            torch.linalg.vector_norm(tibia_force.to(root), dim=-1)[rows] > CONTACT_FORCE_N
-        )
+        self.prev_toes[rows] = toes_body.to(self.prev_toes)[rows]
+        if contact is not None:
+            self.prev_contact[rows] = contact.to(self.prev_contact.device)[rows]
+        else:
+            self.prev_contact[rows] = True
         self.prev_heading[rows] = pose[rows, 2]
 
-    def advance(self, root, toe_world, tibia_force, command, started):
+    def advance(self, root, toes_body, contact, command, started):
         """One control: integrate the gyro, dead-reckon from stance toes, move the ghost."""
         root = root.to(self.xy)
         self.previous_xy = self.xy.clone()
@@ -86,8 +109,8 @@ class OdometryGhost:
         self.prev_heading = heading
         theta_prev = self.theta.clone()
         self.theta = self.theta + delta
-        toes = _body_planar_toes(root, toe_world.to(root))
-        contact = torch.linalg.vector_norm(tibia_force.to(root), dim=-1) > CONTACT_FORCE_N
+        toes = toes_body.to(self.prev_toes)
+        contact = self.prev_contact if contact is None else contact.to(self.prev_contact.device)
         stance = (contact & self.prev_contact).to(self.xy)
         steps = _rotate(theta_prev, self.prev_toes) - _rotate(self.theta, toes)
         weight = stance[..., None]
@@ -145,17 +168,15 @@ class OdomTerrainTracker:
     def inputs(self, pose, command, episode_steps):
         previous = self.inner.command.clone()
         full = self.inner.inputs(pose, command, episode_steps)
-        root = self.env.current["root"]
-        toes = self.env.telemetry["toe_xyz_world"]
-        force = self.env.telemetry["tibia_floor_force_world_n"]
+        root, toes, contact = observed(self.env)
         starts = episode_steps.to(self.odom.theta.device) == 0
         if self._fresh:
-            self.odom.reset(torch.arange(len(pose)), root, toes, force)
+            self.odom.reset(torch.arange(len(pose)), root, toes, contact)
             self._fresh = False
         elif bool(starts.any()):
-            self.odom.reset(starts.nonzero(as_tuple=False).flatten(), root, toes, force)
+            self.odom.reset(starts.nonzero(as_tuple=False).flatten(), root, toes, contact)
         fresh = starts | (command.to(previous) != previous).any(-1)
-        self.odom.advance(root, toes, force, command, fresh)
+        self.odom.advance(root, toes, contact, command, fresh)
         features = self.odom.features(fresh, self.inner.elapsed, command)
         from locomotion.omniwalk.mdp.destination import GHOST_V11_FEATURES
 

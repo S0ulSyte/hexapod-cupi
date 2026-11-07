@@ -145,20 +145,20 @@ class DestinationVecEnv(OmniVecEnv):
         pre_started = self.task.command_started.clone()
         observation, rewards, done, extras = super().step(action)
         if self.odometry is not None:
+            from locomotion.omniwalk.mdp.odometry import observed
+
             task = self.task
-            root = task.current["root"]
-            toes = task.env.telemetry["toe_xyz_world"]
-            force = task.env.telemetry["tibia_floor_force_world_n"]
+            root, toes, contact = observed(task.env)
             every = torch.arange(task.num_envs, device=task.device)
             if self._odometry_fresh:
-                self.odometry.reset(every, root, toes, force)
+                self.odometry.reset(every, root, toes, contact)
                 self._odometry_fresh = False
             # The executed command and the pre-step start flags mirror _advance_destination's
             # timing; rows the learner reset re-align their odometry frame with the fresh pose.
-            self.odometry.advance(root, toes, force, held_command, pre_started)
+            self.odometry.advance(root, toes, contact, held_command, pre_started)
             reset_rows = every[done.bool().to(task.device)]
             if len(reset_rows):
-                self.odometry.reset(reset_rows, root, toes, force)
+                self.odometry.reset(reset_rows, root, toes, contact)
             observation = self.get_observations()
         bootstrap = extras.get("command_bootstrap_observation")
         if bootstrap is not None:

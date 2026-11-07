@@ -2491,11 +2491,11 @@ class TerrainCampaignTests(unittest.TestCase):
         )
 
     def test_leg_odometry_tracks_translation_and_rotation(self):
-        from locomotion.omniwalk.mdp.odometry import OdometryGhost
+        from locomotion.omniwalk.mdp.odometry import OdometryGhost, _body_planar_toes
 
         odom = OdometryGhost(1, "cpu")
         root = torch.tensor([[0.0, 0.0, 0.1, 0.0, 0.0, 0.0, 1.0]])
-        toes = torch.tensor(
+        world = torch.tensor(
             [
                 [
                     [0.15, 0.1, 0.0],
@@ -2507,21 +2507,25 @@ class TerrainCampaignTests(unittest.TestCase):
                 ]
             ]
         )
-        force = torch.full((1, 6, 3), 2.0)
-        odom.reset(torch.tensor([0]), root, toes, force)
+        contact = torch.ones(1, 6, dtype=torch.bool)
+        zero = torch.zeros(1, 3), torch.zeros(1, dtype=torch.bool)
+        odom.reset(torch.tensor([0]), root, _body_planar_toes(root, world), contact)
         # The body slides 10 mm along world x; the planted toes stay put.
         moved = root.clone()
         moved[0, 0] += 0.01
-        odom.advance(moved, toes, force, torch.zeros(1, 3), torch.zeros(1, dtype=torch.bool))
+        odom.advance(moved, _body_planar_toes(moved, world), contact, *zero)
         torch.testing.assert_close(odom.xy, torch.tensor([[0.01, 0.0]]), atol=1e-6, rtol=0)
         # A pure 0.1 rad yaw about the body centre leaves the position in place.
         import math
 
         turned = moved.clone()
         turned[0, 5], turned[0, 6] = math.sin(0.05), math.cos(0.05)
-        odom.advance(turned, toes, force, torch.zeros(1, 3), torch.zeros(1, dtype=torch.bool))
+        odom.advance(turned, _body_planar_toes(turned, world), contact, *zero)
         torch.testing.assert_close(odom.xy, torch.tensor([[0.01, 0.0]]), atol=1e-6, rtol=0)
         torch.testing.assert_close(odom.theta, torch.tensor([0.1]), atol=1e-6, rtol=0)
+        # A missing contact read (an environment before its first control) keeps the stance.
+        odom.advance(turned, _body_planar_toes(turned, world), None, *zero)
+        torch.testing.assert_close(odom.xy, torch.tensor([[0.01, 0.0]]), atol=1e-6, rtol=0)
 
     def test_evolved_command_follows_the_two_transition_shapes(self):
         base = torch.tensor([[0.10, 0.0, 0.0], [0.10, 0.0, 0.0], [0.12, 0.0, 0.0]])
