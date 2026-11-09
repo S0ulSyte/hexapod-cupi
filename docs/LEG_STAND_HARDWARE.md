@@ -56,4 +56,55 @@ Use the [Waveshare schematic](https://files.waveshare.com/upload/2/29/High-Preci
 
 Use lab power and measurement tools for commissioning. Final motor supply, regenerative-energy handling, stop circuit, XT30 2+2 harness and CAN interface remain outside this sensing BOM.
 
+## Actuator calibration (simulator against the stand)
+
+`src/locomotion/sysid/` measures how the lf leg's RS05 joints respond to the policy's own commands and
+fits the simulator to match, actuation delay included.
+
+| Step | Where | Command |
+| --- | --- | --- |
+| Free the bus | stand computer | stop `leg_app.py`, `leg_jog.py` and every other leg program: one program on `vcan0` at a time |
+| Calibrate limits | stand computer | `leg_calib.py` (motors off): sweep each joint by hand, press Done; writes `~/leg_limits.json` |
+| Hang the leg free | stand | carriage on its stop, foot off the floor: the fit assumes a fixed, level base |
+| Preview | stand computer | `~/rebot-venv/bin/python leg_record.py --plan` prints the segments from the live pose |
+| Record | stand computer | `~/rebot-venv/bin/python leg_record.py --out ~/sysid`, then type `GO` (about 40 s) |
+| Fit | laptop | `uv run python -m locomotion.sysid.leg_fit <stem> --output <dir>` |
+
+`leg_record.py` is standalone (numpy and motorbridge); copy it to the stand computer. Every motor runs
+RobStride MIT mode with the training motor law: stiffness 12 Nm/rad, the per-joint damping in
+`robots/hexapod.py`, zero velocity target, no feedforward. Targets change at 50 Hz and are slew-limited
+to 0.040 rad per 20 ms like the policy's; commands are re-sent and feedback read at 100 Hz. One joint
+at a time is excited (hold, ±0.15 rad steps, a 0.3–3 Hz chirp of 0.08 rad) while the other two hold.
+Amplitudes shrink to stay inside the measured limits less max(7°, 10 %); a joint within 0.03 rad of
+that band is skipped. Any of these stops everything: a joint 0.4 rad off target, past its limits by
+0.05 rad, above 4.5 Nm or 70 °C, or silent for 0.2 s, or Ctrl+C or SIGTERM. Stopping sets zero
+stiffness, then disables every motor. `--fake` runs the whole loop on simulated motors.
+
+`leg_fit.py` replays the recorded commands on a fixed-base MuJoCo model of the lf chain, built by
+`leg_sim.py` from the approved model json, through the same motor law at 400 Hz. It fits:
+
+1. **Joint mapping and stiffness from statics.** On settled samples the motor torque balances
+   gravity. Least squares gives the femur and tibia sign, motor-frame offset and realised stiffness,
+   and the report lists the residual for every sign hypothesis. The tibia carries under 0.05 Nm of
+   gravity, so friction can leave its sign ambiguous. The coxa yaw axis is vertical, so gravity
+   cannot identify the coxa mapping: verify it by eye.
+2. **Delay and dynamics.** Each joint's excitation window is replayed, and Nelder–Mead fits that
+   joint's delay, damping scale, armature and Coulomb friction. The three delays are fitted
+   independently: their median is the reported delay, and their spread is a check.
+
+`fit.json` keeps:
+- the fitted parameters;
+- the per-joint position RMS of the nominal training actuator and of the fit;
+- the delay in 20 ms controls, for `DynamicsRandomization.action_delay_controls`.
+
+The delay is end to end, as a policy would see it: USB-CAN bridge, bus round trip, motor and feedback
+read. `fit.html` overlays target, measurement, nominal simulation and fitted simulation per joint.
+`src/locomotion/tests/test_leg_sysid.py` recovers known parameters from a synthetic recording,
+including a 23 ms delay to within 4 ms. A fit is evidence about the training actuator model, not a
+change to it: `robot/active_model.json` changes only through the program lead.
+
+Stance and contact are not covered yet: with the foot on the floor the carriage moves. For a stance
+or jump stage, the camera height tracker on branch `ab3233/leg-stand-tag-height`
+(`testing/leg_stand/tag_height.py`, 60 fps, 0.2 mm noise) gives the carriage height.
+
 References: [detailed wiring/research](https://github.com/Cornell-Physical-Intelligence/hexapod-cupi/blob/f5af556/docs/LEG_STAND_HARDWARE.md), [leg test sequence](https://github.com/Cornell-Physical-Intelligence/hexapod-cupi/blob/5e65918020dc9ef2d72da8dad0a346016b98728d/artifacts/project_review_2026-09-04/LEG_TEST_STAND.md), [CAD handoff](https://github.com/Cornell-Physical-Intelligence/hexapod-cupi/blob/62fd7448264c5ebe051ba2de1d9a72844d6b4c3a/docs/CAD_ENGINEER_HANDOFF.md).

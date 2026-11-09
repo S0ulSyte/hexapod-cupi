@@ -640,6 +640,34 @@
       "purpose": "Rebuild the 278 actor inputs from real sensors with leg odometry and emit slew-limited joint targets."
     },
     {
+      "path": "src/locomotion/sysid/__init__.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Package namespace for leg-stand actuator calibration."
+    },
+    {
+      "path": "src/locomotion/sysid/leg_record.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Record a guarded MIT-mode excitation of the lf leg on the stand under the training motor law (runs on the stand computer)."
+    },
+    {
+      "path": "src/locomotion/sysid/leg_sim.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Replay stand recordings on a fixed-base one-leg MuJoCo model built from the approved model json."
+    },
+    {
+      "path": "src/locomotion/sysid/leg_fit.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Fit joint mapping, actuation delay and actuator parameters of the one-leg simulator to a stand recording."
+    },
+    {
       "path": "src/mission/__init__.py",
       "previous_path": null,
       "classification": "prototype",
