@@ -1,0 +1,496 @@
+{
+  "scored_ranges": {
+    "friction_scale": [
+      0.6,
+      1.4
+    ],
+    "mass_scale": [
+      0.9,
+      1.1
+    ],
+    "motor_scale": [
+      1.0,
+      1.0
+    ],
+    "kd_scale": [
+      1.0,
+      1.0
+    ],
+    "action_delay_controls": 1,
+    "sag_per_minute": [
+      0.0,
+      0.0
+    ],
+    "sag_floor": 0.85
+  },
+  "walked_ranges": {
+    "friction_scale": [
+      0.6,
+      1.4
+    ],
+    "mass_scale": [
+      0.9,
+      1.1
+    ],
+    "motor_scale": [
+      0.9,
+      1.1
+    ],
+    "kd_scale": [
+      0.8,
+      1.2
+    ],
+    "action_delay_controls": 1,
+    "sag_per_minute": [
+      0.0,
+      0.1
+    ],
+    "sag_floor": 0.85
+  },
+  "speed": 0.1,
+  "bearings": 8,
+  "base_seed": 20261103,
+  "results": {
+    "scored": {},
+    "walked": {
+      "s2r_d_u200": {
+        "flat 5mm": {
+          "draw00": {
+            "seed": 20261103,
+            "crossed": 6,
+            "starts": [
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              }
+            ]
+          },
+          "draw01": {
+            "seed": 20261104,
+            "crossed": 6,
+            "starts": [
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.77,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              }
+            ]
+          },
+          "draw02": {
+            "seed": 20261105,
+            "crossed": 6,
+            "starts": [
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              }
+            ]
+          },
+          "draw03": {
+            "seed": 20261106,
+            "crossed": 6,
+            "starts": [
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              }
+            ]
+          },
+          "draw04": {
+            "seed": 20261107,
+            "crossed": 6,
+            "starts": [
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.77,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.77,
+                "fell_at_s": null
+              }
+            ]
+          },
+          "draw05": {
+            "seed": 20261108,
+            "crossed": 6,
+            "starts": [
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              }
+            ]
+          }
+        },
+        "hill 7 deg": {
+          "draw00": {
+            "seed": 20261103,
+            "crossed": 3,
+            "starts": [
+              {
+                "crossed": false,
+                "walked_m": 1.9,
+                "fell_at_s": null
+              },
+              {
+                "crossed": false,
+                "walked_m": 1.88,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.79,
+                "fell_at_s": null
+              },
+              {
+                "crossed": false,
+                "walked_m": 1.74,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.77,
+                "fell_at_s": null
+              }
+            ]
+          },
+          "draw01": {
+            "seed": 20261104,
+            "crossed": 6,
+            "starts": [
+              {
+                "crossed": true,
+                "walked_m": 3.79,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.79,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.79,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.77,
+                "fell_at_s": null
+              }
+            ]
+          },
+          "draw02": {
+            "seed": 20261105,
+            "crossed": 6,
+            "starts": [
+              {
+                "crossed": true,
+                "walked_m": 3.8,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.8,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.79,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.79,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              }
+            ]
+          },
+          "draw03": {
+            "seed": 20261106,
+            "crossed": 0,
+            "starts": [
+              {
+                "crossed": false,
+                "walked_m": 1.88,
+                "fell_at_s": null
+              },
+              {
+                "crossed": false,
+                "walked_m": 1.82,
+                "fell_at_s": null
+              },
+              {
+                "crossed": false,
+                "walked_m": 1.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": false,
+                "walked_m": 1.72,
+                "fell_at_s": null
+              },
+              {
+                "crossed": false,
+                "walked_m": 1.65,
+                "fell_at_s": null
+              },
+              {
+                "crossed": false,
+                "walked_m": 1.62,
+                "fell_at_s": null
+              }
+            ]
+          },
+          "draw04": {
+            "seed": 20261107,
+            "crossed": 5,
+            "starts": [
+              {
+                "crossed": false,
+                "walked_m": 2.02,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.79,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.79,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.77,
+                "fell_at_s": null
+              }
+            ]
+          },
+          "draw05": {
+            "seed": 20261108,
+            "crossed": 6,
+            "starts": [
+              {
+                "crossed": true,
+                "walked_m": 3.8,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.79,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.79,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.79,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              },
+              {
+                "crossed": true,
+                "walked_m": 3.78,
+                "fell_at_s": null
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

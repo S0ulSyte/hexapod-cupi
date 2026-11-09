@@ -1,0 +1,64 @@
+{
+  "checkpoint": "/Users/new/Desktop/cupi/hexapod-surrogate/runs/curriculum/s2r_d/checkpoint_update000200.pt",
+  "checkpoint_sha256": "782710b7775228ac1f9a1001102794c2659f5ea0d443e2179c6ac8924b48dcc9",
+  "ranges": {
+    "friction_scale": [
+      0.6,
+      1.4
+    ],
+    "mass_scale": [
+      0.9,
+      1.1
+    ],
+    "motor_scale": [
+      0.9,
+      1.1
+    ],
+    "kd_scale": [
+      0.8,
+      1.2
+    ],
+    "action_delay_controls": 1,
+    "sag_per_minute": [
+      0.0,
+      0.1
+    ],
+    "sag_floor": 0.85
+  },
+  "episodes": 256,
+  "held_out": 64,
+  "settle_controls": 50,
+  "seed": 20261103,
+  "readout": {
+    "friction_scale": {
+      "r2": 0.0005320369245133127,
+      "mae": 0.18560519988942287,
+      "target_std": 0.21119223139503693
+    },
+    "mass_scale": {
+      "r2": 0.2523248080786711,
+      "mae": 0.038917817241616276,
+      "target_std": 0.0515840652354802
+    },
+    "motor_scale": {
+      "r2": -0.053164543328409586,
+      "mae": 0.051012541526436674,
+      "target_std": 0.055497171184218076
+    },
+    "kd_scale": {
+      "r2": -0.06499969038851816,
+      "mae": 0.08277839670466117,
+      "target_std": 0.10158082835958597
+    },
+    "action_delay_controls": {
+      "r2": -0.04877625878921177,
+      "mae": 0.48982712266098444,
+      "target_std": 0.4977978850648122
+    },
+    "sag_per_minute": {
+      "r2": -0.13872246201992744,
+      "mae": 0.026527299425657812,
+      "target_std": 0.027946919132490925
+    }
+  }
+}

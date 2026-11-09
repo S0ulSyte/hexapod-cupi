@@ -1,0 +1,411 @@
+{
+  "checkpoint": "/Users/new/Desktop/cupi/hexapod-surrogate/runs/curriculum/s2r_e/checkpoint_update000200.pt",
+  "checkpoint_sha256": "9efc579ecd6b81170057d957b18f2db7a7e108db506a11830bf82577c0f837c9",
+  "core_checkpoint": "/Users/new/Desktop/cupi/hexapod-surrogate/runs/native_eval/checkpoints/terrain_isaac_u600_002/checkpoint_update000600.pt",
+  "world_seed": 777003,
+  "training_ranges": {
+    "friction_scale": [
+      0.6,
+      1.4
+    ],
+    "mass_scale": [
+      0.9,
+      1.1
+    ],
+    "motor_scale": [
+      0.9,
+      1.1
+    ],
+    "kd_scale": [
+      0.8,
+      1.2
+    ],
+    "action_delay_controls": [
+      0,
+      1
+    ],
+    "sag_per_minute": [
+      0.0,
+      0.1
+    ],
+    "sag_floor": 0.85
+  },
+  "trusted": [
+    "mass_scale"
+  ],
+  "trust_r2": 0.1,
+  "calibration_train_r2": {
+    "friction_scale": 0.058000939917049465,
+    "mass_scale": 0.39621453377847726,
+    "motor_scale": 0.047494488804586954,
+    "kd_scale": 0.06299448668584329,
+    "action_delay_controls": 0.14418346422523876,
+    "sag_per_minute": 0.08661587677357341
+  },
+  "truth": {
+    "friction_scale": 1.147457226716315,
+    "mass_scale": 0.9398630799340145,
+    "motor_scale": 0.9202477619725216,
+    "kd_scale": 1.024290117078331,
+    "action_delay_controls": 1,
+    "sag_per_minute": 0.08525197403746519
+  },
+  "identification": {
+    "friction_scale": {
+      "estimate": 1.0055093945789753,
+      "spread": 0.04902444990184477,
+      "truth": 1.147457226716315,
+      "error": 0.14194783213733975,
+      "center_error": 0.147457226716315,
+      "beats_center": true
+    },
+    "mass_scale": {
+      "estimate": 0.9916066478103478,
+      "spread": 0.020777172316919293,
+      "truth": 0.9398630799340145,
+      "error": 0.051743567876333274,
+      "center_error": 0.06013692006598548,
+      "beats_center": true
+    },
+    "motor_scale": {
+      "estimate": 0.992374698571789,
+      "spread": 0.013484564530946706,
+      "truth": 0.9202477619725216,
+      "error": 0.07212693659926739,
+      "center_error": 0.07975223802747844,
+      "beats_center": true
+    },
+    "kd_scale": {
+      "estimate": 0.9989769599393489,
+      "spread": 0.023883750182322742,
+      "truth": 1.024290117078331,
+      "error": 0.02531315713898208,
+      "center_error": 0.024290117078330953,
+      "beats_center": false
+    },
+    "action_delay_controls": {
+      "estimate": 0.38518767873937654,
+      "spread": 0.18598224630387156,
+      "truth": 1,
+      "error": 0.6148123212606235,
+      "center_error": 0.5,
+      "beats_center": false
+    },
+    "sag_per_minute": {
+      "estimate": 0.04762029686827756,
+      "spread": 0.0076123408330444715,
+      "truth": 0.08525197403746519,
+      "error": 0.03763167716918763,
+      "center_error": 0.03525197403746519,
+      "beats_center": false
+    }
+  },
+  "calibrated": {
+    "friction_scale": [
+      1.0,
+      1.0
+    ],
+    "mass_scale": [
+      0.9916066478103478,
+      0.9916066478103478
+    ],
+    "motor_scale": [
+      1.0,
+      1.0
+    ],
+    "kd_scale": [
+      1.0,
+      1.0
+    ],
+    "action_delay_controls": [
+      0,
+      0
+    ],
+    "sag_per_minute": [
+      0.0,
+      0.0
+    ],
+    "sag_floor": 0.85
+  },
+  "deployment": {
+    "walks": {
+      "flat 5mm": [
+        {
+          "crossed": true,
+          "walked_m": 3.78,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.78,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.78,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.78,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.77,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.78,
+          "fell_at_s": null
+        }
+      ],
+      "hill 7 deg": [
+        {
+          "crossed": false,
+          "walked_m": 1.96,
+          "fell_at_s": null
+        },
+        {
+          "crossed": false,
+          "walked_m": 1.86,
+          "fell_at_s": null
+        },
+        {
+          "crossed": false,
+          "walked_m": 1.78,
+          "fell_at_s": null
+        },
+        {
+          "crossed": false,
+          "walked_m": 1.75,
+          "fell_at_s": null
+        },
+        {
+          "crossed": false,
+          "walked_m": 1.67,
+          "fell_at_s": null
+        },
+        {
+          "crossed": false,
+          "walked_m": 1.66,
+          "fell_at_s": null
+        }
+      ]
+    },
+    "pass": true
+  },
+  "validation_walks": {
+    "core_Wstar": {
+      "flat 5mm": [
+        {
+          "crossed": true,
+          "walked_m": 3.78,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.78,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.78,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.78,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.78,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.78,
+          "fell_at_s": null
+        }
+      ],
+      "hill 7 deg": [
+        {
+          "crossed": false,
+          "walked_m": 1.89,
+          "fell_at_s": null
+        },
+        {
+          "crossed": false,
+          "walked_m": 1.81,
+          "fell_at_s": null
+        },
+        {
+          "crossed": false,
+          "walked_m": 1.78,
+          "fell_at_s": null
+        },
+        {
+          "crossed": false,
+          "walked_m": 1.71,
+          "fell_at_s": null
+        },
+        {
+          "crossed": false,
+          "walked_m": 1.75,
+          "fell_at_s": null
+        },
+        {
+          "crossed": false,
+          "walked_m": 1.65,
+          "fell_at_s": null
+        }
+      ]
+    },
+    "core_nominal": {
+      "flat 5mm": [
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        }
+      ],
+      "hill 7 deg": [
+        {
+          "crossed": true,
+          "walked_m": 3.8,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.8,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.8,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.78,
+          "fell_at_s": null
+        }
+      ]
+    },
+    "core_calibrated": {
+      "flat 5mm": [
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        }
+      ],
+      "hill 7 deg": [
+        {
+          "crossed": true,
+          "walked_m": 3.8,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.8,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.8,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.79,
+          "fell_at_s": null
+        },
+        {
+          "crossed": true,
+          "walked_m": 3.78,
+          "fell_at_s": null
+        }
+      ]
+    }
+  },
+  "validation": {
+    "flat 5mm": {
+      "nominal_gap_m": 0.010000000000000231,
+      "calibrated_gap_m": 0.010000000000000231,
+      "closer": true
+    },
+    "hill 7 deg": {
+      "nominal_gap_m": 2.028333333333333,
+      "calibrated_gap_m": 2.028333333333333,
+      "closer": true
+    }
+  }
+}
