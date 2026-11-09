@@ -1,0 +1,2107 @@
+{
+  "schema": "hexapod_surrogate_evaluation_v3",
+  "surrogate": true,
+  "backend": "mujoco 3.14.0",
+  "scope": "CPU MuJoCo surrogate; design evidence. Native runs are the only acceptance evidence.",
+  "checkpoint": "/Users/new/Desktop/cupi/hexapod-surrogate/runs/curriculum/gb1/checkpoint_update002000.pt",
+  "checkpoint_sha256": "c5500f7f2dda75d08e98591d9880ae2f3341c4d85a3eb53c5d59abffdd4c7855",
+  "checkpoint_origin": "surrogate",
+  "task": "locomotion.omniwalk.destination_task:experiment_task(destination_v69)",
+  "wrapper": "locomotion.rl.destination_wrapper:DestinationVecEnv",
+  "wrapper_options": {
+    "observation_scaling": "fixed",
+    "command_segments": "bootstrap",
+    "gait_clock": 60,
+    "action_smoothing": "mean2",
+    "velocity_noise": 0.5,
+    "destination_input": "terrain_v2_ghost_critic",
+    "gait_clock_scaling": "speed_v1"
+  },
+  "observation_scaling": "fixed",
+  "policy_path": {
+    "source": "policy path of locomotion/scripts/play.py",
+    "velocity_input_gain": 1.0,
+    "action_mean2_forced": false,
+    "action_smoothing_applied": "mean2",
+    "velocity_noise_recorded": 0.5,
+    "velocity_noise_applied": 0.0,
+    "scope": "Scales, gait clock, actor mean and two-control mean as the policy path of locomotion/scripts/play.py; the gain and the forced mean are stress options."
+  },
+  "foot_load": null,
+  "seed": 20261009,
+  "selected_case_ids": [
+    "learning:omni15__translate_0.15_0deg",
+    "learning:omni15__translate_0.15_22.5deg",
+    "learning:omni15__translate_0.15_45deg",
+    "learning:omni15__translate_0.15_67.5deg",
+    "learning:omni15__translate_0.15_90deg",
+    "learning:omni15__translate_0.15_112.5deg",
+    "learning:omni15__translate_0.15_135deg",
+    "learning:omni15__translate_0.15_157.5deg",
+    "learning:omni15__translate_0.15_180deg",
+    "learning:omni15__translate_0.15_202.5deg",
+    "learning:omni15__translate_0.15_225deg",
+    "learning:omni15__translate_0.15_247.5deg",
+    "learning:omni15__translate_0.15_270deg",
+    "learning:omni15__translate_0.15_292.5deg",
+    "learning:omni15__translate_0.15_315deg",
+    "learning:omni15__translate_0.15_337.5deg"
+  ],
+  "contact_model": {
+    "solref": [
+      0.005,
+      1.0
+    ],
+    "solimp": [
+      0.9,
+      0.95,
+      0.001,
+      0.5,
+      2.0
+    ],
+    "friction": [
+      1.0,
+      0.005,
+      0.0001
+    ],
+    "condim": 3,
+    "cone": "elliptic",
+    "impratio": 1.0,
+    "noslip_iterations": 4,
+    "noslip_tolerance": 1e-06,
+    "refsafe": true,
+    "position_blend": 0.515625,
+    "impact_euler": true,
+    "solver": "Newton",
+    "iterations": 100,
+    "tolerance": 1e-08,
+    "integrator": "Euler",
+    "limit_margin": 0.0,
+    "limit_solref": [
+      0.005,
+      1.0
+    ],
+    "limit_solimp": [
+      0.99,
+      0.999,
+      0.001,
+      0.5,
+      2.0
+    ],
+    "touchdown_overshoot": true,
+    "overshoot_phase": [
+      0.75,
+      0.9
+    ],
+    "overshoot_gain": 15.0,
+    "joint_speed_clamp": true
+  },
+  "repository": {
+    "revision": "e8fb9278439195f5dfb3d55d7f35bfe1e409c6fd",
+    "branch": "jg2399/sim2real-adapter",
+    "dirty": true,
+    "uncommitted_paths": [
+      "\"Sim2real for legged robots.md\""
+    ]
+  },
+  "identity": {
+    "source_files": {
+      "__init__.py": "c82a5695bd2575afdaae01eb84bb3c06ddffe42529d201bbe43726ae8859e350",
+      "amp/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "amp/features.py": "b4913d59e31304330904f6aad87809ea85be45498a8627fa3cfd0f4c28e207bb",
+      "evaluation/__init__.py": "e1cd60a1db19235846a5d97c6d51c745f04cf23492a37e7282780f9dcf06aad8",
+      "evaluation/admission.py": "81002005b4419c95a596fc1319831eee3a0415927774bfb743eefd291051f551",
+      "evaluation/camera.py": "8591da4e98dc170a6bcc8e7e1ed6d1963325ddbad24d14e3e29ebcec949b3c8d",
+      "evaluation/capture.py": "5d5af101159ffeb02b39e75152c8f3d949b77fb952f709868ff4a2f9fea9c4a8",
+      "evaluation/checkpoint.py": "ad9a01c40a60c254f4120b8d1dde08f7e1e78a0c0e7a526337acbf202e571c75",
+      "evaluation/force_metrics.py": "ea898f44a1b206bbfdc53ca84b7b80bbd796d029bfc94d9fa48aff98ba3feb65",
+      "evaluation/loads.py": "1a903c9a55027a8d1df4d817d5096865c647505d20f768df180927b183719f90",
+      "evaluation/noise_probe.py": "4d6a0e8d1ccd03c0393a4716b38e4be6d430cb3274097a9fa5bf6a4728d7bbbb",
+      "evaluation/ppo_diagnostics.py": "be3f6d37528029ef596d8b01edee335242489f226b67886f9d84b1efb24afa16",
+      "evaluation/runner.py": "6a2c16eb69406c710a4c9ba4eafdd8f73928a107b5807499ff9227a0768d5bc1",
+      "evaluation/scoring.py": "6b6090705858182f5f322517ed907b5d4ad961ccf69081439c0dbe4fee9e05c8",
+      "evaluation/task_metrics.py": "13bb17ba67645e13e6d16dbf3cad6dadc2471603e5897757670b2130c63ccd48",
+      "omniwalk/__init__.py": "93656a153605e4dc2543dd764968260b8a692d51d7491277aeb66960ecc55bca",
+      "omniwalk/adapter.py": "08661736f0cf7341c751d40a52402f7a30773f51d2555ad95031048ee0beb54e",
+      "omniwalk/agents/__init__.py": "cde18e74d4c3d992d40e59a7705fc218b83f998563f56bdf648b2343b052c917",
+      "omniwalk/agents/rsl_rl_ppo_cfg.py": "572031ff52d4e2c224ce3b8f2480c7b582cb02d106f3cd9f40f2cb3d0fce0476",
+      "omniwalk/destination_task.py": "3212b00af594e08603fc390b3d056dd205cbedde2de6715639e3953559f8593d",
+      "omniwalk/env.py": "217e648fd5a1fdd7f63ef328d5dd72b8f8a0947873738ee00e28066fefc5cdb0",
+      "omniwalk/env_cfg.py": "6bc9c84956332b80a5d91d29fce169442bf7dc3f8b1d7b92c8b3db14ef873135",
+      "omniwalk/mdp/__init__.py": "512ddd45731678752dda1f755d71ccfebc53eb5eed3d66bf5c240bd57276e9ae",
+      "omniwalk/mdp/actions.py": "e19a1992389643f236a9e12ddbb2fb2b6db3ffa6d39362389576a45c4424c134",
+      "omniwalk/mdp/commands.py": "0df06262118821c8b031aa8496e9de5e752b8dcc3970b09796e82e5ddbe5878a",
+      "omniwalk/mdp/destination.py": "80d47a5801cb384c91a4031e3868273fde18b5ccae3c6a3f2ba664136cc844a9",
+      "omniwalk/mdp/footfall.py": "834de1fd31e3af002bef844040e9e8ae81d166a507bd93f999c64c4a770eaa73",
+      "omniwalk/mdp/frames.py": "297e9fb18d43ad017a55130af0f7a9e9170e862f8c2ef49846e8aa1e3658271f",
+      "omniwalk/mdp/gait.py": "2e580cbdfd23f7c3d3dd2556fa2d60638f4c7050b7b0dd54059c4a46a4e43c8a",
+      "omniwalk/mdp/observations.py": "911dbc8940adcf1dfe4fb748ed25c59aec8693f6b3690607b22fa476817823c4",
+      "omniwalk/mdp/rewards.py": "0cc66ffaae2e5becc138ad0a01315f16118ebaedbfc354ea13ab3d15bcdfc368",
+      "omniwalk/mdp/slope.py": "cc7d3484f0a56f090bc14ea482da82f86aa3a436d478e0717fcd969b02352d3e",
+      "omniwalk/task.py": "0de0d12ce8498e449112e22d10e13202fdcf26d74e44440d5b8fb6ec01bbdb59",
+      "rl/__init__.py": "f7dbc1986429c9c6468a16929010d7178e6c98f61525da903c42cec006373402",
+      "rl/destination_wrapper.py": "087fab9a51fd27a7edc416a76ef5047497e34304c18a06b26dd70a10ea22f0a2",
+      "rl/ppo.py": "94ff144c4bd9dec9d1f9905febed6a747f64aece25240856f4c98610a68210d9",
+      "rl/sim2real.py": "c7ea4ea20dee44d05178f22d717ef08711a7ba873a8f5708e9404576c0b35b49",
+      "rl/wrapper.py": "a1142d705ec452d0c41fa33e49c0f8491489610aca7a93d74e028ff628c480d9",
+      "robots/__init__.py": "6bcb4a3685a100854a6edce79b30417b96fc98d76f9979ae6e5efc285136ccff",
+      "robots/actuator.py": "b833a08033479237213506e9dfebf2384281bf54ad3e3fc528f033098d621cdc",
+      "robots/hexapod.py": "848bfa26879bca4b8bfee096d74e95ddcef25d8b402e3c66556c71c5c1d68bdf",
+      "robots/rs05.py": "10d91c9f23ec7b457971a1a0fb3a858bb739ac657a27b3503ebc0c8526c5f486",
+      "scripts/__init__.py": "80c0440039bd9ddabd972a267fe98b4fb00f187fa5bec7164b31220d99d82718",
+      "scripts/cli.py": "fdbc0c36402510bce12b671c9cc979c526e20cecfa28ada0bb07a62d8a750d0c",
+      "scripts/diagnose.py": "04255afd82a3e2f6df0b4066c258405f51e6f1caffe6876daaeab45fca9aeda9",
+      "scripts/play.py": "4aad2a88b19ca0fc611a909871a73c00a6c64d3b70ec088d5fe02e976b863e3d",
+      "scripts/train.py": "8270e90dc812344967bfcd3b6e58dd4ab20dc9339499ecf56e4731155d3ac76a",
+      "spark/__init__.py": "26e705a5e8cb7f5201430de63b6a0892ff244f1a87b907aa1c4bbf146e45aa9e",
+      "spark/inputs.py": "11eb5abba264cb159d59bcfedba136e999d98f9819f7dc5b4028dd589e4d6ec2",
+      "spark/launch.py": "a8ef37ea8b696c46f1e479b5e3b4ea0e6e39efa8fc800df7d1872f580569b5ab",
+      "spark/pack.py": "99d9a17d1d05767210601bfdc31089f2cec9a326953ec597fd1d47c8dc34c061",
+      "spark/prepare.py": "91a7bafa21d6d2d50f882666ac00ab555b5d2f69dbd0caeaa6bcd2a53ceb2b69",
+      "spark/safety.py": "824cd7e30cdf0ab8b717f7b3219cff988df205381cde623b491d084e2250c303",
+      "spark/sources.py": "6408f071793c5a6b2bb7d2e52fd652aefe330e44de4871a9f70925370cd2ccfc",
+      "spark/validation.py": "ca94a2d513965651302f38f783c9314090bf93a86b2ff0edc28a2f52180bdd0b",
+      "terrain.py": "8b80f9c1151bfe9f764bedbb5e58051f194200eba1dcac1d29a4d0d01b013ec7"
+    },
+    "surrogate_files": {
+      "__init__.py": "f13b1f6af122568c5327a70ffe2c2713568a9757b82e1a6e39f846229d2b66af",
+      "env.py": "99c9aa0ca8e0772730fbac9e125def203ac3664dd5fdf3a1caff1860af01ee0d",
+      "evaluate.py": "86f776a494cc8e1537d642d4a9a097a5d60ead9dbad929f794e07ea44d0c74fe",
+      "replay.py": "d8c8cd7cb3e877e9699782220dd464cc2ade61eee738b29aec3b22cded44349f",
+      "scene.py": "b145905316f1c75e6b69ee0de27a036b9aa44fff46cd8ced4735785389e0cb6f",
+      "terrain.py": "8ce5e0e72c4395c7ef173d42e114e163c57a1eae05165dcbbda139f78712644f",
+      "train.py": "e1be9c23fc220527eda5ac297f9103c91e877f4d5cdeb3b329365c1cf91fab62"
+    },
+    "model_sha256": "7126935b35398d2a7f03271335a8a1b8f2059354af2b19d9474f22b8e73e4881",
+    "stance_sha256": "830cb07c0fdb3d80af82476d8e6e88f25440cfd2e9255ac1e16327ac826d259c",
+    "geometry_sha256": "b2adbfb4310c9aeea4f52bf7854c97b5304fd99a28452ad41c80b98e495d5d31",
+    "geometry_extrema_sha256": "268c7c072e3d84febed10000f31b4e99baf55bea461a713e42fb1137cda1e2ce"
+  },
+  "failed_probe_cases": [
+    "learning:omni15__translate_0.15_112.5deg",
+    "learning:omni15__translate_0.15_135deg",
+    "learning:omni15__translate_0.15_157.5deg",
+    "learning:omni15__translate_0.15_180deg",
+    "learning:omni15__translate_0.15_202.5deg",
+    "learning:omni15__translate_0.15_225deg",
+    "learning:omni15__translate_0.15_315deg",
+    "learning:omni15__translate_0.15_337.5deg"
+  ],
+  "unresolved_probe_cases": [],
+  "acquisition_failure": null,
+  "videos": {
+    "learning:omni15__translate_0.15_0deg": {
+      "path": "/Users/new/Desktop/cupi/hexapod-surrogate/runs/curriculum/omni15_gb1_u2000/videos/learning_omni15__translate_0.15_0deg.mp4",
+      "frames": 500
+    }
+  },
+  "cases": [
+    {
+      "case_id": "learning:omni15__translate_0.15_0deg",
+      "pass": true,
+      "passed_numeric_screen": true,
+      "failed_bounds": [],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.029368634080821802,
+        "yaw_error_rad_s": 0.02899088546156318,
+        "tilt_rms_degrees": 0.6281470656394958,
+        "vertical_velocity_rms_mps": 0.025361178442835808,
+        "computed_demand_over_rating_fraction": 0.00018518518518518518,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          0.12703316305800483,
+          0.008839720763720327,
+          0.0013176693232366285
+        ],
+        "mean_yaw_rate_rad_s": -0.010152748308474773,
+        "requested_saturation_fraction_400hz": 0.0006172839506172839
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          0.12703316305800483,
+          0.008839720763720327,
+          0.0013176693232366285
+        ],
+        "mean_forward_speed_controls_100_399_mps": 0.12686821106277207,
+        "root_height_mean_m": 0.10988572239875793,
+        "final_root_height_m": 0.10835090279579163,
+        "toe_contact_fraction_endpoints": [
+          0.5844444444444444,
+          0.5055555555555555,
+          0.5711111111111111,
+          0.4622222222222222,
+          0.5766666666666667,
+          0.5744444444444444
+        ],
+        "toe_point_height_max_mm": [
+          35.72804641723633,
+          29.176164627075195,
+          23.50731086730957,
+          47.84726333618164,
+          25.474416732788086,
+          18.47808074951172
+        ],
+        "toe_lift_above_stance_mm": [
+          27.97604751586914,
+          21.57927894592285,
+          15.611961364746094,
+          39.88987731933594,
+          17.81468963623047,
+          10.536632537841797
+        ],
+        "action_abs_max": 0.9586511850357056,
+        "action_abs_ge_0.95_fraction": 0.005555555555555556,
+        "target_step_at_limiter_fraction": 0.14253142030919808,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.3313370943069458,
+          0.5241895914077759,
+          0.6464301943778992
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.2612326741218567,
+        "joint": "lr_tibia_pitch",
+        "final_rad": 0.3376260995864868,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 34.34152137628286,
+        "speed_clamp_events": 0,
+        "touchdown_events": 392,
+        "touchdown_overshoot_events": 113
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.570875,
+          "lm": 0.51375,
+          "lr": 0.55725,
+          "rf": 0.47575,
+          "rm": 0.56275,
+          "rr": 0.555125
+        },
+        "per_foot_peak_n": {
+          "lf": 59.39023511497422,
+          "lm": 66.186871542788,
+          "lr": 52.545652666689534,
+          "rf": 70.05091408599773,
+          "rm": 41.46292545031949,
+          "rr": 70.5520944374436
+        },
+        "applied_torque_worst_joint_rms_nm": 0.8321600370890737,
+        "applied_torque_worst_joint": "lr_tibia_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_22.5deg",
+      "pass": true,
+      "passed_numeric_screen": true,
+      "failed_bounds": [],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.021135016270980734,
+        "yaw_error_rad_s": 0.03635013745842427,
+        "tilt_rms_degrees": 0.42612889409065247,
+        "vertical_velocity_rms_mps": 0.02500228025019169,
+        "computed_demand_over_rating_fraction": 0.0001234567901234568,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          0.12569943690669447,
+          0.054190728419730834,
+          0.0014637643824080534
+        ],
+        "mean_yaw_rate_rad_s": -0.014177064198390554,
+        "requested_saturation_fraction_400hz": 0.0016049382716049382
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          0.12569943690669447,
+          0.054190728419730834,
+          0.0014637643824080534
+        ],
+        "mean_forward_speed_controls_100_399_mps": 0.12625253003432646,
+        "root_height_mean_m": 0.10970811545848846,
+        "final_root_height_m": 0.10796404629945755,
+        "toe_contact_fraction_endpoints": [
+          0.5477777777777778,
+          0.5311111111111111,
+          0.5788888888888889,
+          0.53,
+          0.5277777777777778,
+          0.5711111111111111
+        ],
+        "toe_point_height_max_mm": [
+          37.13084030151367,
+          33.75678634643555,
+          26.141443252563477,
+          37.3215217590332,
+          25.75149917602539,
+          16.092514038085938
+        ],
+        "toe_lift_above_stance_mm": [
+          29.337196350097656,
+          26.15186882019043,
+          18.566242218017578,
+          29.55113410949707,
+          17.636920928955078,
+          8.303135871887207
+        ],
+        "action_abs_max": 0.9531043767929077,
+        "action_abs_ge_0.95_fraction": 0.00011111111111111112,
+        "target_step_at_limiter_fraction": 0.15220776331887442,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.35613101720809937,
+          0.5493069291114807,
+          0.6019966006278992
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.254469633102417,
+        "joint": "rm_tibia_pitch",
+        "final_rad": 0.29941684007644653,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 35.793614541587736,
+        "speed_clamp_events": 0,
+        "touchdown_events": 395,
+        "touchdown_overshoot_events": 109
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.541125,
+          "lm": 0.53875,
+          "lr": 0.56325,
+          "rf": 0.531125,
+          "rm": 0.5195,
+          "rr": 0.558875
+        },
+        "per_foot_peak_n": {
+          "lf": 60.78529389993233,
+          "lm": 72.47526679816005,
+          "lr": 47.93091186930509,
+          "rf": 64.8242248020112,
+          "rm": 42.27529505886501,
+          "rr": 68.68804721432225
+        },
+        "applied_torque_worst_joint_rms_nm": 0.7952521109479048,
+        "applied_torque_worst_joint": "rm_tibia_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_45deg",
+      "pass": true,
+      "passed_numeric_screen": true,
+      "failed_bounds": [],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.024143530208585645,
+        "yaw_error_rad_s": 0.04117724864590607,
+        "tilt_rms_degrees": 0.33459511399269104,
+        "vertical_velocity_rms_mps": 0.02504679001867771,
+        "computed_demand_over_rating_fraction": 6.17283950617284e-05,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          0.10020420012898226,
+          0.08854790730136397,
+          0.0009766409984492323
+        ],
+        "mean_yaw_rate_rad_s": -0.014225517631393103,
+        "requested_saturation_fraction_400hz": 0.0015200617283950618
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          0.10020420012898226,
+          0.08854790730136397,
+          0.0009766409984492323
+        ],
+        "mean_forward_speed_controls_100_399_mps": 0.10091249747586223,
+        "root_height_mean_m": 0.10915698856115341,
+        "final_root_height_m": 0.10813209414482117,
+        "toe_contact_fraction_endpoints": [
+          0.5333333333333333,
+          0.5488888888888889,
+          0.5333333333333333,
+          0.5655555555555556,
+          0.4922222222222222,
+          0.6022222222222222
+        ],
+        "toe_point_height_max_mm": [
+          36.599918365478516,
+          38.61714553833008,
+          30.641813278198242,
+          25.11064910888672,
+          26.53644371032715,
+          15.630608558654785
+        ],
+        "toe_lift_above_stance_mm": [
+          28.828222274780273,
+          30.932647705078125,
+          22.892457962036133,
+          17.62392807006836,
+          18.262758255004883,
+          7.842845439910889
+        ],
+        "action_abs_max": 0.949725866317749,
+        "action_abs_ge_0.95_fraction": 0.0,
+        "target_step_at_limiter_fraction": 0.15265265265265265,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.3597257137298584,
+          0.5768125653266907,
+          0.569551944732666
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.22212746739387512,
+        "joint": "rm_tibia_pitch",
+        "final_rad": 0.2954811453819275,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 32.504252137144846,
+        "speed_clamp_events": 0,
+        "touchdown_events": 397,
+        "touchdown_overshoot_events": 96
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.527875,
+          "lm": 0.554125,
+          "lr": 0.527875,
+          "rf": 0.56025,
+          "rm": 0.485375,
+          "rr": 0.58475
+        },
+        "per_foot_peak_n": {
+          "lf": 59.443018097874244,
+          "lm": 77.85639285824459,
+          "lr": 46.24782980877854,
+          "rf": 65.84381990450225,
+          "rm": 52.125437644356,
+          "rr": 67.00991005439606
+        },
+        "applied_torque_worst_joint_rms_nm": 0.7719869425846141,
+        "applied_torque_worst_joint": "rm_tibia_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_67.5deg",
+      "pass": true,
+      "passed_numeric_screen": true,
+      "failed_bounds": [],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.027012129020948426,
+        "yaw_error_rad_s": 0.04670530127794088,
+        "tilt_rms_degrees": 0.38397762179374695,
+        "vertical_velocity_rms_mps": 0.026328694075345993,
+        "computed_demand_over_rating_fraction": 6.17283950617284e-05,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          0.0533485049868629,
+          0.11569433072621241,
+          0.000733593771091122
+        ],
+        "mean_yaw_rate_rad_s": -0.0031793357716586534,
+        "requested_saturation_fraction_400hz": 0.0008950617283950618
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          0.0533485049868629,
+          0.11569433072621241,
+          0.000733593771091122
+        ],
+        "mean_forward_speed_controls_100_399_mps": 0.05337826543446854,
+        "root_height_mean_m": 0.10803104192018509,
+        "final_root_height_m": 0.1074763610959053,
+        "toe_contact_fraction_endpoints": [
+          0.5533333333333333,
+          0.5355555555555556,
+          0.5322222222222223,
+          0.5611111111111111,
+          0.5088888888888888,
+          0.57
+        ],
+        "toe_point_height_max_mm": [
+          33.99510192871094,
+          42.59321212768555,
+          36.669918060302734,
+          19.99112319946289,
+          25.128643035888672,
+          18.511993408203125
+        ],
+        "toe_lift_above_stance_mm": [
+          26.255661010742188,
+          34.886051177978516,
+          28.885587692260742,
+          12.269766807556152,
+          16.95341682434082,
+          10.794302940368652
+        ],
+        "action_abs_max": 0.9351463317871094,
+        "action_abs_ge_0.95_fraction": 0.0,
+        "target_step_at_limiter_fraction": 0.17345122900678456,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.3854508697986603,
+          0.5984475612640381,
+          0.5682328939437866
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.20171260833740234,
+        "joint": "rm_tibia_pitch",
+        "final_rad": 0.2715734541416168,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 35.2864404313061,
+        "speed_clamp_events": 0,
+        "touchdown_events": 358,
+        "touchdown_overshoot_events": 113
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.54425,
+          "lm": 0.542375,
+          "lr": 0.521625,
+          "rf": 0.561125,
+          "rm": 0.493125,
+          "rr": 0.5755
+        },
+        "per_foot_peak_n": {
+          "lf": 59.166092248416795,
+          "lm": 77.32437179370197,
+          "lr": 61.20829612602013,
+          "rf": 65.55939503466558,
+          "rm": 54.94356698445854,
+          "rr": 66.11126934708305
+        },
+        "applied_torque_worst_joint_rms_nm": 0.7914408622781366,
+        "applied_torque_worst_joint": "rm_femur_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_90deg",
+      "pass": true,
+      "passed_numeric_screen": true,
+      "failed_bounds": [],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.035492977327854836,
+        "yaw_error_rad_s": 0.038112217639401084,
+        "tilt_rms_degrees": 0.41565564274787903,
+        "vertical_velocity_rms_mps": 0.026975974440574646,
+        "computed_demand_over_rating_fraction": 6.17283950617284e-05,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          0.009647152932974176,
+          0.12119059232267732,
+          0.0006699964579831198
+        ],
+        "mean_yaw_rate_rad_s": -0.007728658326362161,
+        "requested_saturation_fraction_400hz": 6.944444444444444e-05
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          0.009647152932974176,
+          0.12119059232267732,
+          0.0006699964579831198
+        ],
+        "mean_forward_speed_controls_100_399_mps": 0.009548903842215252,
+        "root_height_mean_m": 0.10640169680118561,
+        "final_root_height_m": 0.10566305369138718,
+        "toe_contact_fraction_endpoints": [
+          0.56,
+          0.54,
+          0.5577777777777778,
+          0.5655555555555556,
+          0.5355555555555556,
+          0.5388888888888889
+        ],
+        "toe_point_height_max_mm": [
+          31.457733154296875,
+          39.9030876159668,
+          39.414432525634766,
+          17.633731842041016,
+          22.859973907470703,
+          22.9034423828125
+        ],
+        "toe_lift_above_stance_mm": [
+          23.20507049560547,
+          32.18885040283203,
+          31.623855590820312,
+          9.694469451904297,
+          14.832706451416016,
+          15.301016807556152
+        ],
+        "action_abs_max": 0.8705301284790039,
+        "action_abs_ge_0.95_fraction": 0.0,
+        "target_step_at_limiter_fraction": 0.16038260482704927,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.37350520491600037,
+          0.6130797266960144,
+          0.5706068873405457
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.19384349882602692,
+        "joint": "rm_tibia_pitch",
+        "final_rad": 0.22457465529441833,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 33.53314665812984,
+        "speed_clamp_events": 0,
+        "touchdown_events": 342,
+        "touchdown_overshoot_events": 56
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.549,
+          "lm": 0.53625,
+          "lr": 0.5355,
+          "rf": 0.569125,
+          "rm": 0.50825,
+          "rr": 0.54825
+        },
+        "per_foot_peak_n": {
+          "lf": 40.652836086148625,
+          "lm": 67.77471755906652,
+          "lr": 90.41244155369435,
+          "rf": 65.18069212811395,
+          "rm": 54.7621827894642,
+          "rr": 65.41565859613505
+        },
+        "applied_torque_worst_joint_rms_nm": 0.8541557105167498,
+        "applied_torque_worst_joint": "rm_femur_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_112.5deg",
+      "pass": false,
+      "passed_numeric_screen": false,
+      "failed_bounds": [
+        "planar_error_mps"
+      ],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.04219556187193951,
+        "yaw_error_rad_s": 0.029400862678905678,
+        "tilt_rms_degrees": 0.5263347625732422,
+        "vertical_velocity_rms_mps": 0.026215359568595886,
+        "computed_demand_over_rating_fraction": 0.0002469135802469136,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          -0.039193326418310234,
+          0.10880808852680847,
+          -0.00015593319543517854
+        ],
+        "mean_yaw_rate_rad_s": -0.0006004615430886798,
+        "requested_saturation_fraction_400hz": 0.00038580246913580245
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          -0.039193326418310234,
+          0.10880808852680847,
+          -0.00015593319543517854
+        ],
+        "mean_forward_speed_controls_100_399_mps": -0.03843827823603523,
+        "root_height_mean_m": 0.10500392317771912,
+        "final_root_height_m": 0.10379457473754883,
+        "toe_contact_fraction_endpoints": [
+          0.5666666666666667,
+          0.5166666666666667,
+          0.5355555555555556,
+          0.5744444444444444,
+          0.5144444444444445,
+          0.5411111111111111
+        ],
+        "toe_point_height_max_mm": [
+          30.50836181640625,
+          34.794212341308594,
+          40.83199691772461,
+          16.549890518188477,
+          22.394718170166016,
+          26.35793113708496
+        ],
+        "toe_lift_above_stance_mm": [
+          22.194459915161133,
+          27.100902557373047,
+          33.0372200012207,
+          8.672179222106934,
+          14.457801818847656,
+          18.79998779296875
+        ],
+        "action_abs_max": 0.904238224029541,
+        "action_abs_ge_0.95_fraction": 0.0,
+        "target_step_at_limiter_fraction": 0.1495384273162051,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.3517928123474121,
+          0.6346253752708435,
+          0.5359837412834167
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.19821202754974365,
+        "joint": "rm_tibia_pitch",
+        "final_rad": 0.2618493437767029,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 37.424013936457754,
+        "speed_clamp_events": 0,
+        "touchdown_events": 411,
+        "touchdown_overshoot_events": 108
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.541,
+          "lm": 0.532875,
+          "lr": 0.52225,
+          "rf": 0.564625,
+          "rm": 0.5115,
+          "rr": 0.547875
+        },
+        "per_foot_peak_n": {
+          "lf": 48.85889993984317,
+          "lm": 67.88173251004727,
+          "lr": 69.97590422535558,
+          "rf": 64.88303607741818,
+          "rm": 58.170907061688666,
+          "rr": 63.96542017641155
+        },
+        "applied_torque_worst_joint_rms_nm": 0.855728593786025,
+        "applied_torque_worst_joint": "rm_femur_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_135deg",
+      "pass": false,
+      "passed_numeric_screen": false,
+      "failed_bounds": [
+        "planar_error_mps"
+      ],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.04490654319619416,
+        "yaw_error_rad_s": 0.027631421897633675,
+        "tilt_rms_degrees": 0.5696183443069458,
+        "vertical_velocity_rms_mps": 0.026273619383573532,
+        "computed_demand_over_rating_fraction": 0.0011111111111111111,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          -0.06837502156692461,
+          0.08659778308548825,
+          0.00015207626199359935
+        ],
+        "mean_yaw_rate_rad_s": 0.002135244862582398,
+        "requested_saturation_fraction_400hz": 0.0017669753086419753
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          -0.06837502156692461,
+          0.08659778308548825,
+          0.00015207626199359935
+        ],
+        "mean_forward_speed_controls_100_399_mps": -0.0680002346742862,
+        "root_height_mean_m": 0.10380055755376816,
+        "final_root_height_m": 0.10213493555784225,
+        "toe_contact_fraction_endpoints": [
+          0.5677777777777778,
+          0.5433333333333333,
+          0.5355555555555556,
+          0.5422222222222223,
+          0.5322222222222223,
+          0.5233333333333333
+        ],
+        "toe_point_height_max_mm": [
+          28.464765548706055,
+          30.121089935302734,
+          39.080810546875,
+          17.299846649169922,
+          21.240148544311523,
+          29.049972534179688
+        ],
+        "toe_lift_above_stance_mm": [
+          20.019575119018555,
+          22.419208526611328,
+          31.170923233032227,
+          9.422675132751465,
+          13.399404525756836,
+          21.335630416870117
+        ],
+        "action_abs_max": 0.9149859547615051,
+        "action_abs_ge_0.95_fraction": 0.0,
+        "target_step_at_limiter_fraction": 0.14898231564898232,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.3209954500198364,
+          0.6387996077537537,
+          0.5153906941413879
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.20981904864311218,
+        "joint": "rf_tibia_pitch",
+        "final_rad": 0.2460346221923828,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 39.49288387917363,
+        "speed_clamp_events": 0,
+        "touchdown_events": 422,
+        "touchdown_overshoot_events": 127
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.536125,
+          "lm": 0.545,
+          "lr": 0.520875,
+          "rf": 0.54875,
+          "rm": 0.521625,
+          "rr": 0.536625
+        },
+        "per_foot_peak_n": {
+          "lf": 40.40639566346489,
+          "lm": 67.02912398295591,
+          "lr": 75.2602319676084,
+          "rf": 64.10789599070449,
+          "rm": 46.68992236181158,
+          "rr": 71.88499904926172
+        },
+        "applied_torque_worst_joint_rms_nm": 0.7946712440713047,
+        "applied_torque_worst_joint": "lm_femur_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_157.5deg",
+      "pass": false,
+      "passed_numeric_screen": false,
+      "failed_bounds": [
+        "planar_error_mps"
+      ],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.06239129690867472,
+        "yaw_error_rad_s": 0.02628633256256869,
+        "tilt_rms_degrees": 0.6451608538627625,
+        "vertical_velocity_rms_mps": 0.027843719348311424,
+        "computed_demand_over_rating_fraction": 0.003703703703703704,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          -0.0813459258238819,
+          0.05521991079966146,
+          0.00024040088460401275
+        ],
+        "mean_yaw_rate_rad_s": 0.009281622428729742,
+        "requested_saturation_fraction_400hz": 0.003155864197530864
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          -0.0813459258238819,
+          0.05521991079966146,
+          0.00024040088460401275
+        ],
+        "mean_forward_speed_controls_100_399_mps": -0.08101651318863831,
+        "root_height_mean_m": 0.103469118475914,
+        "final_root_height_m": 0.10174351930618286,
+        "toe_contact_fraction_endpoints": [
+          0.5433333333333333,
+          0.5433333333333333,
+          0.56,
+          0.5211111111111111,
+          0.57,
+          0.5144444444444445
+        ],
+        "toe_point_height_max_mm": [
+          26.83370590209961,
+          26.315519332885742,
+          35.109283447265625,
+          19.52979850769043,
+          20.26656150817871,
+          31.865060806274414
+        ],
+        "toe_lift_above_stance_mm": [
+          18.369157791137695,
+          18.67703628540039,
+          27.242490768432617,
+          11.576866149902344,
+          12.57101821899414,
+          24.009265899658203
+        ],
+        "action_abs_max": 0.9204913377761841,
+        "action_abs_ge_0.95_fraction": 0.0,
+        "target_step_at_limiter_fraction": 0.1364698031364698,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.37082743644714355,
+          0.6293022036552429,
+          0.5372735857963562
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.20579573512077332,
+        "joint": "lf_tibia_pitch",
+        "final_rad": 0.2359641045331955,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 34.517143073385284,
+        "speed_clamp_events": 0,
+        "touchdown_events": 383,
+        "touchdown_overshoot_events": 94
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.517625,
+          "lm": 0.551375,
+          "lr": 0.5255,
+          "rf": 0.528,
+          "rm": 0.541875,
+          "rr": 0.5085
+        },
+        "per_foot_peak_n": {
+          "lf": 47.94758312535307,
+          "lm": 65.88592791732394,
+          "lr": 83.3058626782547,
+          "rf": 63.21344349442559,
+          "rm": 42.353236552963004,
+          "rr": 66.32065609012598
+        },
+        "applied_torque_worst_joint_rms_nm": 0.8394362692449364,
+        "applied_torque_worst_joint": "lm_femur_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_180deg",
+      "pass": false,
+      "passed_numeric_screen": false,
+      "failed_bounds": [
+        "planar_error_mps"
+      ],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.07662849108924512,
+        "yaw_error_rad_s": 0.024790485081581628,
+        "tilt_rms_degrees": 0.8443608283996582,
+        "vertical_velocity_rms_mps": 0.02738983929157257,
+        "computed_demand_over_rating_fraction": 0.002654320987654321,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          -0.0797423691420518,
+          0.017555074885651084,
+          0.00046668490569398246
+        ],
+        "mean_yaw_rate_rad_s": 0.004347297821892491,
+        "requested_saturation_fraction_400hz": 0.0016589506172839507
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          -0.0797423691420518,
+          0.017555074885651084,
+          0.00046668490569398246
+        ],
+        "mean_forward_speed_controls_100_399_mps": -0.07953026990901518,
+        "root_height_mean_m": 0.10238343477249146,
+        "final_root_height_m": 0.10023278743028641,
+        "toe_contact_fraction_endpoints": [
+          0.5355555555555556,
+          0.5666666666666667,
+          0.5566666666666666,
+          0.5488888888888889,
+          0.5677777777777778,
+          0.5133333333333333
+        ],
+        "toe_point_height_max_mm": [
+          24.806089401245117,
+          24.4738712310791,
+          31.795297622680664,
+          21.175355911254883,
+          20.63527488708496,
+          33.013771057128906
+        ],
+        "toe_lift_above_stance_mm": [
+          16.290950775146484,
+          16.896066665649414,
+          23.954545974731445,
+          13.437700271606445,
+          13.144038200378418,
+          25.10386848449707
+        ],
+        "action_abs_max": 0.9029219150543213,
+        "action_abs_ge_0.95_fraction": 0.0,
+        "target_step_at_limiter_fraction": 0.11561561561561562,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.38926005363464355,
+          0.6300920248031616,
+          0.5327244400978088
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.19093677401542664,
+        "joint": "lf_tibia_pitch",
+        "final_rad": 0.2752525508403778,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 28.86739931201093,
+        "speed_clamp_events": 0,
+        "touchdown_events": 353,
+        "touchdown_overshoot_events": 87
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.513375,
+          "lm": 0.5525,
+          "lr": 0.532125,
+          "rf": 0.538,
+          "rm": 0.5445,
+          "rr": 0.507375
+        },
+        "per_foot_peak_n": {
+          "lf": 45.605268461509645,
+          "lm": 62.34819951268266,
+          "lr": 53.39481277756155,
+          "rf": 62.26389651769063,
+          "rm": 38.40711191018118,
+          "rr": 68.10064944802981
+        },
+        "applied_torque_worst_joint_rms_nm": 0.8139140164037016,
+        "applied_torque_worst_joint": "lm_femur_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_202.5deg",
+      "pass": false,
+      "passed_numeric_screen": false,
+      "failed_bounds": [
+        "planar_error_mps"
+      ],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.07110450797395425,
+        "yaw_error_rad_s": 0.028943881016547338,
+        "tilt_rms_degrees": 1.0562212467193604,
+        "vertical_velocity_rms_mps": 0.026272492483258247,
+        "computed_demand_over_rating_fraction": 0.0,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          -0.0762571711744448,
+          -0.027583716929945174,
+          0.0017844639848447373
+        ],
+        "mean_yaw_rate_rad_s": -0.003552104353757493,
+        "requested_saturation_fraction_400hz": 0.0002700617283950617
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          -0.0762571711744448,
+          -0.027583716929945174,
+          0.0017844639848447373
+        ],
+        "mean_forward_speed_controls_100_399_mps": -0.07627739077084385,
+        "root_height_mean_m": 0.10139773041009903,
+        "final_root_height_m": 0.0996897891163826,
+        "toe_contact_fraction_endpoints": [
+          0.5366666666666666,
+          0.54,
+          0.57,
+          0.5477777777777778,
+          0.5588888888888889,
+          0.5133333333333333
+        ],
+        "toe_point_height_max_mm": [
+          23.771347045898438,
+          24.68488121032715,
+          27.942216873168945,
+          22.581493377685547,
+          24.354957580566406,
+          32.56862258911133
+        ],
+        "toe_lift_above_stance_mm": [
+          15.678472518920898,
+          16.742162704467773,
+          20.164621353149414,
+          15.008201599121094,
+          16.75343132019043,
+          24.562191009521484
+        ],
+        "action_abs_max": 0.9341375827789307,
+        "action_abs_ge_0.95_fraction": 0.0,
+        "target_step_at_limiter_fraction": 0.10844177510844177,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.37157827615737915,
+          0.6452845931053162,
+          0.5230868458747864
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.18964079022407532,
+        "joint": "lf_tibia_pitch",
+        "final_rad": 0.30626657605171204,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 29.461502769872098,
+        "speed_clamp_events": 0,
+        "touchdown_events": 298,
+        "touchdown_overshoot_events": 73
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.524,
+          "lm": 0.542625,
+          "lr": 0.547875,
+          "rf": 0.55675,
+          "rm": 0.53525,
+          "rr": 0.520375
+        },
+        "per_foot_peak_n": {
+          "lf": 55.2407755161113,
+          "lm": 76.67758372588126,
+          "lr": 61.825616982162266,
+          "rf": 78.9443234549159,
+          "rm": 46.880602766371275,
+          "rr": 69.21974554595499
+        },
+        "applied_torque_worst_joint_rms_nm": 0.759040423859032,
+        "applied_torque_worst_joint": "lm_femur_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_225deg",
+      "pass": false,
+      "passed_numeric_screen": false,
+      "failed_bounds": [
+        "planar_error_mps"
+      ],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.049756412760096555,
+        "yaw_error_rad_s": 0.031962958119645384,
+        "tilt_rms_degrees": 1.115212082862854,
+        "vertical_velocity_rms_mps": 0.02957315556704998,
+        "computed_demand_over_rating_fraction": 0.00018518518518518518,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          -0.06663436056310135,
+          -0.08031778315717063,
+          0.0018977530596508544
+        ],
+        "mean_yaw_rate_rad_s": -0.010279086467638747,
+        "requested_saturation_fraction_400hz": 0.0014583333333333334
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          -0.06663436056310135,
+          -0.08031778315717063,
+          0.0018977530596508544
+        ],
+        "mean_forward_speed_controls_100_399_mps": -0.06682942896010206,
+        "root_height_mean_m": 0.10192040354013443,
+        "final_root_height_m": 0.09984099864959717,
+        "toe_contact_fraction_endpoints": [
+          0.5388888888888889,
+          0.5377777777777778,
+          0.5644444444444444,
+          0.5611111111111111,
+          0.5122222222222222,
+          0.5577777777777778
+        ],
+        "toe_point_height_max_mm": [
+          23.26103401184082,
+          26.052583694458008,
+          25.478166580200195,
+          25.504249572753906,
+          32.59349060058594,
+          32.49336242675781
+        ],
+        "toe_lift_above_stance_mm": [
+          15.479232788085938,
+          18.130266189575195,
+          17.801860809326172,
+          17.58213996887207,
+          24.749000549316406,
+          24.628252029418945
+        ],
+        "action_abs_max": 0.9550562500953674,
+        "action_abs_ge_0.95_fraction": 0.00022222222222222223,
+        "target_step_at_limiter_fraction": 0.13241018796574353,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.36818984150886536,
+          0.6622204184532166,
+          0.5215318202972412
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.1975490152835846,
+        "joint": "lf_tibia_pitch",
+        "final_rad": 0.26972144842147827,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 26.06652294971475,
+        "speed_clamp_events": 0,
+        "touchdown_events": 333,
+        "touchdown_overshoot_events": 82
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.53025,
+          "lm": 0.522875,
+          "lr": 0.551875,
+          "rf": 0.55925,
+          "rm": 0.492625,
+          "rr": 0.56025
+        },
+        "per_foot_peak_n": {
+          "lf": 69.25128431111322,
+          "lm": 70.91803245139086,
+          "lr": 63.10097150796644,
+          "rf": 78.37971790698013,
+          "rm": 69.08680790892652,
+          "rr": 72.69944567441611
+        },
+        "applied_torque_worst_joint_rms_nm": 0.7476246090089256,
+        "applied_torque_worst_joint": "rr_femur_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_247.5deg",
+      "pass": true,
+      "passed_numeric_screen": true,
+      "failed_bounds": [],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.03331097934862207,
+        "yaw_error_rad_s": 0.0354593353528837,
+        "tilt_rms_degrees": 0.7609243392944336,
+        "vertical_velocity_rms_mps": 0.03262929618358612,
+        "computed_demand_over_rating_fraction": 0.000925925925925926,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          -0.0370156480683295,
+          -0.12093605390119368,
+          0.0009263847354748347
+        ],
+        "mean_yaw_rate_rad_s": -0.019031342823429602,
+        "requested_saturation_fraction_400hz": 0.001736111111111111
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          -0.0370156480683295,
+          -0.12093605390119368,
+          0.0009263847354748347
+        ],
+        "mean_forward_speed_controls_100_399_mps": -0.03668230980623148,
+        "root_height_mean_m": 0.10341479629278183,
+        "final_root_height_m": 0.09999752044677734,
+        "toe_contact_fraction_endpoints": [
+          0.5688888888888889,
+          0.5155555555555555,
+          0.5611111111111111,
+          0.5222222222222223,
+          0.48777777777777775,
+          0.5766666666666667
+        ],
+        "toe_point_height_max_mm": [
+          22.64842987060547,
+          24.634973526000977,
+          22.249149322509766,
+          31.85697364807129,
+          41.01547622680664,
+          32.30500793457031
+        ],
+        "toe_lift_above_stance_mm": [
+          14.80195140838623,
+          16.763830184936523,
+          14.546475410461426,
+          23.669736862182617,
+          33.290306091308594,
+          24.535259246826172
+        ],
+        "action_abs_max": 0.9399877190589905,
+        "action_abs_ge_0.95_fraction": 0.0,
+        "target_step_at_limiter_fraction": 0.1389723056389723,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.30630940198898315,
+          0.6486704349517822,
+          0.5465450286865234
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.20855167508125305,
+        "joint": "lm_tibia_pitch",
+        "final_rad": 0.2272672951221466,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 31.65813869900052,
+        "speed_clamp_events": 0,
+        "touchdown_events": 415,
+        "touchdown_overshoot_events": 114
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.558875,
+          "lm": 0.52325,
+          "lr": 0.552375,
+          "rf": 0.531375,
+          "rm": 0.4805,
+          "rr": 0.582625
+        },
+        "per_foot_peak_n": {
+          "lf": 59.07056841737679,
+          "lm": 65.30054151094048,
+          "lr": 52.12564794933806,
+          "rf": 79.0688155376286,
+          "rm": 81.6127340825417,
+          "rr": 75.54050648707229
+        },
+        "applied_torque_worst_joint_rms_nm": 0.7659311619492196,
+        "applied_torque_worst_joint": "lm_tibia_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_270deg",
+      "pass": true,
+      "passed_numeric_screen": true,
+      "failed_bounds": [],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.033250403096013285,
+        "yaw_error_rad_s": 0.03864328848087718,
+        "tilt_rms_degrees": 0.6274731159210205,
+        "vertical_velocity_rms_mps": 0.030325446277856827,
+        "computed_demand_over_rating_fraction": 0.0011111111111111111,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          0.0011235792906442463,
+          -0.1223767997833411,
+          0.00046288852272234545
+        ],
+        "mean_yaw_rate_rad_s": -0.016602222822996327,
+        "requested_saturation_fraction_400hz": 0.0015895061728395062
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          0.0011235792906442463,
+          -0.1223767997833411,
+          0.00046288852272234545
+        ],
+        "mean_forward_speed_controls_100_399_mps": 0.0011515488531769265,
+        "root_height_mean_m": 0.10442633926868439,
+        "final_root_height_m": 0.10015450417995453,
+        "toe_contact_fraction_endpoints": [
+          0.6033333333333334,
+          0.54,
+          0.5588888888888889,
+          0.5133333333333333,
+          0.5133333333333333,
+          0.5755555555555556
+        ],
+        "toe_point_height_max_mm": [
+          23.073375701904297,
+          19.84602165222168,
+          20.820446014404297,
+          38.64601516723633,
+          42.262027740478516,
+          28.49024772644043
+        ],
+        "toe_lift_above_stance_mm": [
+          14.713509559631348,
+          12.049201011657715,
+          12.676573753356934,
+          30.364866256713867,
+          34.530784606933594,
+          20.784744262695312
+        ],
+        "action_abs_max": 0.9174584150314331,
+        "action_abs_ge_0.95_fraction": 0.0,
+        "target_step_at_limiter_fraction": 0.11311311311311312,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.3409460783004761,
+          0.678101658821106,
+          0.5342914462089539
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.22717538475990295,
+        "joint": "lm_tibia_pitch",
+        "final_rad": 0.2764391303062439,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 41.5532003227129,
+        "speed_clamp_events": 0,
+        "touchdown_events": 412,
+        "touchdown_overshoot_events": 111
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.59525,
+          "lm": 0.536125,
+          "lr": 0.546,
+          "rf": 0.500875,
+          "rm": 0.4905,
+          "rr": 0.58525
+        },
+        "per_foot_peak_n": {
+          "lf": 65.94184567443358,
+          "lm": 63.66676677741363,
+          "lr": 63.771795200614534,
+          "rf": 61.747662952347184,
+          "rm": 83.75335153896472,
+          "rr": 75.51794239817198
+        },
+        "applied_torque_worst_joint_rms_nm": 0.7976534929375437,
+        "applied_torque_worst_joint": "lf_femur_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_292.5deg",
+      "pass": true,
+      "passed_numeric_screen": true,
+      "failed_bounds": [],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.03283595048358749,
+        "yaw_error_rad_s": 0.040845935715409606,
+        "tilt_rms_degrees": 0.5715761184692383,
+        "vertical_velocity_rms_mps": 0.02793976478278637,
+        "computed_demand_over_rating_fraction": 0.00030864197530864197,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          0.041925757594663764,
+          -0.11536231054830798,
+          0.0008686233128206081
+        ],
+        "mean_yaw_rate_rad_s": -0.011192768530801847,
+        "requested_saturation_fraction_400hz": 0.0010030864197530865
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          0.041925757594663764,
+          -0.11536231054830798,
+          0.0008686233128206081
+        ],
+        "mean_forward_speed_controls_100_399_mps": 0.04177662891053958,
+        "root_height_mean_m": 0.1059960424900055,
+        "final_root_height_m": 0.10285290330648422,
+        "toe_contact_fraction_endpoints": [
+          0.63,
+          0.5466666666666666,
+          0.5411111111111111,
+          0.4444444444444444,
+          0.5466666666666666,
+          0.56
+        ],
+        "toe_point_height_max_mm": [
+          26.205129623413086,
+          21.186233520507812,
+          21.329763412475586,
+          45.779170989990234,
+          38.7372932434082,
+          25.69825553894043
+        ],
+        "toe_lift_above_stance_mm": [
+          17.958051681518555,
+          13.45583438873291,
+          13.084773063659668,
+          37.70796203613281,
+          30.986316680908203,
+          18.125253677368164
+        ],
+        "action_abs_max": 0.9613555669784546,
+        "action_abs_ge_0.95_fraction": 0.0003333333333333333,
+        "target_step_at_limiter_fraction": 0.12640418195973752,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.37163132429122925,
+          0.6261314749717712,
+          0.5535196661949158
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.21182237565517426,
+        "joint": "lr_tibia_pitch",
+        "final_rad": 0.27093446254730225,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 41.137027288497556,
+        "speed_clamp_events": 0,
+        "touchdown_events": 384,
+        "touchdown_overshoot_events": 123
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.61075,
+          "lm": 0.519375,
+          "lr": 0.52875,
+          "rf": 0.456125,
+          "rm": 0.536625,
+          "rr": 0.5695
+        },
+        "per_foot_peak_n": {
+          "lf": 64.16105732589617,
+          "lm": 61.993784413733266,
+          "lr": 61.12176850407055,
+          "rf": 62.95107855109017,
+          "rm": 90.74472470531836,
+          "rr": 74.4466036648284
+        },
+        "applied_torque_worst_joint_rms_nm": 0.7813708998616234,
+        "applied_torque_worst_joint": "lm_tibia_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_315deg",
+      "pass": false,
+      "passed_numeric_screen": false,
+      "failed_bounds": [
+        "planar_error_mps"
+      ],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.03790850412878309,
+        "yaw_error_rad_s": 0.04334930993572767,
+        "tilt_rms_degrees": 0.6241248250007629,
+        "vertical_velocity_rms_mps": 0.026210665702819824,
+        "computed_demand_over_rating_fraction": 0.0017901234567901235,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          0.07594431526889159,
+          -0.08904874420606619,
+          0.0007925469946697781
+        ],
+        "mean_yaw_rate_rad_s": -0.011868974001504926,
+        "requested_saturation_fraction_400hz": 0.002021604938271605
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          0.07594431526889159,
+          -0.08904874420606619,
+          0.0007925469946697781
+        ],
+        "mean_forward_speed_controls_100_399_mps": 0.07589856916704124,
+        "root_height_mean_m": 0.10731962323188782,
+        "final_root_height_m": 0.10601966083049774,
+        "toe_contact_fraction_endpoints": [
+          0.6144444444444445,
+          0.49444444444444446,
+          0.5511111111111111,
+          0.4411111111111111,
+          0.5844444444444444,
+          0.5733333333333334
+        ],
+        "toe_point_height_max_mm": [
+          29.287931442260742,
+          24.27095603942871,
+          21.67800521850586,
+          50.28080368041992,
+          32.300636291503906,
+          22.519813537597656
+        ],
+        "toe_lift_above_stance_mm": [
+          21.280542373657227,
+          16.573774337768555,
+          13.610384941101074,
+          42.30659103393555,
+          24.600494384765625,
+          14.897844314575195
+        ],
+        "action_abs_max": 0.9757170677185059,
+        "action_abs_ge_0.95_fraction": 0.006666666666666667,
+        "target_step_at_limiter_fraction": 0.1411967523078634,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.35689419507980347,
+          0.5686497688293457,
+          0.6037258505821228
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.20353461802005768,
+        "joint": "lr_tibia_pitch",
+        "final_rad": 0.3019060492515564,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 33.56478134341315,
+        "speed_clamp_events": 0,
+        "touchdown_events": 319,
+        "touchdown_overshoot_events": 83
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.604125,
+          "lm": 0.493125,
+          "lr": 0.5385,
+          "rf": 0.4515,
+          "rm": 0.554375,
+          "rr": 0.568
+        },
+        "per_foot_peak_n": {
+          "lf": 59.194263606066656,
+          "lm": 61.41569241368904,
+          "lr": 66.92238565972643,
+          "rf": 65.94245303146197,
+          "rm": 65.4097122140515,
+          "rr": 73.6644986848978
+        },
+        "applied_torque_worst_joint_rms_nm": 0.7725025711680735,
+        "applied_torque_worst_joint": "lm_tibia_pitch"
+      }
+    },
+    {
+      "case_id": "learning:omni15__translate_0.15_337.5deg",
+      "pass": false,
+      "passed_numeric_screen": false,
+      "failed_bounds": [
+        "planar_error_mps"
+      ],
+      "missing_evidence": [],
+      "batch_failure": null,
+      "metrics": {
+        "planar_error_mps": 0.038984366004668015,
+        "yaw_error_rad_s": 0.03953586629818234,
+        "tilt_rms_degrees": 0.6834735870361328,
+        "vertical_velocity_rms_mps": 0.02421697974205017,
+        "computed_demand_over_rating_fraction": 0.0002469135802469136,
+        "nonfoot_fraction": 0.0,
+        "mean_velocity_mps": [
+          0.10468419957419528,
+          -0.04641832997099852,
+          0.001400817441111758
+        ],
+        "mean_yaw_rate_rad_s": -0.012445025758330092,
+        "requested_saturation_fraction_400hz": 0.0007175925925925926
+      },
+      "six_toe_and_nonfoot_checks": {},
+      "native_contact_screen": {
+        "schema": "canonical_native_contact_screen_v1",
+        "frequency_hz": 400,
+        "window": "complete trial, including initial settling and every native substep",
+        "recorded_substeps": 8000,
+        "nonfoot_substeps": 0,
+        "nonfoot_fraction": 0.0,
+        "maximum_nonfoot_fraction": 0.001,
+        "pass": true,
+        "scope": "Common canonical native contact evidence; historical sampled metrics remain separate."
+      },
+      "gait": {
+        "controls": 1000,
+        "window_start_control": 100,
+        "mean_velocity_nav_mps": [
+          0.10468419957419528,
+          -0.04641832997099852,
+          0.001400817441111758
+        ],
+        "mean_forward_speed_controls_100_399_mps": 0.10463906566521798,
+        "root_height_mean_m": 0.10864437371492386,
+        "final_root_height_m": 0.10806434601545334,
+        "toe_contact_fraction_endpoints": [
+          0.6088888888888889,
+          0.4888888888888889,
+          0.56,
+          0.4588888888888889,
+          0.5833333333333334,
+          0.5877777777777777
+        ],
+        "toe_point_height_max_mm": [
+          33.31743621826172,
+          26.06021499633789,
+          22.72555923461914,
+          51.02926254272461,
+          27.542863845825195,
+          20.08222770690918
+        ],
+        "toe_lift_above_stance_mm": [
+          25.58372688293457,
+          18.52886199951172,
+          14.666828155517578,
+          43.076778411865234,
+          19.955772399902344,
+          12.145796775817871
+        ],
+        "action_abs_max": 0.9736701250076294,
+        "action_abs_ge_0.95_fraction": 0.008333333333333333,
+        "target_step_at_limiter_fraction": 0.13886108330552774,
+        "applied_torque_rms_coxa_femur_tibia_nm": [
+          0.35069844126701355,
+          0.527102530002594,
+          0.6431796550750732
+        ]
+      },
+      "joint_limit_margin": {
+        "minimum_rad": 0.21753646433353424,
+        "joint": "lr_tibia_pitch",
+        "final_rad": 0.3750399947166443,
+        "scope": "Smallest distance of a joint to a stop at the 50 Hz control ends; the termination rule fires at -2e-6 rad."
+      },
+      "physical_bounds": {
+        "joint_bound_violation_steps_400hz": [
+          0
+        ],
+        "speed_bound_violation_steps_400hz": [
+          0
+        ],
+        "native_capture_or_original_physical_bounds": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+        "peak_joint_speed_rad_s": 29.6133833210357,
+        "speed_clamp_events": 0,
+        "touchdown_events": 332,
+        "touchdown_overshoot_events": 27
+      },
+      "loads_full_trial": {
+        "per_foot_contact_fraction": {
+          "lf": 0.595,
+          "lm": 0.500375,
+          "lr": 0.53525,
+          "rf": 0.463625,
+          "rm": 0.566875,
+          "rr": 0.579125
+        },
+        "per_foot_peak_n": {
+          "lf": 59.58436091757028,
+          "lm": 62.958308923374545,
+          "lr": 64.45484546440414,
+          "rf": 64.19339138018216,
+          "rm": 42.94350101833597,
+          "rr": 72.37711064897188
+        },
+        "applied_torque_worst_joint_rms_nm": 0.805748483088414,
+        "applied_torque_worst_joint": "lr_tibia_pitch"
+      }
+    }
+  ],
+  "contact_consensus_variants": {},
+  "physical_bounds_scope": "Unverified on the surrogate. The native check counts 400 Hz joint positions beyond a limit and joint speeds above 50.27 rad/s. The surrogate holds a loaded joint 0.5 mrad beyond its stop where native holds it within 0.1 mrad, and the touchdown model alone lets it exceed the speed limit.",
+  "wall_seconds": 130.92891329200938
+}

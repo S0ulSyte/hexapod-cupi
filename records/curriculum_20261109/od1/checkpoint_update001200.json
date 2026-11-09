@@ -1,0 +1,592 @@
+{
+  "identity": {
+    "schema": "hexapod_surrogate_ppo_v1",
+    "surrogate": true,
+    "backend": "mujoco 3.14.0",
+    "source_files": {
+      "__init__.py": "c82a5695bd2575afdaae01eb84bb3c06ddffe42529d201bbe43726ae8859e350",
+      "amp/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "amp/features.py": "b4913d59e31304330904f6aad87809ea85be45498a8627fa3cfd0f4c28e207bb",
+      "evaluation/__init__.py": "e1cd60a1db19235846a5d97c6d51c745f04cf23492a37e7282780f9dcf06aad8",
+      "evaluation/admission.py": "81002005b4419c95a596fc1319831eee3a0415927774bfb743eefd291051f551",
+      "evaluation/camera.py": "8591da4e98dc170a6bcc8e7e1ed6d1963325ddbad24d14e3e29ebcec949b3c8d",
+      "evaluation/capture.py": "5d5af101159ffeb02b39e75152c8f3d949b77fb952f709868ff4a2f9fea9c4a8",
+      "evaluation/checkpoint.py": "ad9a01c40a60c254f4120b8d1dde08f7e1e78a0c0e7a526337acbf202e571c75",
+      "evaluation/force_metrics.py": "ea898f44a1b206bbfdc53ca84b7b80bbd796d029bfc94d9fa48aff98ba3feb65",
+      "evaluation/loads.py": "1a903c9a55027a8d1df4d817d5096865c647505d20f768df180927b183719f90",
+      "evaluation/noise_probe.py": "4d6a0e8d1ccd03c0393a4716b38e4be6d430cb3274097a9fa5bf6a4728d7bbbb",
+      "evaluation/ppo_diagnostics.py": "be3f6d37528029ef596d8b01edee335242489f226b67886f9d84b1efb24afa16",
+      "evaluation/runner.py": "6a2c16eb69406c710a4c9ba4eafdd8f73928a107b5807499ff9227a0768d5bc1",
+      "evaluation/scoring.py": "6b6090705858182f5f322517ed907b5d4ad961ccf69081439c0dbe4fee9e05c8",
+      "evaluation/task_metrics.py": "13bb17ba67645e13e6d16dbf3cad6dadc2471603e5897757670b2130c63ccd48",
+      "omniwalk/__init__.py": "93656a153605e4dc2543dd764968260b8a692d51d7491277aeb66960ecc55bca",
+      "omniwalk/adapter.py": "08661736f0cf7341c751d40a52402f7a30773f51d2555ad95031048ee0beb54e",
+      "omniwalk/agents/__init__.py": "cde18e74d4c3d992d40e59a7705fc218b83f998563f56bdf648b2343b052c917",
+      "omniwalk/agents/rsl_rl_ppo_cfg.py": "2a646a353f024741b09436f4870388ca0587c3396b37337098150f2ae2f758c5",
+      "omniwalk/destination_task.py": "10e4e129e5722972fd7a61624f25a368ab51537f0a5d8fc0c08dc205991f2b00",
+      "omniwalk/env.py": "217e648fd5a1fdd7f63ef328d5dd72b8f8a0947873738ee00e28066fefc5cdb0",
+      "omniwalk/env_cfg.py": "6bc9c84956332b80a5d91d29fce169442bf7dc3f8b1d7b92c8b3db14ef873135",
+      "omniwalk/mdp/__init__.py": "512ddd45731678752dda1f755d71ccfebc53eb5eed3d66bf5c240bd57276e9ae",
+      "omniwalk/mdp/actions.py": "e19a1992389643f236a9e12ddbb2fb2b6db3ffa6d39362389576a45c4424c134",
+      "omniwalk/mdp/commands.py": "0df06262118821c8b031aa8496e9de5e752b8dcc3970b09796e82e5ddbe5878a",
+      "omniwalk/mdp/destination.py": "80d47a5801cb384c91a4031e3868273fde18b5ccae3c6a3f2ba664136cc844a9",
+      "omniwalk/mdp/footfall.py": "834de1fd31e3af002bef844040e9e8ae81d166a507bd93f999c64c4a770eaa73",
+      "omniwalk/mdp/frames.py": "297e9fb18d43ad017a55130af0f7a9e9170e862f8c2ef49846e8aa1e3658271f",
+      "omniwalk/mdp/gait.py": "2e580cbdfd23f7c3d3dd2556fa2d60638f4c7050b7b0dd54059c4a46a4e43c8a",
+      "omniwalk/mdp/observations.py": "911dbc8940adcf1dfe4fb748ed25c59aec8693f6b3690607b22fa476817823c4",
+      "omniwalk/mdp/odometry.py": "45bdba18e9d4c88ef862bde88b0bb29b4aec9a3bb9b929cd585306fc74df53d5",
+      "omniwalk/mdp/rewards.py": "0cc66ffaae2e5becc138ad0a01315f16118ebaedbfc354ea13ab3d15bcdfc368",
+      "omniwalk/mdp/slope.py": "cc7d3484f0a56f090bc14ea482da82f86aa3a436d478e0717fcd969b02352d3e",
+      "omniwalk/task.py": "0de0d12ce8498e449112e22d10e13202fdcf26d74e44440d5b8fb6ec01bbdb59",
+      "rl/__init__.py": "f7dbc1986429c9c6468a16929010d7178e6c98f61525da903c42cec006373402",
+      "rl/destination_wrapper.py": "e030b07b54589764969f69867447f3d777591761ae9ee37d7f469d0c377dc7d4",
+      "rl/ppo.py": "94ff144c4bd9dec9d1f9905febed6a747f64aece25240856f4c98610a68210d9",
+      "rl/sim2real.py": "c7ea4ea20dee44d05178f22d717ef08711a7ba873a8f5708e9404576c0b35b49",
+      "rl/wrapper.py": "a1142d705ec452d0c41fa33e49c0f8491489610aca7a93d74e028ff628c480d9",
+      "robots/__init__.py": "6bcb4a3685a100854a6edce79b30417b96fc98d76f9979ae6e5efc285136ccff",
+      "robots/actuator.py": "b833a08033479237213506e9dfebf2384281bf54ad3e3fc528f033098d621cdc",
+      "robots/hexapod.py": "848bfa26879bca4b8bfee096d74e95ddcef25d8b402e3c66556c71c5c1d68bdf",
+      "robots/rs05.py": "10d91c9f23ec7b457971a1a0fb3a858bb739ac657a27b3503ebc0c8526c5f486",
+      "scripts/__init__.py": "80c0440039bd9ddabd972a267fe98b4fb00f187fa5bec7164b31220d99d82718",
+      "scripts/cli.py": "fdbc0c36402510bce12b671c9cc979c526e20cecfa28ada0bb07a62d8a750d0c",
+      "scripts/diagnose.py": "04255afd82a3e2f6df0b4066c258405f51e6f1caffe6876daaeab45fca9aeda9",
+      "scripts/play.py": "4aad2a88b19ca0fc611a909871a73c00a6c64d3b70ec088d5fe02e976b863e3d",
+      "scripts/train.py": "8270e90dc812344967bfcd3b6e58dd4ab20dc9339499ecf56e4731155d3ac76a",
+      "spark/__init__.py": "26e705a5e8cb7f5201430de63b6a0892ff244f1a87b907aa1c4bbf146e45aa9e",
+      "spark/inputs.py": "11eb5abba264cb159d59bcfedba136e999d98f9819f7dc5b4028dd589e4d6ec2",
+      "spark/launch.py": "a8ef37ea8b696c46f1e479b5e3b4ea0e6e39efa8fc800df7d1872f580569b5ab",
+      "spark/pack.py": "99d9a17d1d05767210601bfdc31089f2cec9a326953ec597fd1d47c8dc34c061",
+      "spark/prepare.py": "91a7bafa21d6d2d50f882666ac00ab555b5d2f69dbd0caeaa6bcd2a53ceb2b69",
+      "spark/safety.py": "824cd7e30cdf0ab8b717f7b3219cff988df205381cde623b491d084e2250c303",
+      "spark/sources.py": "6408f071793c5a6b2bb7d2e52fd652aefe330e44de4871a9f70925370cd2ccfc",
+      "spark/validation.py": "ca94a2d513965651302f38f783c9314090bf93a86b2ff0edc28a2f52180bdd0b",
+      "terrain.py": "8b80f9c1151bfe9f764bedbb5e58051f194200eba1dcac1d29a4d0d01b013ec7"
+    },
+    "surrogate_files": {
+      "__init__.py": "f13b1f6af122568c5327a70ffe2c2713568a9757b82e1a6e39f846229d2b66af",
+      "env.py": "99c9aa0ca8e0772730fbac9e125def203ac3664dd5fdf3a1caff1860af01ee0d",
+      "evaluate.py": "7d753c2d534f99800156d2a2227f57cc3d53b6d6765a43622751a65e73dc6fed",
+      "replay.py": "d8c8cd7cb3e877e9699782220dd464cc2ade61eee738b29aec3b22cded44349f",
+      "scene.py": "b145905316f1c75e6b69ee0de27a036b9aa44fff46cd8ced4735785389e0cb6f",
+      "terrain.py": "8ce5e0e72c4395c7ef173d42e114e163c57a1eae05165dcbbda139f78712644f",
+      "train.py": "e1be9c23fc220527eda5ac297f9103c91e877f4d5cdeb3b329365c1cf91fab62"
+    },
+    "model_sha256": "7126935b35398d2a7f03271335a8a1b8f2059354af2b19d9474f22b8e73e4881",
+    "stance_sha256": "830cb07c0fdb3d80af82476d8e6e88f25440cfd2e9255ac1e16327ac826d259c",
+    "geometry_sha256": "b2adbfb4310c9aeea4f52bf7854c97b5304fd99a28452ad41c80b98e495d5d31",
+    "config": {
+      "num_envs": 128,
+      "spacing_m": 2.0,
+      "physics_dt": 0.0025,
+      "decimation": 8,
+      "episode_seconds": 32.0,
+      "action_scale_rad": 0.35,
+      "target_slew_rad": 0.04,
+      "reset_height_m": 0.08161108940839767,
+      "command_forward_mps": 0.1,
+      "command_left_mps": 0.0,
+      "command_yaw_rad_s": 0.0,
+      "seed": 20261011,
+      "record_motion_features": false,
+      "render": false,
+      "device": "cpu",
+      "floor": "isaaclab_mesh",
+      "floor_contact_offset_m": null,
+      "floor_rest_offset_m": null,
+      "terrain_spec_path": null,
+      "terrain_mesh_resolution_m": 0.08,
+      "terrain_spawn": false,
+      "schema": "canonical_paper_walk_experiment_v1",
+      "actor_width": 231,
+      "critic_width": 234,
+      "amp_width": 61,
+      "joint_names": [
+        "lf_coxa_yaw",
+        "lf_femur_pitch",
+        "lf_tibia_pitch",
+        "lm_coxa_yaw",
+        "lm_femur_pitch",
+        "lm_tibia_pitch",
+        "lr_coxa_yaw",
+        "lr_femur_pitch",
+        "lr_tibia_pitch",
+        "rf_coxa_yaw",
+        "rf_femur_pitch",
+        "rf_tibia_pitch",
+        "rm_coxa_yaw",
+        "rm_femur_pitch",
+        "rm_tibia_pitch",
+        "rr_coxa_yaw",
+        "rr_femur_pitch",
+        "rr_tibia_pitch"
+      ],
+      "legs": [
+        "lf",
+        "lm",
+        "lr",
+        "rf",
+        "rm",
+        "rr"
+      ],
+      "surrogate": true
+    },
+    "contact_model": {
+      "solref": [
+        0.005,
+        1.0
+      ],
+      "solimp": [
+        0.9,
+        0.95,
+        0.001,
+        0.5,
+        2.0
+      ],
+      "friction": [
+        1.0,
+        0.005,
+        0.0001
+      ],
+      "condim": 3,
+      "cone": "elliptic",
+      "impratio": 1.0,
+      "noslip_iterations": 4,
+      "noslip_tolerance": 1e-06,
+      "refsafe": true,
+      "position_blend": 0.515625,
+      "impact_euler": true,
+      "solver": "Newton",
+      "iterations": 100,
+      "tolerance": 1e-08,
+      "integrator": "Euler",
+      "limit_margin": 0.0,
+      "limit_solref": [
+        0.005,
+        1.0
+      ],
+      "limit_solimp": [
+        0.99,
+        0.999,
+        0.001,
+        0.5,
+        2.0
+      ],
+      "touchdown_overshoot": true,
+      "overshoot_phase": [
+        0.75,
+        0.9
+      ],
+      "overshoot_gain": 15.0,
+      "joint_speed_clamp": true
+    },
+    "randomization": null,
+    "latent_supervision": null,
+    "anchor_weight": 0.006,
+    "terrain": null,
+    "seed": 20261011,
+    "task": "locomotion.omniwalk.destination_task:experiment_task(destination_v70)",
+    "wrapper": "locomotion.rl.destination_wrapper:DestinationVecEnv",
+    "action_mean": "tanh",
+    "observation_normalization": "none",
+    "distribution": null,
+    "observation_scaling": "fixed",
+    "command_segments": "bootstrap",
+    "gait_clock": 60,
+    "action_smoothing": "mean2",
+    "velocity_noise": 0.5,
+    "learning_rate_max": 0.0001,
+    "action_std": 0.05,
+    "action_std_final": 0.05,
+    "exploration_schedule_updates": 2000,
+    "action_noise_correlation": 0.0,
+    "repository": {
+      "revision": "e8fb9278439195f5dfb3d55d7f35bfe1e409c6fd",
+      "branch": "jg2399/sim2real-adapter",
+      "dirty": true,
+      "uncommitted_paths": [
+        "src/locomotion/omniwalk/agents/rsl_rl_ppo_cfg.py",
+        "src/locomotion/omniwalk/destination_task.py",
+        "src/locomotion/rl/destination_wrapper.py",
+        "src/locomotion/surrogate/evaluate.py",
+        "src/locomotion/tests/test_destination.py",
+        "\"Sim2real for legged robots.md\"",
+        "src/locomotion/omniwalk/mdp/odometry.py"
+      ]
+    },
+    "ppo_config_overrides": {
+      "num_steps_per_env": 36,
+      "algorithm": {
+        "num_mini_batches": 6
+      },
+      "environment_wrapper": {
+        "destination_input": "terrain_v2_odom",
+        "gait_clock_scaling": "speed_v1"
+      }
+    },
+    "rsl_rl_required_version": "5.0.1",
+    "ppo_config": {
+      "seed": 20261011,
+      "num_steps_per_env": 36,
+      "save_interval": 50,
+      "obs_groups": {
+        "actor": [
+          "policy"
+        ],
+        "critic": [
+          "critic"
+        ]
+      },
+      "actor": {
+        "class_name": "MLPModel",
+        "hidden_dims": [
+          256,
+          256,
+          128
+        ],
+        "activation": "elu",
+        "obs_normalization": false,
+        "distribution_cfg": {
+          "class_name": "locomotion.rl.ppo:BoundedMeanGaussian",
+          "init_std": 0.05,
+          "std_type": "log"
+        }
+      },
+      "critic": {
+        "class_name": "MLPModel",
+        "hidden_dims": [
+          256,
+          256,
+          128
+        ],
+        "activation": "elu",
+        "obs_normalization": false
+      },
+      "algorithm": {
+        "class_name": "locomotion.rl.ppo:CappedRatePPO",
+        "value_loss_coef": 1.0,
+        "use_clipped_value_loss": true,
+        "clip_param": 0.2,
+        "entropy_coef": 0.01,
+        "num_learning_epochs": 5,
+        "num_mini_batches": 6,
+        "learning_rate": 0.0001,
+        "schedule": "adaptive",
+        "gamma": 0.99,
+        "lam": 0.95,
+        "desired_kl": 0.01,
+        "max_grad_norm": 1.0,
+        "rnd_cfg": null,
+        "symmetry_cfg": null,
+        "learning_rate_max": 0.0001
+      },
+      "logger": "tensorboard",
+      "check_for_nan": true,
+      "exploration": {
+        "action_std_final": 0.05
+      },
+      "environment_wrapper": {
+        "observation_scaling": "fixed",
+        "command_segments": "bootstrap",
+        "gait_clock": 60,
+        "action_smoothing": "mean2",
+        "velocity_noise": 0.5,
+        "destination_input": "terrain_v2_odom",
+        "gait_clock_scaling": "speed_v1"
+      }
+    },
+    "motion_prior": false,
+    "learner": "ppo",
+    "networks": "mlp",
+    "threads": 6,
+    "scope": "CPU MuJoCo surrogate; design evidence. Native runs are the only acceptance evidence.",
+    "task_definition": {
+      "schema": "canonical_paper_walking_task_v1",
+      "config": {
+        "seed": 20261011,
+        "hold_min_seconds": 2.0,
+        "hold_max_seconds": 5.0,
+        "zero_command_fraction": 0.15,
+        "speed_levels_mps": [
+          0.025,
+          0.05
+        ],
+        "maximum_speed_mps": 0.05,
+        "yaw_rate_rad_s": 0.2,
+        "arc_speed_mps": 0.04,
+        "arc_yaw_rate_rad_s": 0.15
+      },
+      "reward_version": "noise_sized_tripod_schedule_v4_yaw_gate_destination_experimental",
+      "reward": {
+        "version": "noise_sized_tripod_schedule_v4_yaw_gate_destination_experimental",
+        "config": {
+          "tracking_window_controls": 10,
+          "fixed_speed_scale_mps": 0.05,
+          "fixed_yaw_scale_rad_s": 0.2,
+          "tracking_floor": 1.0,
+          "linear_tracking_weight": 1.0,
+          "yaw_tracking_weight": 0.5,
+          "schedule_weight": 2.0,
+          "schedule_period_controls": 60,
+          "schedule_swing_fraction": 0.4,
+          "schedule_mirror_turns": null,
+          "schedule_load_n": 12.2,
+          "swing_travel_weight": 1.0,
+          "swing_travel_clip": 6.0,
+          "swing_travel_full": 6.0,
+          "contact_force_n": 1.0,
+          "vertical_velocity_weight": 0.3,
+          "vertical_velocity_scale_mps": 0.04,
+          "roll_pitch_weight": 0.05,
+          "roll_pitch_scale_rad_s": 0.3,
+          "yaw_rate_weight": 0.1,
+          "yaw_rate_scale_rad_s": 0.1,
+          "planar_rate_weight": 0.3,
+          "tilt_weight": 15.0,
+          "tilt_scale_rad": 0.0873,
+          "torque_weight": 0.1,
+          "acceleration_weight": 0.1,
+          "acceleration_scale_rad_s2": 100.0,
+          "target_rate_weight": 0.1,
+          "target_rate_scale_rad": 0.04,
+          "height_weight": 0.2,
+          "height_scale_m": 0.02,
+          "collision_weight": 1.0,
+          "torque_limit_weight": 1.0,
+          "over_rating_weight": 20.0,
+          "over_rating_onset_nm": 1.4,
+          "joint_margin_weight": 2.0,
+          "joint_margin_rad": 0.1,
+          "action_limit_weight": 12.0,
+          "action_limit_onset": 0.5,
+          "quiet_joint_rate_weight": 1.0,
+          "quiet_joint_rate_scale_rad_s": 0.5,
+          "quiet_target_weight": 1.0,
+          "quiet_target_scale_rad": 0.02,
+          "quiet_contact_weight": 3.0,
+          "quiet_load_n": 12.2,
+          "quiet_strain_weight": 20.0,
+          "quiet_grace_controls": 50,
+          "termination_weight": 71.5,
+          "yaw_gate_scale_rad_s": 0.1,
+          "gate_window_controls": 120,
+          "turn_draw_fraction": 0.3,
+          "yaw_gate_min_command_rad_s": 0.18,
+          "yaw_gate_bonus": 0.25,
+          "yaw_gate_floor": 0.5,
+          "stride_tracking_weight": 0.3,
+          "stride_window_controls": 60,
+          "stride_length_weight": 2.0,
+          "swing_clearance_weight": 0.0,
+          "swing_clearance_target_m": 0.035,
+          "swing_clearance_rough_m": 0.008,
+          "landing_lift_weight": 0.5,
+          "landing_lift_target_m": 0.02,
+          "landing_lift_rise_m": 0.01,
+          "situation_tracking": 1.0,
+          "situation_speed_ref_mps": 0.2,
+          "situation_yaw_ref_rad_s": 0.4,
+          "quiet_hold_weight": 3.0,
+          "quiet_hold_scale_rad": 0.01,
+          "quiet_hold_grace_controls": 150,
+          "bound_margin_weight": 0.0,
+          "bound_margin_fraction": 0.8,
+          "destination_weight": 1.0,
+          "destination_distance_m": 0.015874010519681996,
+          "destination_kernel": "rational",
+          "destination_power": 1.2,
+          "destination_quiet": null,
+          "hold_weight": null,
+          "hold_grace_controls": null,
+          "hold_deadband_rad": null,
+          "hold_span_rad": null,
+          "hold_smoothing_controls": null,
+          "stop_fraction": null,
+          "stop_after_min_controls": 200,
+          "stop_after_max_controls": 600,
+          "heading_weight": 1.0,
+          "heading_width_rad": 0.017453292519943295,
+          "heading_power": 1.2,
+          "speed_curriculum_start_mps": null,
+          "speed_curriculum_step_mps": null,
+          "speed_curriculum_final_mps": null,
+          "speed_curriculum_threshold": null,
+          "speed_curriculum_window_controls": null,
+          "speed_curriculum_new_share": null,
+          "speed_curriculum_backoff_threshold": null,
+          "speed_curriculum_walks_only": null,
+          "speed_curriculum_backoff_window_controls": null,
+          "speed_curriculum_advance_without_falls": null,
+          "speed_curriculum_backoff_distance_m": null,
+          "speed_curriculum_pass_checks": null,
+          "speed_curriculum_planar_bound_scale": null,
+          "speed_curriculum_measure": null,
+          "planar_error_weight": 0.5,
+          "planar_error_cap": 2.0,
+          "walk_speed_min_mps": 0.05,
+          "walk_speed_max_mps": 0.17,
+          "destination_linear_from_m": 0.02,
+          "destination_penalty_cap": 1.0,
+          "gait_clock_scaling": "speed_v1",
+          "end_destination_weight": 1.0,
+          "end_destination_distance_m": 0.025,
+          "end_destination_power": null,
+          "end_destination_kernel": "linear",
+          "end_destination_floor": 1.0,
+          "run_mix": [
+            0.2,
+            0.1,
+            0.4,
+            0.3
+          ],
+          "long_stand_controls": 1600,
+          "walk_forward_only": null,
+          "walk_forward_bias": 0.25,
+          "turn_rate_choices_rad_s": [
+            0.3,
+            0.4
+          ],
+          "arc_fraction": 0.25,
+          "arc_yaw_choices_rad_s": [
+            0.05,
+            0.2
+          ],
+          "vary_fraction": null,
+          "vary_bend_choices_rad_s": null,
+          "vary_sweep_amplitude_rad_s": null,
+          "vary_sweep_period_controls": null,
+          "vary_tracking_scale": null,
+          "vary_ghost_matches_eval": null,
+          "slope_inputs": null,
+          "command_controls": 1000
+        }
+      },
+      "nonzero_command_bank": [
+        [
+          0.02500000037252903,
+          0.0,
+          0.0
+        ],
+        [
+          0.01767767034471035,
+          0.01767767034471035,
+          0.0
+        ],
+        [
+          1.5308084623338832e-18,
+          0.02500000037252903,
+          0.0
+        ],
+        [
+          -0.01767767034471035,
+          0.01767767034471035,
+          0.0
+        ],
+        [
+          -0.02500000037252903,
+          3.0616169246677665e-18,
+          0.0
+        ],
+        [
+          -0.01767767034471035,
+          -0.01767767034471035,
+          0.0
+        ],
+        [
+          -4.5924256971943795e-18,
+          -0.02500000037252903,
+          0.0
+        ],
+        [
+          0.01767767034471035,
+          -0.01767767034471035,
+          0.0
+        ],
+        [
+          0.05000000074505806,
+          0.0,
+          0.0
+        ],
+        [
+          0.0353553406894207,
+          0.0353553406894207,
+          0.0
+        ],
+        [
+          3.0616169246677665e-18,
+          0.05000000074505806,
+          0.0
+        ],
+        [
+          -0.0353553406894207,
+          0.0353553406894207,
+          0.0
+        ],
+        [
+          -0.05000000074505806,
+          6.123233849335533e-18,
+          0.0
+        ],
+        [
+          -0.0353553406894207,
+          -0.0353553406894207,
+          0.0
+        ],
+        [
+          -9.184851394388759e-18,
+          -0.05000000074505806,
+          0.0
+        ],
+        [
+          0.0353553406894207,
+          -0.0353553406894207,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -0.20000000298023224
+        ],
+        [
+          0.0,
+          0.0,
+          0.20000000298023224
+        ],
+        [
+          0.03999999910593033,
+          0.0,
+          -0.15000000596046448
+        ],
+        [
+          0.03999999910593033,
+          0.0,
+          0.15000000596046448
+        ]
+      ],
+      "source_sha256": "6012e37d5cd6158151f5984f973d11bc3b4d142959167178976c58fb22caa1d3",
+      "physics_changed": true,
+      "stage2_gates_changed": false,
+      "stage2_complete": false,
+      "experiment_source_sha256": {
+        "destination_task.py": "10e4e129e5722972fd7a61624f25a368ab51537f0a5d8fc0c08dc205991f2b00",
+        "mdp/destination.py": "80d47a5801cb384c91a4031e3868273fde18b5ccae3c6a3f2ba664136cc844a9"
+      }
+    },
+    "external_class_files": {},
+    "initialized_from": {
+      "checkpoint_sha256": "af61b74f82bdcd944b17084a04a9187f82cf4dff50fea7a026addb8942014aed",
+      "loaded": [
+        "actor",
+        "critic",
+        "optimizer"
+      ],
+      "widened_inputs": [],
+      "learning_rate": {
+        "value": 1e-05,
+        "source": "checkpoint"
+      }
+    }
+  },
+  "updates": 1200,
+  "checkpoint_sha256": "3bdfb00559840787c41cc46b2d1f932355ea3a72b4b4c9be51166284c2991fc7",
+  "transitions": 5529600
+}

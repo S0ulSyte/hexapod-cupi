@@ -1,0 +1,55 @@
+{
+ "asset": "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/asset",
+ "geometry_source": "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/geometry_source",
+ "stance": "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/prior/stance.json",
+ "input_files": {
+  "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/geometry_source/geometry/geometry.json": "b2adbfb4310c9aeea4f52bf7854c97b5304fd99a28452ad41c80b98e495d5d31",
+  "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/geometry_source/geometry/geometry_extrema.npz": "268c7c072e3d84febed10000f31b4e99baf55bea461a713e42fb1137cda1e2ce",
+  "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/prior/stance.json": "830cb07c0fdb3d80af82476d8e6e88f25440cfd2e9255ac1e16327ac826d259c",
+  "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/asset/collision_recipe.json": "292242d6498819e5eb0ba44cc98e36fbb508724a841ea842e23c37bf669d2965",
+  "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/asset/geometry.usdc": "9509881e672e1cb52740f468e9f922ec6b590446739a34be7f02c92c7f527c6d",
+  "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/asset/geometry_manifest.json": "b672416910035a83fe9f79979c56cebf43b888e41bc04659a17fefc9bc8b85d0",
+  "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/asset/offline_audit.json": "68cba92eb4cb2154f4aa5635e56dfc1ed6a8ce7a8ec74b9a2faf8608a40e1b5e",
+  "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/asset/preparation_manifest.json": "273244a45897f78c62adb8d2dc3f732ff7400842fdf67eab3de5274cf9eb6d39",
+  "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/asset/robot.usda": "3be98420adc7923923757d6557d8492d5930f84128c1b1366b9c6db1bb03207c",
+  "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/asset/source/mesh_mapping.json": "fb697959aadff4e77e6e7d1a5ca806a66a01bfb29e94cddf06b4ff0d883d0705",
+  "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/asset/source/model.json": "7126935b35398d2a7f03271335a8a1b8f2059354af2b19d9474f22b8e73e4881",
+  "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/asset/source/source.urdf": "9492fde54c50170e940b49ccb3037d7b413743a5b77bc1d8707a539d44349e78",
+  "/srv/cupi/hexapod/evidence/legacy_runs/restart_20260914/amp_20260923_001/standing_one/run/standing/standing/standing_report.json": "c27dcae659baaa94442f7909ece847228f662818dcca4b51524504131f8d7d33",
+  "/srv/cupi/hexapod/evidence/legacy_runs/restart_20260914/amp_20260923_001/standing_one/run/standing/state.json": "5773bf1d220bac30e4ab523a4851a5a04d7939087de6d2032fefdc3ff7fd6c3a",
+  "/srv/cupi/hexapod/evidence/legacy_runs/restart_20260914/throughput_20260929_001/standing_batch128/run/standing/standing/standing_report.json": "4f04067c64e043de08187bb1f7821b7ac9d8da3d8409379613ccf00ffb3a4193",
+  "/srv/cupi/hexapod/evidence/legacy_runs/restart_20260914/throughput_20260929_001/standing_batch128/run/standing/state.json": "f867191d2401f85efc1a058674509451450cff1bb337459dfa1b2de2ca5ae09c",
+  "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/admission_128/admission.json": "b4e3fb5811329f82c7fa2250339fcdef770784a7d673f08507d6e87c7f2e930a",
+  "/srv/cupi/hexapod/runs/julian/terrain_isaac_standing1_20261101_007/run/standing/standing/standing_report.json": "c27dcae659baaa94442f7909ece847228f662818dcca4b51524504131f8d7d33",
+  "/srv/cupi/hexapod/runs/julian/terrain_isaac_standing1_20261101_007/run/standing/state.json": "f99b3b340f7007d86338101876eb60dd966b5ae74b90eeaabfa210da405e265c",
+  "/srv/cupi/hexapod/runs/julian/terrain_isaac_standing128_20261101_007/run/standing/standing/standing_report.json": "879e89567aa1a414e43489ed939ccbe7bf9fa5aaaf19422a9551a8cd0d395cee",
+  "/srv/cupi/hexapod/runs/julian/terrain_isaac_standing128_20261101_007/run/standing/state.json": "08d920061964a7ce8a6ec1dfff3e19f4afd920a12aafca9b11a9777eeba924ac",
+  "/srv/cupi/hexapod/runs/julian/terrain_isaac_admission_20261101_007/candidate/admission.json": "49a4e207197e27533afaa5edf4a42a814f93dec2714a333656a79ac96ebdbd67"
+ },
+ "extra_mounts": [
+  [
+   "/srv/cupi/hexapod/evidence/legacy_runs/restart_20260914/amp_20260923_001/standing_one/run/standing",
+   "/standing_one"
+  ],
+  [
+   "/srv/cupi/hexapod/evidence/legacy_runs/restart_20260914/throughput_20260929_001/standing_batch128/run/standing",
+   "/standing_batch"
+  ],
+  [
+   "/srv/cupi/hexapod/inputs/flat_pilot_20260930_001/admission_128",
+   "/admission"
+  ],
+  [
+   "/srv/cupi/hexapod/runs/julian/terrain_isaac_standing1_20261101_007/run/standing",
+   "/standing_one"
+  ],
+  [
+   "/srv/cupi/hexapod/runs/julian/terrain_isaac_standing128_20261101_007/run/standing",
+   "/standing_batch"
+  ],
+  [
+   "/srv/cupi/hexapod/runs/julian/terrain_isaac_admission_20261101_007/candidate",
+   "/admission"
+  ]
+ ]
+}

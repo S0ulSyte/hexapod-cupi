@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-31",
+  "made_by": "runs/curriculum/starts/make_v29_terrain_v2_critic_start.py",
+  "source_checkpoint": "/Users/new/Desktop/cupi/hexapod-surrogate/runs/native_eval/checkpoints/spark_v29_u600/checkpoint_update000600.pt",
+  "source_sha256": "ed73eb07c1f9c364e33fd6673c53d2a1c4a54d4086bda1e05ca72b680f36ccf8",
+  "output_sha256": "696027b021063481b70f073002fab6e5f5dac4a33d7b32af132949bd76287401",
+  "widening": {
+    "new_inputs": "critic only, 36",
+    "actor_inputs": "242 (unchanged)",
+    "critic_inputs": "245 -> 281",
+    "new_columns": "zero weights, zero Adam moments",
+    "optimizer_moments_padded": 2
+  },
+  "reproduction_check_max_abs_error": {
+    "actor_state_dict": 0.0,
+    "critic_state_dict": 0.0
+  },
+  "intended_wrapper_options": {
+    "destination_input": "terrain_v2_critic",
+    "gait_clock": 60,
+    "gait_clock_scaling": "speed_v1"
+  }
+}
