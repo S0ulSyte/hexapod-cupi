@@ -4,15 +4,21 @@
 
 RECORDING is the stem of a ``leg_record.py`` output (``.npz`` + ``.json``). Two stages:
 
-1. **Statics: mapping and stiffness.** On settled samples (the last 0.3 s of every hold and step, small
-   velocity) the motor torque balances gravity: sign kp_scale kp (target - q) = G(q_urdf). Least squares
-   over the femur and tibia gives each joint's sign, motor-frame offset and kp_scale. The coxa yaw axis
-   is vertical on the level stand, so gravity cannot identify its mapping: it keeps sign +1 and the
-   offset that centres its measured range on the model's range, and the report says so.
-2. **Dynamics: delay and the rest.** Each joint's own excitation window (steps and chirp) is replayed
-   with all three joints simulated, and Nelder-Mead fits that joint's delay, kd_scale, armature and
-   Coulomb friction to the measured position. The three delays are fitted independently, so their
-   agreement is itself a check; the reported delay is their median.
+1. **Statics: joint mapping.** On settled samples (the last 0.3 s of every hold and step, small
+   velocity) the motor's own torque reading balances gravity: sign torque_motor = G(q_urdf). A joint's
+   gravity torque is close to a sinusoid, so a flipped sign with a shifted offset fits it too: each sign
+   hypothesis keeps its offset within 0.8 rad of the one that lines the calibrated motor range up with
+   the model range, and least squares on gravity decides inside that window. The report keeps the
+   residual of every sign hypothesis. The coxa yaw axis is vertical on the level stand, so gravity
+   cannot identify its mapping: it keeps sign +1 and the offset that centres its measured range on the
+   model's range, and the report says so.
+2. **Dynamics: delay and the actuator.** Each joint's own excitation window (steps and chirp) is
+   replayed with all three joints simulated. A grid over the delay (0-100 ms, 5 ms) with a quick
+   stiffness/damping fit at each point finds the delay; Nelder-Mead then refines that joint's delay,
+   kp_scale, kd_scale, armature and Coulomb friction together. The cost is the position RMS (rad) plus
+   0.1 rad/Nm times the torque RMS against the motor's torque reading, so stiffness is pinned by
+   torque and not traded against inertia. The three delays are fitted independently, so their
+   agreement is a check; the reported delay is their median.
 
 Writes ``<output>/fit.json`` (parameters, per-joint RMS error for the nominal training actuator and for
 the fit, the delay in 20 ms controls for ``DynamicsRandomization``) and ``fit.html`` (overlays).
@@ -36,6 +42,8 @@ from locomotion.sysid.leg_sim import (
 )
 
 SETTLE_S, SETTLED_VEL = 0.3, 0.05
+RANGE_WINDOW = 0.8  # rad an offset may sit from the range-aligned one
+LOADED_RESIDUAL_NM = 0.1  # static residual that means the leg did not hang free
 CONTROL_DT = 0.02
 
 
@@ -48,24 +56,24 @@ def _segments(rec):
 
 
 def settled_samples(rec):
-    """(q_motor [n,3], target [n,3]) at the settled end of every hold and step segment."""
-    rows_q, rows_t = [], []
+    """(q_motor [n,3], torque_motor [n,3]) at the settled end of every hold and step segment."""
+    rows_q, rows_tau = [], []
     for s in _segments(rec):
         if " hold" not in s["name"] and " step" not in s["name"]:
             continue
         a, b = s["end_s"] - SETTLE_S, s["end_s"] - 0.02
-        q, t = [], []
+        q, tau = [], []
         for m in MOTORS:
             c = rec["motors"][m]
             w = (c["t_read"] >= a) & (c["t_read"] <= b) & (np.abs(c["vel"]) < SETTLED_VEL)
             if w.sum() < 3:
                 break
             q.append(np.median(c["pos"][w]))
-            t.append(np.median(c["target"][w]))
+            tau.append(np.median(c["torque"][w]))
         else:
             rows_q.append(q)
-            rows_t.append(t)
-    return np.array(rows_q), np.array(rows_t)
+            rows_tau.append(tau)
+    return np.array(rows_q), np.array(rows_tau)
 
 
 def range_offset(model_limits, motor_limits, sign):
@@ -76,49 +84,56 @@ def range_offset(model_limits, motor_limits, sign):
 
 
 def fit_statics(sim, rec, model_limits):
-    """Signs, offsets and kp_scales from gravity; returns (params, report)."""
+    """Signs and offsets of the femur and tibia from gravity; returns (params, report)."""
     from scipy.optimize import least_squares
 
-    q, target = settled_samples(rec)
+    q, tau = settled_samples(rec)
     motor_limits = {m: tuple(rec["meta"]["limits"][str(m)]) for m in MOTORS}
-    kp = rec["meta"]["gains"]["kp"]
     best, by_sign = None, {}
     for signs in itertools.product((1.0, -1.0), repeat=2):  # femur, tibia
         sign = np.array([1.0, *signs])
         x0 = [range_offset(model_limits[i], motor_limits[m], sign[i]) for i, m in enumerate(MOTORS)]
+        fits = []
+        # A single joint's gravity torque is close to a sinusoid, so a flipped sign with a shifted
+        # offset reproduces it: each hypothesis is held within RANGE_WINDOW of the offset that lines
+        # its calibrated motor range up with the model range, and gravity decides inside that.
+        low = [x0[1] - RANGE_WINDOW, x0[2] - RANGE_WINDOW]
+        high = [x0[1] + RANGE_WINDOW, x0[2] + RANGE_WINDOW]
+        for shift in itertools.product((-0.5, 0.0, 0.5), repeat=2):
 
-        def residual(x, sign=sign, coxa=x0[0]):
-            offset = np.array([coxa, x[0], x[1]])
-            scale = np.array([1.0, x[2], x[3]])
-            out = []
-            for qm, tm in zip(q, target):
-                g = sim.gravity_torque(sign * (qm - offset))
-                motor = sign * scale * kp * (tm - qm)
-                out.extend((motor - g)[1:])
-            return np.array(out)
+            def residual(x, sign=sign, coxa=x0[0]):
+                offset = np.array([coxa, x[0], x[1]])
+                out = []
+                for qm, tm in zip(q, tau):
+                    g = sim.gravity_torque(sign * (qm - offset))
+                    out.extend((sign * tm - g)[1:])
+                return np.array(out)
 
-        res = least_squares(
-            residual,
-            [x0[1], x0[2], 1.0, 1.0],
-            bounds=([x0[1] - 1.0, x0[2] - 1.0, 0.3, 0.3], [x0[1] + 1.0, x0[2] + 1.0, 3.0, 3.0]),
-            loss="soft_l1",
-            f_scale=0.05,
-        )
+            fits.append(
+                least_squares(
+                    residual,
+                    [x0[1] + shift[0], x0[2] + shift[1]],
+                    bounds=(low, high),
+                    loss="soft_l1",
+                    f_scale=0.02,
+                )
+            )
+        res = min(fits, key=lambda r: r.cost)
         rms = float(np.sqrt(np.mean(res.fun**2)))
         by_sign[f"femur {signs[0]:+.0f}, tibia {signs[1]:+.0f}"] = rms
         if best is None or rms < best[0]:
-            best = (
-                rms,
-                sign,
-                np.array([x0[0], res.x[0], res.x[1]]),
-                np.array([1.0, res.x[2], res.x[3]]),
-            )
-    rms, sign, offset, kp_scale = best
-    params = LegParams(sign=sign, offset=offset, kp_scale=kp_scale)
+            best = (rms, sign, np.array([x0[0], res.x[0], res.x[1]]))
+    rms, sign, offset = best
+    params = LegParams(sign=sign, offset=offset)
+    torque_span = {LEG[i]: float(np.ptp(tau[:, i])) for i in range(3)} if len(tau) else {}
     report = {
         "settled_samples": int(len(q)),
         "torque_residual_rms_nm": rms,
         "residual_rms_nm_by_sign": by_sign,
+        "settled_torque_span_nm": torque_span,
+        # The free leg's own gravity torque is at most about 0.3 Nm (femur) and 0.05 Nm (tibia): a
+        # residual near that size means something else carried load, e.g. the foot on the floor.
+        "loaded_warning": rms > LOADED_RESIDUAL_NM,
         "sign_note": "a sign is identified only when its hypothesis clearly beats the flipped one; the "
         "tibia's gravity torque is under 0.05 Nm, so friction can leave its sign ambiguous",
         "coxa_mapping": "not identifiable from gravity on a level stand: sign +1, offset centres the "
@@ -133,16 +148,19 @@ def joint_window(rec, m):
     return (segs[0]["start_s"], segs[-1]["end_s"]) if segs else None
 
 
-def rms_error(sim_out, rec, m, t0, t1):
+def rms_error(sim_out, rec, m, t0, t1, key="pos"):
     c = rec["motors"][m]
     keep = (c["t_read"] >= t0) & (c["t_read"] <= t1)
-    return float(np.sqrt(np.mean((sim_out[m]["pos"] - c["pos"][keep]) ** 2)))
+    return float(np.sqrt(np.mean((sim_out[m][key] - c[key][keep]) ** 2)))
+
+
+TORQUE_WEIGHT = 0.1  # rad per Nm in the dynamics cost
 
 
 def fit_dynamics(sim, rec, params, max_delay=0.1):
     from scipy.optimize import minimize
 
-    fitted = params.copy()
+    fitted = params.copy(tau_max=np.full(3, 5.5))  # the RS05 peak; the stand never reaches it
     delays, report = [], {}
     for i, m in enumerate(MOTORS):
         window = joint_window(rec, m)
@@ -151,37 +169,51 @@ def fit_dynamics(sim, rec, params, max_delay=0.1):
         t0, t1 = window
 
         def cost(x, i=i, m=m, t0=t0, t1=t1):
-            delay, kd_scale, armature, friction = x
+            delay, kp_scale, kd_scale, armature, friction = x
             if not (
                 0 <= delay <= max_delay
-                and 0.2 <= kd_scale <= 5
+                and 0.3 <= kp_scale <= 3
+                and 0.1 <= kd_scale <= 10
                 and 0 <= armature <= 0.01
                 and 0 <= friction <= 0.5
             ):
                 return 1e3
             p = fitted.copy(delay_s=float(delay))
-            p.kd_scale[i], p.armature[i], p.frictionloss[i] = kd_scale, armature, friction
-            return rms_error(sim.replay(rec, p, t0, t1), rec, m, t0, t1)
+            p.kp_scale[i], p.kd_scale[i] = kp_scale, kd_scale
+            p.armature[i], p.frictionloss[i] = armature, friction
+            out = sim.replay(rec, p, t0, t1)
+            return rms_error(out, rec, m, t0, t1) + TORQUE_WEIGHT * rms_error(
+                out, rec, m, t0, t1, "torque"
+            )
 
-        starts = [(d, 1.0, 5e-4, 0.01) for d in (0.0, 0.02, 0.04)]
-        best = min(
-            (
-                minimize(
-                    cost,
-                    s,
-                    method="Nelder-Mead",
-                    options={"xatol": 1e-4, "fatol": 1e-6, "maxfev": 150},
-                )
-                for s in starts
-            ),
-            key=lambda r: r.fun,
+        grid = []
+        for delay in np.arange(0.0, max_delay + 1e-9, 0.005):
+            r = minimize(
+                lambda y, d=delay: cost((d, y[0], y[1], 2e-4, 0.02)),
+                (1.0, 1.0),
+                method="Nelder-Mead",
+                options={"xatol": 1e-3, "fatol": 1e-6, "maxfev": 40},
+            )
+            grid.append((float(r.fun), float(delay), r.x))
+        _, d0, (kp0, kd0) = min(grid, key=lambda g: g[0])
+        best = minimize(
+            cost,
+            (d0, kp0, kd0, 2e-4, 0.02),
+            method="Nelder-Mead",
+            options={"xatol": 1e-5, "fatol": 1e-7, "maxfev": 300},
         )
-        delay, fitted.kd_scale[i], fitted.armature[i], fitted.frictionloss[i] = best.x
+        delay, kp_s, kd_s, arm, fric = best.x
+        fitted.kp_scale[i], fitted.kd_scale[i] = kp_s, kd_s
+        fitted.armature[i], fitted.frictionloss[i] = arm, fric
         delays.append(float(delay))
+        p = fitted.copy(delay_s=float(delay))
+        out = sim.replay(rec, p, t0, t1)
         report[LEG[i]] = {
             "delay_s": float(delay),
-            "window_rms_rad": float(best.fun),
-            "evaluations": int(best.nfev),
+            "window_pos_rms_rad": rms_error(out, rec, m, t0, t1),
+            "window_torque_rms_nm": rms_error(out, rec, m, t0, t1, "torque"),
+            "delay_grid_cost": {f"{g[1] * 1000:.0f}ms": round(g[0], 5) for g in grid},
+            "evaluations": int(best.nfev) + 40 * len(grid),
         }
     fitted.delay_s = float(np.median(delays)) if delays else 0.0
     return fitted, report
@@ -293,6 +325,12 @@ def main(argv=None):
     args = parser.parse_args(argv)
     result = fit(args.recording, args.output)
     f = result["fitted"]
+    if result["statics"]["loaded_warning"]:
+        print(
+            "WARNING: settled torques are not explained by the free leg's gravity "
+            f"(residual {result['statics']['torque_residual_rms_nm']:.2f} Nm): the leg was loaded, "
+            "e.g. the foot carried the carriage. Re-record with the foot off the floor."
+        )
     print(
         f"delay {f['delay_s'] * 1000:.1f} ms ({result['delay_controls']:.2f} controls); "
         f"per-joint delays {[round(v['delay_s'] * 1000, 1) for v in result['dynamics'].values()]} ms"

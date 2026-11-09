@@ -103,6 +103,24 @@ read. `fit.html` overlays target, measurement, nominal simulation and fitted sim
 including a 23 ms delay to within 4 ms. A fit is evidence about the training actuator model, not a
 change to it: `robot/active_model.json` changes only through the program lead.
 
+Check the statics before trusting a fit. The free leg's own gravity torque is at most about 0.3 Nm at
+the femur and 0.05 Nm at the tibia. A settled-torque residual above 0.1 Nm sets `loaded_warning`:
+something else carried load, usually the foot holding up the carriage. Re-record with the foot off the
+floor.
+
+The first recording (2026-11-09) had that warning. Settled femur and tibia torques spanned 1.0 and
+0.65 Nm, so its mapping and femur and tibia dynamics are not a free-leg fit. It still measured the
+actuation path:
+- **Motor law:** the motors' torque readings match kp (target − q) − kd dq with stiffness
+  0.81–1.12 × 12 Nm/rad (R² 0.87–0.97).
+- **Delay:** that match is best when the target lags by 35–45 ms. Position starts to follow a target
+  step 51–61 ms after it.
+- **Coxa yaw:** its axis is vertical, so it carries no gravity, and it fits best at a 29 ms delay.
+
+Feedback read right after a command returns the previous cycle's reply, up to 10 ms old. The delay a
+policy sees, command to observed motion, is therefore about 2 controls of 20 ms. Training draws
+`action_delay_controls` of 0–1.
+
 Stance and contact are not covered yet: with the foot on the floor the carriage moves. For a stance
 or jump stage, the camera height tracker on branch `ab3233/leg-stand-tag-height`
 (`testing/leg_stand/tag_height.py`, 60 fps, 0.2 mm noise) gives the carriage height.
