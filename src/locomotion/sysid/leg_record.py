@@ -198,6 +198,7 @@ def record(ms, limits, args, log=print):
     last_seen = {mid: time.monotonic() for mid in IDS}
     last_state = {}
     t_start = time.monotonic()
+    wall_start = time.time()  # wall clock at t_start, to align with other loggers (camera height)
     for m in ms.values():
         m.enable()
     try:
@@ -284,7 +285,7 @@ def record(ms, limits, args, log=print):
         outcome = "stopped: Ctrl+C"
     finally:
         release(ms)
-    return p0, rows, segtab, outcome
+    return p0, rows, segtab, outcome, wall_start
 
 
 def main(argv=None):
@@ -326,7 +327,7 @@ def main(argv=None):
                 print("not started")
                 return
         t_wall = time.strftime("%Y%m%dT%H%M%S")
-        p0, rows, segtab, outcome = record(ms, limits, args)
+        p0, rows, segtab, outcome, wall_start = record(ms, limits, args)
         os.makedirs(args.out, exist_ok=True)
         stem = os.path.join(args.out, f"leg_{t_wall}{'_fake' if args.fake else ''}")
         cols = (
@@ -362,6 +363,7 @@ def main(argv=None):
             "start_pose": p0,
             "limits": limits,
             "segments": segtab,
+            "wall_clock_at_t0": wall_start,
             "rows": int(len(data)),
             "fresh_fraction": float(fresh.mean()) if len(data) else 0.0,
             "cycle_s_median": float(np.median(np.diff(data[data[:, 2] == IDS[0], 0])))

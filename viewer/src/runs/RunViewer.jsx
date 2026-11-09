@@ -76,17 +76,31 @@ export default function RunViewer() {
           if (!canvases?.view) continue;
           const seconds = s.item.seconds, fs = s.run.frame_seconds;
           drawRobot(canvases.view, s.item, state.t, state.view, fs);
-          drawSeries(canvases.heading, {
-            series: [
-              { values: s.item.commanded_heading_deg, colour: css('--cmd'), dashed: true },
-              { values: s.item.heading_deg, colour: css(RUN_COLOURS[s.runIndex % 4]) },
-            ],
-            seconds, frameSeconds: fs, t: state.t, unit: '°', title: 'heading — dashed: commanded',
-          });
-          drawSeries(canvases.ghost, {
-            series: [{ values: s.item.ghost_distance_mm, colour: css(RUN_COLOURS[s.runIndex % 4]) }],
-            seconds, frameSeconds: fs, t: state.t, unit: 'mm', title: 'distance to the ghost, where the command leads',
-          });
+          if (s.item.charts) {
+            // A run file may bring its own charts (the leg stand: joint angles, real against simulated).
+            s.item.charts.forEach((chart, i) =>
+              drawSeries(canvases[`chart${i}`], {
+                series: chart.series.map((line) => ({
+                  values: line.values,
+                  colour: line.colour?.startsWith('#') ? line.colour : css(line.colour ?? RUN_COLOURS[s.runIndex % 4]),
+                  dashed: !!line.dashed,
+                })),
+                seconds, frameSeconds: fs, t: state.t, unit: chart.unit, title: chart.title,
+              }),
+            );
+          } else {
+            drawSeries(canvases.heading, {
+              series: [
+                { values: s.item.commanded_heading_deg, colour: css('--cmd'), dashed: true },
+                { values: s.item.heading_deg, colour: css(RUN_COLOURS[s.runIndex % 4]) },
+              ],
+              seconds, frameSeconds: fs, t: state.t, unit: '°', title: 'heading — dashed: commanded',
+            });
+            drawSeries(canvases.ghost, {
+              series: [{ values: s.item.ghost_distance_mm, colour: css(RUN_COLOURS[s.runIndex % 4]) }],
+              seconds, frameSeconds: fs, t: state.t, unit: 'mm', title: 'distance to the ghost, where the command leads',
+            });
+          }
         }
       }
       frame = requestAnimationFrame(tick);
@@ -232,8 +246,16 @@ export default function RunViewer() {
                 {s.item.failed.length > 0 && ` — ${s.item.failed.map(describeFailure).join(', ')}`}
               </p>
               <canvas className="view" ref={register(s.key, 'view')} onPointerDown={rotate} />
-              <canvas className="chart" ref={register(s.key, 'heading')} />
-              <canvas className="chart" ref={register(s.key, 'ghost')} />
+              {s.item.charts ? (
+                s.item.charts.map((_, i) => (
+                  <canvas key={i} className="chart" ref={register(s.key, `chart${i}`)} />
+                ))
+              ) : (
+                <>
+                  <canvas className="chart" ref={register(s.key, 'heading')} />
+                  <canvas className="chart" ref={register(s.key, 'ghost')} />
+                </>
+              )}
             </section>
           ))}
         </div>

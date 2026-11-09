@@ -166,10 +166,43 @@ export function drawRobot(canvas, c, t, view, frameSeconds) {
   drawCommand(g, c, f, i, proj, cf, cl, 0);
   const items = robotItems(g, c, f, proj);
   items.sort((a, b) => b.depth - a.depth).forEach((x) => x.draw());
+  // Translucent overlays go over the opaque main robot, so both stay visible where they differ.
+  drawOverlays(g, c, f, proj);
   g.font = '13px system-ui';
   g.fillStyle = css('--ink');
   const deg = c.heading_deg[i], want = c.commanded_heading_deg[i];
   g.fillText(`heading ${deg > 0 ? '+' : ''}${Math.round(deg)}°  (commanded ${Math.round(want)}°)`, 8, 18);
+  (c.overlays ?? []).forEach((o, k) => {
+    g.globalAlpha = o.alpha ?? 0.5;
+    g.fillStyle = o.colour;
+    g.fillRect(8, 30 + 18 * k, 12, 12);
+    g.globalAlpha = 1;
+    g.fillStyle = css('--ink');
+    g.fillText(o.label, 26, 41 + 18 * k);
+  });
+}
+
+// Translucent robots from a case's overlays (each {label, colour, alpha, points}), legs and toes only.
+function drawOverlays(g, c, f, proj) {
+  for (const o of c.overlays ?? []) {
+    g.save();
+    g.globalAlpha = o.alpha ?? 0.5;
+    g.strokeStyle = g.fillStyle = o.colour;
+    g.lineWidth = 5;
+    g.lineCap = g.lineJoin = 'round';
+    for (let leg = 0; leg < 6; leg++) {
+      const raw = [0, 1, 2, 3].map((k) => point(c, f, leg, k, o.points));
+      if (raw.every((q) => q.every((v, d) => v === raw[0][d]))) continue; // a bare mount, no leg
+      const pts = raw.map((q) => proj(...q));
+      g.beginPath();
+      pts.forEach((q, k) => (k ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])));
+      g.stroke();
+      g.beginPath();
+      g.arc(pts[3][0], pts[3][1], 6, 0, 7);
+      g.fill();
+    }
+    g.restore();
+  }
 }
 
 // One or more series against time with a cursor at `t`; each series is {values, colour, dashed}.

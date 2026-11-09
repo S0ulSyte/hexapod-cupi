@@ -43,7 +43,9 @@ from locomotion.sysid.leg_sim import (
 
 SETTLE_S, SETTLED_VEL = 0.3, 0.05
 RANGE_WINDOW = 0.8  # rad an offset may sit from the range-aligned one
-LOADED_RESIDUAL_NM = 0.1  # static residual that means the leg did not hang free
+LOADED_RESIDUAL_NM = (
+    0.16  # static residual that means the leg did not hang free (free: 0.11, loaded: 0.22)
+)
 CONTROL_DT = 0.02
 
 
@@ -83,14 +85,15 @@ def range_offset(model_limits, motor_limits, sign):
     return mid_motor - mid_model / sign
 
 
-def fit_statics(sim, rec, model_limits):
+def fit_statics(sim, rec, model_limits, signs=None):
     """Signs and offsets of the femur and tibia from gravity; returns (params, report)."""
     from scipy.optimize import least_squares
 
     q, tau = settled_samples(rec)
     motor_limits = {m: tuple(rec["meta"]["limits"][str(m)]) for m in MOTORS}
     best, by_sign = None, {}
-    for signs in itertools.product((1.0, -1.0), repeat=2):  # femur, tibia
+    hypotheses = itertools.product((1.0, -1.0), repeat=2) if signs is None else [tuple(signs[1:])]
+    for signs in hypotheses:  # femur, tibia
         sign = np.array([1.0, *signs])
         x0 = [range_offset(model_limits[i], motor_limits[m], sign[i]) for i, m in enumerate(MOTORS)]
         fits = []
@@ -219,6 +222,128 @@ def fit_dynamics(sim, rec, params, max_delay=0.1):
     return fitted, report
 
 
+CARRIAGE_BOUNDS = {"mass": (0.1, 2.0), "friction": (0.0, 20.0), "femur": 0.15, "tibia": 0.3}
+
+
+def fit_carriage(rail, recs, params, bounds=CARRIAGE_BOUNDS):
+    """The rail fixture from recordings with the toe on the floor: carriage mass, rail friction and the
+    femur and tibia offsets (the toe's height and lever arms follow them), with the actuator fixed."""
+    from scipy.optimize import minimize
+
+    windows = [
+        (rec, m, *joint_window(rec, m)) for rec in recs for m in (12, 13) if joint_window(rec, m)
+    ]
+
+    def candidate(x):
+        mass, friction, d_femur, d_tibia = x
+        offset = params.offset + np.array([0.0, d_femur, d_tibia])
+        return params.copy(carriage_mass=float(mass), rail_friction=float(friction), offset=offset)
+
+    def cost(x):
+        mass, friction, d_femur, d_tibia = x
+        if not (
+            bounds["mass"][0] <= mass <= bounds["mass"][1]
+            and bounds["friction"][0] <= friction <= bounds["friction"][1]
+            and abs(d_femur) <= bounds["femur"]
+            and abs(d_tibia) <= bounds["tibia"]
+        ):
+            return 1e3
+        p, total = candidate(x), 0.0
+        for rec, m, t0, t1 in windows:
+            out = rail.replay(rec, p, t0, t1)
+            for k in (12, 13):
+                total += rms_error(out, rec, k, t0, t1) + TORQUE_WEIGHT * rms_error(
+                    out, rec, k, t0, t1, "torque"
+                )
+        return total / len(windows)
+
+    # A massless carriage on the slide is numerically unstable and physically wrong: the mass is held
+    # in a plausible range, and the offsets may only move a little from the free-hanging statics.
+    starts = [
+        (mass, f, 0.0, d)
+        for mass in (0.2, 0.5, 1.0)
+        for f in (0.5, 3.0)
+        for d in (-0.15, 0.0, 0.15)
+    ]
+    scored = sorted((cost(s), s) for s in starts)
+    best = minimize(
+        cost,
+        scored[0][1],
+        method="Nelder-Mead",
+        options={"xatol": 1e-3, "fatol": 1e-5, "maxfev": 160},
+    )
+    fitted = candidate(best.x)
+    report = {
+        "recordings": [Path(r["stem"]).name for r in recs],
+        "carriage_mass_kg": float(best.x[0]),
+        "rail_friction_n": float(best.x[1]),
+        "femur_offset_shift_rad": float(best.x[2]),
+        "tibia_offset_shift_rad": float(best.x[3]),
+        "cost": float(best.fun),
+        "start_costs": {str(tuple(round(v, 2) for v in s)): round(c, 4) for c, s in scored},
+        "evaluations": int(best.nfev) + len(starts),
+        "bounds": bounds,
+        "note": "the stand CAD is not in the repository: the carriage is a point mass on a frictional "
+        "vertical slide, the toe a 12 mm sphere at the model's toe point, the floor a plane",
+    }
+    return fitted, report
+
+
+def fit_floor(floor, recs, params):
+    """Recordings with the carriage resting still and the toe pressing on the floor (confirmed by the
+    camera height tracker): one floor height below the mount shared by every recording, the toe
+    friction and a small tibia offset shift, with the actuator fixed. Every joint window counts."""
+    from scipy.optimize import minimize
+
+    windows = [
+        (rec, m, *joint_window(rec, m)) for rec in recs for m in MOTORS if joint_window(rec, m)
+    ]
+
+    def candidate(x):
+        height, friction, d_tibia = x
+        offset = params.offset + np.array([0.0, 0.0, d_tibia])
+        return params.copy(floor_height=float(height), toe_friction=float(friction), offset=offset)
+
+    def cost(x):
+        height, friction, d_tibia = x
+        if not (-0.2 <= height <= -0.02 and 0.1 <= friction <= 2.0 and abs(d_tibia) <= 0.15):
+            return 1e3
+        p, total = candidate(x), 0.0
+        for rec, m, t0, t1 in windows:
+            out = floor.replay(rec, p, t0, t1)
+            for k in MOTORS:
+                total += rms_error(out, rec, k, t0, t1) + TORQUE_WEIGHT * rms_error(
+                    out, rec, k, t0, t1, "torque"
+                )
+        return total / len(windows)
+
+    starts_h = []
+    for rec in recs:
+        q0 = params.sign * (np.array([rec["motors"][m]["pos"][0] for m in MOTORS]) - params.offset)
+        starts_h.append(floor.toe_height_below_mount(q0))
+    h0 = float(np.median(starts_h))
+    starts = [(h0 + dh, f, 0.0) for dh in (-0.005, 0.0, 0.005) for f in (0.5, 1.0)]
+    scored = sorted((cost(s), s) for s in starts)
+    best = minimize(
+        cost,
+        scored[0][1],
+        method="Nelder-Mead",
+        options={"xatol": 1e-4, "fatol": 1e-5, "maxfev": 120},
+    )
+    fitted = candidate(best.x)
+    report = {
+        "recordings": [Path(r["stem"]).name for r in recs],
+        "floor_height_below_mount_m": float(best.x[0]),
+        "toe_friction": float(best.x[1]),
+        "tibia_offset_shift_rad": float(best.x[2]),
+        "start_toe_heights_m": [round(v, 4) for v in starts_h],
+        "cost": float(best.fun),
+        "evaluations": int(best.nfev) + len(starts),
+        "evidence": "camera height tracker: the carriage moved under 2 mm while the leg carried up to 0.9 Nm",
+    }
+    return fitted, report
+
+
 def overlay_html(rec, nominal_out, fit_out, fit_json):
     """A self-contained page: measured, nominal-sim and fitted-sim position per joint (inline SVG)."""
     parts = []
@@ -267,19 +392,26 @@ def overlay_html(rec, nominal_out, fit_out, fit_json):
     )
 
 
-def fit(stem, output=None):
+def _rms_table(sim, rec, params):
+    t0 = min(rec["motors"][m]["t_send"][0] for m in MOTORS)
+    t1 = max(rec["motors"][m]["t_read"][-1] for m in MOTORS)
+    out = sim.replay(rec, params)
+    return out, {LEG[i]: rms_error(out, rec, m, t0, t1) for i, m in enumerate(MOTORS)}
+
+
+def fit(stem, output=None, signs=None, loaded=()):
+    """Stages 1-2 on ``stem`` (the leg hanging free), stage 3 on ``loaded`` (toe on the floor)."""
     rec = load_recording(stem)
     sim = LegSim()
     joints = {j["name"]: j for j in json.loads(active_model_path().read_text())["joints"]}
     model_limits = [(joints[n]["lower"], joints[n]["upper"]) for n in LEG]
-    statics, statics_report = fit_statics(sim, rec, model_limits)
+    statics, statics_report = fit_statics(sim, rec, model_limits, signs)
     fitted, dyn_report = fit_dynamics(sim, rec, statics)
     nominal = statics.copy(kp_scale=np.ones(3))  # the training actuator on the identified mapping
-    nominal_out, fit_out = sim.replay(rec, nominal), sim.replay(rec, fitted)
-    t0 = min(rec["motors"][m]["t_send"][0] for m in MOTORS)
-    t1 = max(rec["motors"][m]["t_read"][-1] for m in MOTORS)
+    nominal_out, rms_nominal = _rms_table(sim, rec, nominal)
+    fit_out, rms_fitted = _rms_table(sim, rec, fitted)
     result = {
-        "schema": "hexapod_leg_sysid_fit_v1",
+        "schema": "hexapod_leg_sysid_fit_v2",
         "recording": Path(str(stem)).name,
         "recording_meta": {
             k: rec["meta"][k]
@@ -294,21 +426,37 @@ def fit(stem, output=None):
             )
             if k in rec["meta"]
         },
-        "fitted": fitted.to_json(),
-        "delay_controls": fitted.delay_s / CONTROL_DT,
+        "signs_given": None if signs is None else [float(v) for v in signs],
         "statics": statics_report,
         "dynamics": dyn_report,
-        "rms_rad": {
-            "nominal": {
-                LEG[i]: rms_error(nominal_out, rec, m, t0, t1) for i, m in enumerate(MOTORS)
-            },
-            "fitted": {LEG[i]: rms_error(fit_out, rec, m, t0, t1) for i, m in enumerate(MOTORS)},
-        },
-        "training_mapping": {
-            "action_delay_controls": int(round(fitted.delay_s / CONTROL_DT)),
-            "note": "DynamicsRandomization.action_delay_controls draws whole 20 ms controls; the fitted "
-            "delay includes the bus round trip and the feedback read, as the policy would see them",
-        },
+        "rms_rad": {"nominal": rms_nominal, "fitted": rms_fitted},
+    }
+    if loaded:
+        rail = LegSim(fixture="rail")
+        recs = [load_recording(s) for s in loaded]
+        fitted, result["carriage"] = fit_carriage(rail, recs, fitted)
+        result["rail_rms_rad"] = {
+            Path(r["stem"]).name: {
+                "nominal": _rms_table(
+                    rail,
+                    r,
+                    nominal.copy(
+                        carriage_mass=fitted.carriage_mass,
+                        rail_friction=fitted.rail_friction,
+                        offset=fitted.offset,
+                    ),
+                )[1],
+                "fitted": _rms_table(rail, r, fitted)[1],
+            }
+            for r in recs
+        }
+        _, result["rms_rad"]["fitted_after_carriage"] = _rms_table(sim, rec, fitted)
+    result["fitted"] = fitted.to_json()
+    result["delay_controls"] = fitted.delay_s / CONTROL_DT
+    result["training_mapping"] = {
+        "action_delay_controls": int(round(fitted.delay_s / CONTROL_DT)),
+        "note": "DynamicsRandomization.action_delay_controls draws whole 20 ms controls; the fitted "
+        "delay includes the bus round trip and the feedback read, as the policy would see them",
     }
     if output is not None:
         out = Path(output)
@@ -322,8 +470,15 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("recording", help="stem of a leg_record.py output (.npz/.json)")
     parser.add_argument("--output", help="directory for fit.json and fit.html")
+    parser.add_argument(
+        "--signs", help="fixed joint signs, e.g. 1,1,-1 (default: search femur and tibia)"
+    )
+    parser.add_argument(
+        "--loaded", nargs="*", default=(), help="recordings with the toe on the floor"
+    )
     args = parser.parse_args(argv)
-    result = fit(args.recording, args.output)
+    signs = None if args.signs is None else tuple(float(v) for v in args.signs.split(","))
+    result = fit(args.recording, args.output, signs, args.loaded)
     f = result["fitted"]
     if result["statics"]["loaded_warning"]:
         print(
@@ -340,6 +495,20 @@ def main(argv=None):
             f"  {name:16s} RMS nominal {math.degrees(result['rms_rad']['nominal'][name]):6.2f}°  "
             f"fitted {math.degrees(result['rms_rad']['fitted'][name]):6.2f}°"
         )
+    if "carriage" in result:
+        c = result["carriage"]
+        print(
+            f"carriage {c['carriage_mass_kg']:.3f} kg, rail friction {c['rail_friction_n']:.2f} N, "
+            f"offset shifts femur {c['femur_offset_shift_rad']:+.3f} tibia {c['tibia_offset_shift_rad']:+.3f} rad"
+        )
+        for rec, table in result["rail_rms_rad"].items():
+            print(
+                f"  {rec}: "
+                + ", ".join(
+                    f"{n.split('_')[1]} {math.degrees(table['nominal'][n]):.2f}° -> {math.degrees(table['fitted'][n]):.2f}°"
+                    for n in LEG
+                )
+            )
 
 
 if __name__ == "__main__":

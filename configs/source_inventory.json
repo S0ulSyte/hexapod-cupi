@@ -668,6 +668,27 @@
       "purpose": "Fit joint mapping, actuation delay and actuator parameters of the one-leg simulator to a stand recording."
     },
     {
+      "path": "src/locomotion/sysid/height_log.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Log the stand carriage height from the camera tracker event stream on wall-clock time."
+    },
+    {
+      "path": "src/locomotion/sysid/leg_video.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Render a stand recording on the hexapod model: the real leg beside the simulated one."
+    },
+    {
+      "path": "src/locomotion/sysid/stand_view.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Write viewer run files for a stand recording, the real leg and the simulated one."
+    },
+    {
       "path": "src/mission/__init__.py",
       "previous_path": null,
       "classification": "prototype",

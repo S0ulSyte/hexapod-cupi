@@ -104,25 +104,64 @@ including a 23 ms delay to within 4 ms. A fit is evidence about the training act
 change to it: `robot/active_model.json` changes only through the program lead.
 
 Check the statics before trusting a fit. The free leg's own gravity torque is at most about 0.3 Nm at
-the femur and 0.05 Nm at the tibia. A settled-torque residual above 0.1 Nm sets `loaded_warning`:
-something else carried load, usually the foot holding up the carriage. Re-record with the foot off the
-floor.
+the femur and 0.05 Nm at the tibia. A settled-torque residual above 0.16 Nm sets `loaded_warning`
+(free-hanging recordings sit near 0.11 Nm from friction; loaded ones near 0.22 Nm).
 
-The first recording (2026-11-09) had that warning. Settled femur and tibia torques spanned 1.0 and
-0.65 Nm, so its mapping and femur and tibia dynamics are not a free-leg fit. It still measured the
-actuation path:
-- **Motor law:** the motors' torque readings match kp (target − q) − kd dq with stiffness
-  0.81–1.12 × 12 Nm/rad (R² 0.87–0.97).
-- **Delay:** that match is best when the target lags by 35–45 ms. Position starts to follow a target
-  step 51–61 ms after it.
-- **Coxa yaw:** its axis is vertical, so it carries no gravity, and it fits best at a 29 ms delay.
+### Fixtures and stages
 
-Feedback read right after a command returns the previous cycle's reply, up to 10 ms old. The delay a
-policy sees, command to observed motion, is therefore about 2 controls of 20 ms. Training draws
-`action_delay_controls` of 0–1.
+`leg_sim.py` builds one of three fixtures. The stand CAD (`HEXAPOD_MKII_STAND_ASSY`) is not in the
+repository, so each one is built from the model json and the 2026-09-04 stand specification:
 
-Stance and contact are not covered yet: with the foot on the floor the carriage moves. For a stance
-or jump stage, the camera height tracker on branch `ab3233/leg-stand-tag-height`
-(`testing/leg_stand/tag_height.py`, 60 fps, 0.2 mm noise) gives the carriage height.
+| Fixture | Mount | Toe | Use |
+| --- | --- | --- | --- |
+| `clamped` | fixed, level | free in the air | the leg hanging free; actuator and mapping fits |
+| `floor` | fixed, level | 12 mm sphere on a floor plane at a fitted depth | the carriage still on its stop, toe pressing the floor |
+| `rail` | carriage on a passive vertical slide | on the floor | a carriage carried by the leg (needs its mass) |
+
+`leg_fit.py RECORDING --signs 1,1,-1 [--loaded ...]` fits the free-hanging recording (statics, then the
+per-joint delay, damping, armature and friction), and optionally the rail stage on loaded recordings.
+`fit_floor` fits one floor depth shared by every foot-down recording, plus toe friction and a small
+tibia offset shift. The signs come from the taught jump poses: crouch to extended lowers the femur motor
+angle and straightens the tibia while lowering its motor angle.
+
+### Carriage height from the camera
+
+Run Andre's tracker (`testing/leg_stand/tag_height.py serve`, branch `ab3233/leg-stand-tag-height`) with
+both tags locked. `leg_record.py` stores `wall_clock_at_t0`. After a recording, save the tracker's
+`/history` and run `height_log.py` for a few seconds to map the tracker clock to wall time. Measure the
+stand computer's clock offset from the tracker host's, then place each height on the recording's clock.
+On macOS the camera needs a terminal app with Camera permission, not a background process.
+
+### Viewing
+
+`stand_view.py RECORDING FIT_JSON --fixture clamped|floor|rail --output DIR` writes `<stem>_real.json`
+and `<stem>_sim.json` for the viewer's Runs page (`?run=` both). The lf leg is drawn from the model's
+joint frames, with the other legs as mounts. Each case carries its own charts: target, real and
+simulated joint angles, plus carriage height on the rail. `leg_video.py` renders the same comparison
+as a three-panel video.
+
+### Results, 2026-11-09 (lf leg, CH340 USB-CAN bridge, MIT mode at 100 Hz)
+
+- **Motor law:** torque readings match kp (target − q) − kd dq at stiffness 0.81–1.12 × 12 Nm/rad
+  (R² 0.87–0.97) when the target lags 35–45 ms. Position starts following a target step 51–61 ms after
+  it. Feedback read right after a command is the previous cycle's reply, up to 10 ms old.
+- **Free-hanging fit** (`leg_20261109T143508`, signs +1, +1, −1): per-joint delays of 17, 50 (an
+  outlier) and 19 ms, median 19 ms. Position RMS falls from 0.37°/0.97°/0.34° with the training
+  actuator to 0.14°/0.72°/0.22°.
+- **Held-out check:** `leg_20261109T151125`, also free hanging and camera-confirmed still, falls from
+  0.40°/1.02°/0.47° to 0.16°/0.74°/0.46°. The fit holds for the coxa and femur but does not improve
+  the tibia.
+- **Foot-down recordings** (`…T133352`, `…T143334`, `…T151630`): the camera showed the carriage
+  moving under 2 mm while the leg carried up to 0.9 Nm. The carriage rested on its stop and the toe
+  pressed on the floor, so the `rail` fixture fits drove the carriage mass to its bound.
+  - The `floor` fixture fits one floor depth of 84.1 mm below the mount for all three recordings (start
+    toe heights 76–82 mm) and toe friction 0.52. Cost is a quarter of the rail fit's.
+  - Position RMS is 0.33–0.43° (coxa), 0.47–0.98° (femur) and 0.76–1.03° (tibia). The fitted tibia is
+    worse than the training actuator on two of the three recordings.
+- **For training:** the actuator delay is about 1 control; with stale feedback, the command-to-observed
+  delay is about 2 controls. Training draws `action_delay_controls` of 0–1.
+
+Not yet calibrated: a carriage carried by the leg (`rail`), which needs the carriage mass and a
+recording with the carriage free, or contact stiffness and foot slip.
 
 References: [detailed wiring/research](https://github.com/Cornell-Physical-Intelligence/hexapod-cupi/blob/f5af556/docs/LEG_STAND_HARDWARE.md), [leg test sequence](https://github.com/Cornell-Physical-Intelligence/hexapod-cupi/blob/5e65918020dc9ef2d72da8dad0a346016b98728d/artifacts/project_review_2026-09-04/LEG_TEST_STAND.md), [CAD handoff](https://github.com/Cornell-Physical-Intelligence/hexapod-cupi/blob/62fd7448264c5ebe051ba2de1d9a72844d6b4c3a/docs/CAD_ENGINEER_HANDOFF.md).

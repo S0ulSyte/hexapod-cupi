@@ -18,6 +18,8 @@ export async function readRun(value) {
   const buffer = await new Response(stream).arrayBuffer();
   for (const c of run.cases) {
     c.points = new Int16Array(buffer, c.points_offset, c.frames * 72);
+    // Optional overlays: more robots on the same frames, drawn translucent under the main one.
+    for (const o of c.overlays ?? []) o.points = new Int16Array(buffer, o.points_offset, c.frames * 72);
     c.contacts = new Uint8Array(buffer, run.contacts_base + c.contacts_offset, c.frames);
     c.seconds = c.frames * run.frame_seconds;
   }
@@ -25,13 +27,13 @@ export async function readRun(value) {
 }
 
 // Point k of leg `leg` (0 coxa, 1 femur, 2 tibia joint, 3 toe) at fractional frame `f`, in metres.
-export function point(c, f, leg, k) {
+export function point(c, f, leg, k, points = c.points) {
   const i0 = Math.max(0, Math.min(c.frames - 1, Math.floor(f)));
   const i1 = Math.min(c.frames - 1, i0 + 1);
   const a = Math.max(0, Math.min(1, f - i0));
   const o0 = ((i0 * 6 + leg) * 4 + k) * 3;
   const o1 = ((i1 * 6 + leg) * 4 + k) * 3;
-  const p = c.points;
+  const p = points;
   return [0, 1, 2].map((d) => (p[o0 + d] + (p[o1 + d] - p[o0 + d]) * a) / 1000);
 }
 
