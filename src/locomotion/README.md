@@ -16,6 +16,7 @@ shows definitions and imports.
 | `spark/` | Prepare, launch and bind native allocations. | `prepare.py` |
 | `amp/` | Motion demonstrations, motion features and AMP learning. | [README](amp/README.md) |
 | `surrogate/` | CPU MuJoCo training and trace replay. | [README](surrogate/README.md) |
+| `runtime/` | Numpy-only robot loop for an exported `terrain_v2_odom` policy; not yet run on hardware. | `controller.py` |
 | `hexapod/` | Original tripod task with BC and PPO fine-tuning. | `hexapod_env.py` |
 | `tests/` | CPU, parity and native replay tests. | [Verification](#verification) |
 

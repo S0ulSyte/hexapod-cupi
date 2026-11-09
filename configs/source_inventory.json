@@ -241,6 +241,13 @@
       "purpose": "Predict each leg's next touchdown from the tripod schedule and sample the terrain grid there and along the command bearing, for the terrain_v1 and terrain_v2 policy inputs."
     },
     {
+      "path": "src/locomotion/omniwalk/mdp/odometry.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Rebuild the nine ghost_v11 inputs from leg odometry (stance toes, contact, heading) for the terrain_v2_odom policy input."
+    },
+    {
       "path": "src/locomotion/omniwalk/destination_task.py",
       "previous_path": null,
       "classification": "prototype",
@@ -589,6 +596,48 @@
       "classification": "prototype",
       "owner": "Platform lead",
       "purpose": "Run Shaurya\u2019s original standing-start policy diagnostic."
+    },
+    {
+      "path": "src/locomotion/runtime/__init__.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Package namespace for the numpy-only robot runtime."
+    },
+    {
+      "path": "src/locomotion/runtime/bundle.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Load and verify a runtime bundle and evaluate its actor with numpy."
+    },
+    {
+      "path": "src/locomotion/runtime/controller.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Run the 50 Hz robot loop: stand-up, walking, command expiry and sensing checks with damping on fault."
+    },
+    {
+      "path": "src/locomotion/runtime/export.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Export a terrain_v2_odom checkpoint and the approved robot model to a runtime bundle."
+    },
+    {
+      "path": "src/locomotion/runtime/hardware.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Map calibrated motors and the IMU onto the canonical joints and body frame."
+    },
+    {
+      "path": "src/locomotion/runtime/inputs.py",
+      "previous_path": null,
+      "classification": "prototype",
+      "owner": "Platform lead",
+      "purpose": "Rebuild the 278 actor inputs from real sensors with leg odometry and emit slew-limited joint targets."
     },
     {
       "path": "src/mission/__init__.py",
