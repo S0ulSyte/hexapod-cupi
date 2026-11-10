@@ -87,23 +87,25 @@
    "--randomize",
    "action_delay_controls=(1, 2)",
    "--randomize",
-   "kd_scale=(0.5, 0.7)",
+   "kd_scale=(0.13, 0.37)",
    "--randomize",
-   "friction_scale=(0.45, 0.6)"
+   "friction_scale=(0.45, 0.6)",
+   "--randomize",
+   "joint_friction_nm=((0.0335, 0.0622), (0.1387, 0.2576), (0.018, 0.0335))",
+   "--randomize",
+   "armature_kg_m2=((0.0, 0.0001), (0.0, 0.00058), (0.0, 0.00049))"
   ],
   "maps": {
+   "contact": "friction randomization needs touchdown_overshoot=False (the touchdown correction reads one shared contact friction)",
    "action_delay_controls": "the fitted delay: 1 control actuation, 2 with stale feedback",
-   "kd_scale": "fitted 0.13-0.37x lies below DynamicsRandomization's 0.5 bound: 0.5-0.7 is the closest the current trainer allows",
+   "kd_scale": "the fitted 0.13-0.37x of the commanded damping (one draw for all joints per episode)",
    "friction_scale": "toe friction 0.52 against the training 1.0 (scales every contact's friction)",
-   "contact": "friction randomization needs touchdown_overshoot=False (the touchdown correction reads one shared contact friction); the sim2real adapter runs used it too"
+   "joint_friction_nm": "coxa, femur, tibia: the fitted Coulomb friction +-30%",
+   "armature_kg_m2": "coxa, femur, tibia: 0 to twice the fitted rotor inertia (at least 1e-4)"
   },
-  "not_expressible_yet": [
-   "joint frictionloss (0.03-0.2 Nm)",
-   "rotor armature",
-   "kd below 0.5x"
-  ],
   "usage": "append the flags to a locomotion.surrogate.train command; they draw per episode from these ranges",
-  "example": "uv run python -m locomotion.surrogate.train --output OUT --task \"locomotion.omniwalk.destination_task:experiment_task(destination_v70)\" --wrapper locomotion.rl.destination_wrapper:DestinationVecEnv --initialize-from records/curriculum_20261109/od1/checkpoint_update001200.pt --initialize-rate checkpoint --action-mean tanh --observation-normalization none --observation-scaling fixed --command-segments bootstrap --learning-rate-max 1e-4 --action-std 0.05 --action-std-final 0.05 --gait-clock 60 --action-smoothing mean2 --velocity-noise 0.5 --episode-seconds 32.0 --updates 2000 --seed SEED --threads 6 --anchor-weight 0.006 --contact \"touchdown_overshoot=False\" --randomize \"action_delay_controls=(1, 2)\" --randomize \"kd_scale=(0.5, 0.7)\" --randomize \"friction_scale=(0.45, 0.6)\" --ppo-config-overrides '{\"num_steps_per_env\": 36, \"algorithm\": {\"num_mini_batches\": 6}, \"environment_wrapper\": {\"destination_input\": \"terrain_v2_odom\", \"gait_clock_scaling\": \"speed_v1\"}}'",
-  "smoke_tested": "2026-11-10: a 2-update run from od1 u1200 with these flags completed and recorded the randomization in its checkpoint identity"
+  "example": "uv run python -m locomotion.surrogate.train --output OUT --task \"locomotion.omniwalk.destination_task:experiment_task(destination_v70)\" --wrapper locomotion.rl.destination_wrapper:DestinationVecEnv --initialize-from records/curriculum_20261109/od1/checkpoint_update001200.pt --initialize-rate checkpoint --action-mean tanh --observation-normalization none --observation-scaling fixed --command-segments bootstrap --learning-rate-max 1e-4 --action-std 0.05 --action-std-final 0.05 --gait-clock 60 --action-smoothing mean2 --velocity-noise 0.5 --episode-seconds 32.0 --updates 2000 --seed SEED --threads 6 --anchor-weight 0.006 --contact \"touchdown_overshoot=False\" --randomize \"action_delay_controls=(1, 2)\" --randomize \"kd_scale=(0.13, 0.37)\" --randomize \"friction_scale=(0.45, 0.6)\" --randomize \"joint_friction_nm=((0.0335, 0.0622), (0.1387, 0.2576), (0.018, 0.0335))\" --randomize \"armature_kg_m2=((0.0, 0.0001), (0.0, 0.00058), (0.0, 0.00049))\" --ppo-config-overrides '{\"num_steps_per_env\": 36, \"algorithm\": {\"num_mini_batches\": 6}, \"environment_wrapper\": {\"destination_input\": \"terrain_v2_odom\", \"gait_clock_scaling\": \"speed_v1\"}}'",
+  "smoke_tested": "2026-11-10: a 2-update run from od1 u1200 with these flags; see the commit message",
+  "requires": "the joint_friction_nm and armature_kg_m2 DynamicsRandomization fields and the 0.1 kd_scale floor (surrogate/env.py, 2026-11-10)"
  }
 }

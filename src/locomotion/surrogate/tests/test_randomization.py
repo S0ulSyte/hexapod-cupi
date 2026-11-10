@@ -129,6 +129,48 @@ class RandomizationTests(unittest.TestCase):
         finally:
             env.close()
 
+    def test_joint_friction_and_armature_reach_each_joint_per_type(self):
+        fitted = DynamicsRandomization(
+            joint_friction_nm=((0.04, 0.06), (0.18, 0.22), (0.02, 0.03)),
+            armature_kg_m2=(1e-4, 3e-4),
+            kd_scale=(0.13, 0.37),
+        )
+        env = build(2, fitted)
+        try:
+            draws = env.randomization_draws
+            columns = env._qvel_columns
+            for row in range(2):
+                friction = env._models[row].dof_frictionloss[columns].reshape(6, 3)
+                armature = env._models[row].dof_armature[columns].reshape(6, 3)
+                for k, kind in enumerate(("coxa", "femur", "tibia")):
+                    self.assertTrue(
+                        np.all(friction[:, k] == draws[f"joint_friction_{kind}_nm"][row])
+                    )
+                    self.assertTrue(np.all(armature[:, k] == draws[f"armature_{kind}_kg_m2"][row]))
+                low, high = fitted.joint_ranges("joint_friction_nm")[1]
+                self.assertTrue(low <= draws["joint_friction_femur_nm"][row] <= high)
+                self.assertTrue(0.13 <= draws["kd_scale"][row] <= 0.37)
+                # The free root joint keeps the canonical zero friction and armature.
+                others = np.setdiff1d(np.arange(env._models[row].nv), columns)
+                self.assertTrue(np.all(env._models[row].dof_frictionloss[others] == 0))
+                self.assertTrue(np.all(env._models[row].dof_armature[others] == 0))
+            roll(env, controls=5)
+        finally:
+            env.close()
+        for bad in (
+            dict(joint_friction_nm=(0.2, 0.1)),
+            dict(joint_friction_nm=(-0.1, 0.1)),
+            dict(joint_friction_nm=((0.0, 0.1), (0.0, 0.1))),
+            dict(armature_kg_m2=(0.0, 0.1)),
+            dict(kd_scale=(0.05, 1.0)),
+        ):
+            with self.assertRaises(ValueError):
+                DynamicsRandomization(**bad)
+        self.assertEqual(
+            DynamicsRandomization(joint_friction_nm=(0.0, 0.1)).joint_ranges("joint_friction_nm"),
+            ((0.0, 0.1),) * 3,
+        )
+
     def test_motor_scale_caps_the_applied_torque_exactly(self):
         env = build(1, DynamicsRandomization(motor_scale=(0.5, 0.5)))
         try:

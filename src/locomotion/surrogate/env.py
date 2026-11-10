@@ -35,6 +35,7 @@ NATIVE_JOINT_NAMES = [
     f"{leg}_{joint}" for joint in ("coxa_yaw", "femur_pitch", "tibia_pitch") for leg in LEGS
 ]
 MAX_JOINT_SPEED = 50.26548245743669
+JOINT_TYPES = ("coxa", "femur", "tibia")  # JOINT_NAMES runs coxa, femur, tibia within each leg
 TOE_CAP_LOWER_X = 0.115
 # One floor-contact sensor per collision geom: 13 single-geom links, then each tibia's cap and shaft.
 CONTACT_GEOMS = (
@@ -120,8 +121,12 @@ class DynamicsRandomization:
     whole-control transport delay a row may draw; ``sag_per_minute`` drains the torque ceiling
     within an episode toward ``sag_floor``, keeping the drifting term separate from the slow
     per-episode scales so a later hardware calibration can freeze the slow ones and keep
-    re-estimating the drift. The canonical motor, model and contact files stay untouched: the
-    scales act on this environment's per-replica copies alone.
+    re-estimating the drift. ``joint_friction_nm`` (Coulomb joint friction, Nm) and
+    ``armature_kg_m2`` (reflected rotor inertia) are drawn per episode too, each either one
+    ``(low, high)`` range for every joint or three ranges for the coxa, femur and tibia joints;
+    the leg-stand fit (records/leg_stand_20261109) measured both, and the canonical model has
+    neither. The canonical motor, model and contact files stay untouched: the scales act on this
+    environment's per-replica copies alone.
     """
 
     friction_scale: tuple = (1.0, 1.0)
@@ -131,13 +136,16 @@ class DynamicsRandomization:
     action_delay_controls: int = 0
     sag_per_minute: tuple = (0.0, 0.0)
     sag_floor: float = 0.8
+    joint_friction_nm: tuple = (0.0, 0.0)
+    armature_kg_m2: tuple = (0.0, 0.0)
 
     def __post_init__(self):
         bounds = {
             "friction_scale": (0.2, 3.0),
             "mass_scale": (0.5, 1.5),
             "motor_scale": (0.5, 1.5),
-            "kd_scale": (0.5, 1.5),
+            # The leg stand measured 0.13-0.37 of the commanded damping (records/leg_stand_20261109).
+            "kd_scale": (0.1, 1.5),
             "sag_per_minute": (0.0, 0.5),
         }
         for name, (least, most) in bounds.items():
@@ -153,6 +161,29 @@ class DynamicsRandomization:
             )
         if not 0.5 <= self.sag_floor <= 1.0:
             raise ValueError("sag_floor lies in [0.5, 1]")
+        self.joint_ranges("joint_friction_nm")
+        self.joint_ranges("armature_kg_m2")
+
+    JOINT_BOUNDS = {"joint_friction_nm": (0.0, 1.0), "armature_kg_m2": (0.0, 0.01)}
+
+    def joint_ranges(self, name):
+        """Three closed (low, high) ranges, coxa, femur and tibia, for a per-joint field."""
+        value = getattr(self, name)
+        pairs = value if len(value) == 3 else (value, value, value)
+        least, most = self.JOINT_BOUNDS[name]
+        out = []
+        for pair in pairs:
+            if (
+                not isinstance(pair, (tuple, list))
+                or len(pair) != 2
+                or not all(isinstance(v, (int, float)) for v in pair)
+            ):
+                raise ValueError(f"{name} is one (low, high) range or three, coxa, femur and tibia")
+            low, high = (float(v) for v in pair)
+            if not (math.isfinite(low) and math.isfinite(high) and least <= low <= high <= most):
+                raise ValueError(f"{name} ranges lie within ({least}, {most}) with low <= high")
+            out.append((low, high))
+        return tuple(out)
 
     def delay_range(self):
         """The delay draw as a closed (low, high) range; the whole-count form means (0, count)."""
@@ -726,6 +757,8 @@ class SurrogateEnv:
                 "kd_scale": np.ones(cfg.num_envs),
                 "action_delay_controls": np.zeros(cfg.num_envs),
                 "sag_per_minute": np.zeros(cfg.num_envs),
+                **{f"joint_friction_{j}_nm": np.zeros(cfg.num_envs) for j in JOINT_TYPES},
+                **{f"armature_{j}_kg_m2": np.zeros(cfg.num_envs) for j in JOINT_TYPES},
             }
         self.commands = (
             self.torch([cfg.command_forward_mps, cfg.command_left_mps, cfg.command_yaw_rad_s])
@@ -1051,6 +1084,16 @@ class SurrogateEnv:
             draws["kd_scale"][row] = kd
             draws["action_delay_controls"][row] = delay
             draws["sag_per_minute"][row] = sag
+            # Joint friction and armature draw after every earlier field, so existing randomized
+            # runs keep their draws; zero ranges leave the replica's joints as the canonical model.
+            for field, attribute, key in (
+                ("joint_friction_nm", "dof_frictionloss", "joint_friction_{}_nm"),
+                ("armature_kg_m2", "dof_armature", "armature_{}_kg_m2"),
+            ):
+                values = [float(rng.uniform(low, high)) for low, high in r.joint_ranges(field)]
+                getattr(model, attribute)[self._qvel_columns] = np.tile(values, 6)
+                for kind, value in zip(JOINT_TYPES, values):
+                    draws[key.format(kind)][row] = value
 
     def _randomized_action(self, action):
         """The action the servo sees under the drawn transport delay, advancing the sag drift."""
