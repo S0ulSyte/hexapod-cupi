@@ -1,0 +1,336 @@
+{
+  "scored_ranges": {
+    "friction_scale": [
+      0.6,
+      1.4
+    ],
+    "mass_scale": [
+      0.9,
+      1.1
+    ],
+    "motor_scale": [
+      1.0,
+      1.0
+    ],
+    "kd_scale": [
+      1.0,
+      1.0
+    ],
+    "action_delay_controls": 1,
+    "sag_per_minute": [
+      0.0,
+      0.0
+    ],
+    "sag_floor": 0.85
+  },
+  "walked_ranges": {
+    "friction_scale": [
+      0.6,
+      1.4
+    ],
+    "mass_scale": [
+      0.9,
+      1.1
+    ],
+    "motor_scale": [
+      0.9,
+      1.1
+    ],
+    "kd_scale": [
+      0.8,
+      1.2
+    ],
+    "action_delay_controls": 1,
+    "sag_per_minute": [
+      0.0,
+      0.1
+    ],
+    "sag_floor": 0.85
+  },
+  "speed": 0.1,
+  "bearings": 8,
+  "base_seed": 20261103,
+  "results": {
+    "scored": {
+      "s2r_c_u200": {
+        "draw00": {
+          "seed": 20261103,
+          "passes": 4,
+          "cases": {
+            "learning:s2r__translate_0.1_0deg": {
+              "pass": true,
+              "planar_error_mps": 0.02495728718259619,
+              "demand_over_rating": 0.002654320987654321
+            },
+            "learning:s2r__translate_0.1_45deg": {
+              "pass": true,
+              "planar_error_mps": 0.016715251715950865,
+              "demand_over_rating": 0.0010493827160493827
+            },
+            "learning:s2r__translate_0.1_90deg": {
+              "pass": false,
+              "planar_error_mps": 0.027372270849832465,
+              "demand_over_rating": 0.006419753086419753
+            },
+            "learning:s2r__translate_0.1_135deg": {
+              "pass": false,
+              "planar_error_mps": 0.026531953664964365,
+              "demand_over_rating": 0.001851851851851852
+            },
+            "learning:s2r__translate_0.1_180deg": {
+              "pass": false,
+              "planar_error_mps": 0.027556390196842338,
+              "demand_over_rating": 0.0
+            },
+            "learning:s2r__translate_0.1_225deg": {
+              "pass": false,
+              "planar_error_mps": 0.02824093813984258,
+              "demand_over_rating": 0.004197530864197531
+            },
+            "learning:s2r__translate_0.1_270deg": {
+              "pass": true,
+              "planar_error_mps": 0.01729067523599289,
+              "demand_over_rating": 0.0010493827160493827
+            },
+            "learning:s2r__translate_0.1_315deg": {
+              "pass": true,
+              "planar_error_mps": 0.01621524037525608,
+              "demand_over_rating": 0.0009876543209876543
+            }
+          }
+        },
+        "draw01": {
+          "seed": 20261104,
+          "passes": 5,
+          "cases": {
+            "learning:s2r__translate_0.1_0deg": {
+              "pass": true,
+              "planar_error_mps": 0.021373668507684126,
+              "demand_over_rating": 0.0020987654320987655
+            },
+            "learning:s2r__translate_0.1_45deg": {
+              "pass": true,
+              "planar_error_mps": 0.016438413587159507,
+              "demand_over_rating": 0.0010493827160493827
+            },
+            "learning:s2r__translate_0.1_90deg": {
+              "pass": false,
+              "planar_error_mps": 0.02727282519559257,
+              "demand_over_rating": 0.004197530864197531
+            },
+            "learning:s2r__translate_0.1_135deg": {
+              "pass": false,
+              "planar_error_mps": 0.02698782841190939,
+              "demand_over_rating": 0.002777777777777778
+            },
+            "learning:s2r__translate_0.1_180deg": {
+              "pass": false,
+              "planar_error_mps": 0.0284679325738954,
+              "demand_over_rating": 0.0032098765432098763
+            },
+            "learning:s2r__translate_0.1_225deg": {
+              "pass": true,
+              "planar_error_mps": 0.022083324664799404,
+              "demand_over_rating": 0.0
+            },
+            "learning:s2r__translate_0.1_270deg": {
+              "pass": true,
+              "planar_error_mps": 0.015510318329501319,
+              "demand_over_rating": 0.0
+            },
+            "learning:s2r__translate_0.1_315deg": {
+              "pass": true,
+              "planar_error_mps": 0.021244236777608113,
+              "demand_over_rating": 0.0002469135802469136
+            }
+          }
+        },
+        "draw02": {
+          "seed": 20261105,
+          "passes": 5,
+          "cases": {
+            "learning:s2r__translate_0.1_0deg": {
+              "pass": true,
+              "planar_error_mps": 0.015046525758877285,
+              "demand_over_rating": 0.0016666666666666668
+            },
+            "learning:s2r__translate_0.1_45deg": {
+              "pass": true,
+              "planar_error_mps": 0.017448899607805726,
+              "demand_over_rating": 0.0004320987654320988
+            },
+            "learning:s2r__translate_0.1_90deg": {
+              "pass": true,
+              "planar_error_mps": 0.023232253893410208,
+              "demand_over_rating": 0.002777777777777778
+            },
+            "learning:s2r__translate_0.1_135deg": {
+              "pass": false,
+              "planar_error_mps": 0.028544803059859722,
+              "demand_over_rating": 0.0033333333333333335
+            },
+            "learning:s2r__translate_0.1_180deg": {
+              "pass": false,
+              "planar_error_mps": 0.028467109137826387,
+              "demand_over_rating": 0.0022222222222222222
+            },
+            "learning:s2r__translate_0.1_225deg": {
+              "pass": true,
+              "planar_error_mps": 0.02381997632396246,
+              "demand_over_rating": 0.0035185185185185185
+            },
+            "learning:s2r__translate_0.1_270deg": {
+              "pass": false,
+              "planar_error_mps": 0.021743510258709162,
+              "demand_over_rating": 0.0004320987654320988
+            },
+            "learning:s2r__translate_0.1_315deg": {
+              "pass": true,
+              "planar_error_mps": 0.01927894998447112,
+              "demand_over_rating": 0.0011111111111111111
+            }
+          }
+        },
+        "draw03": {
+          "seed": 20261106,
+          "passes": 5,
+          "cases": {
+            "learning:s2r__translate_0.1_0deg": {
+              "pass": true,
+              "planar_error_mps": 0.021842018081542913,
+              "demand_over_rating": 0.003148148148148148
+            },
+            "learning:s2r__translate_0.1_45deg": {
+              "pass": true,
+              "planar_error_mps": 0.01788740574927772,
+              "demand_over_rating": 0.0021604938271604936
+            },
+            "learning:s2r__translate_0.1_90deg": {
+              "pass": false,
+              "planar_error_mps": 0.027651939524880837,
+              "demand_over_rating": 0.007469135802469135
+            },
+            "learning:s2r__translate_0.1_135deg": {
+              "pass": false,
+              "planar_error_mps": 0.029950015297426635,
+              "demand_over_rating": 0.0030246913580246914
+            },
+            "learning:s2r__translate_0.1_180deg": {
+              "pass": false,
+              "planar_error_mps": 0.028272718215722914,
+              "demand_over_rating": 0.0033333333333333335
+            },
+            "learning:s2r__translate_0.1_225deg": {
+              "pass": true,
+              "planar_error_mps": 0.022976726948691045,
+              "demand_over_rating": 0.0027160493827160493
+            },
+            "learning:s2r__translate_0.1_270deg": {
+              "pass": true,
+              "planar_error_mps": 0.01535885192658297,
+              "demand_over_rating": 6.17283950617284e-05
+            },
+            "learning:s2r__translate_0.1_315deg": {
+              "pass": true,
+              "planar_error_mps": 0.019783387210821034,
+              "demand_over_rating": 0.0012345679012345679
+            }
+          }
+        },
+        "draw04": {
+          "seed": 20261107,
+          "passes": 3,
+          "cases": {
+            "learning:s2r__translate_0.1_0deg": {
+              "pass": true,
+              "planar_error_mps": 0.02204556334093219,
+              "demand_over_rating": 0.0020987654320987655
+            },
+            "learning:s2r__translate_0.1_45deg": {
+              "pass": true,
+              "planar_error_mps": 0.01714373029808144,
+              "demand_over_rating": 0.0025308641975308644
+            },
+            "learning:s2r__translate_0.1_90deg": {
+              "pass": false,
+              "planar_error_mps": 0.028203525034604465,
+              "demand_over_rating": 0.0038888888888888888
+            },
+            "learning:s2r__translate_0.1_135deg": {
+              "pass": false,
+              "planar_error_mps": 0.026890680680888707,
+              "demand_over_rating": 0.0020987654320987655
+            },
+            "learning:s2r__translate_0.1_180deg": {
+              "pass": false,
+              "planar_error_mps": 0.028126540597258796,
+              "demand_over_rating": 0.0030246913580246914
+            },
+            "learning:s2r__translate_0.1_225deg": {
+              "pass": false,
+              "planar_error_mps": 0.02684689620475259,
+              "demand_over_rating": 0.0024074074074074076
+            },
+            "learning:s2r__translate_0.1_270deg": {
+              "pass": false,
+              "planar_error_mps": 0.023960933717390158,
+              "demand_over_rating": 0.0
+            },
+            "learning:s2r__translate_0.1_315deg": {
+              "pass": true,
+              "planar_error_mps": 0.015142299656327478,
+              "demand_over_rating": 0.0
+            }
+          }
+        },
+        "draw05": {
+          "seed": 20261108,
+          "passes": 5,
+          "cases": {
+            "learning:s2r__translate_0.1_0deg": {
+              "pass": true,
+              "planar_error_mps": 0.02470600506260665,
+              "demand_over_rating": 0.0011111111111111111
+            },
+            "learning:s2r__translate_0.1_45deg": {
+              "pass": true,
+              "planar_error_mps": 0.015888719065780866,
+              "demand_over_rating": 0.0
+            },
+            "learning:s2r__translate_0.1_90deg": {
+              "pass": false,
+              "planar_error_mps": 0.025568288685810257,
+              "demand_over_rating": 0.007222222222222222
+            },
+            "learning:s2r__translate_0.1_135deg": {
+              "pass": false,
+              "planar_error_mps": 0.026914051836183023,
+              "demand_over_rating": 0.0030246913580246914
+            },
+            "learning:s2r__translate_0.1_180deg": {
+              "pass": false,
+              "planar_error_mps": 0.0277099704564818,
+              "demand_over_rating": 0.0
+            },
+            "learning:s2r__translate_0.1_225deg": {
+              "pass": true,
+              "planar_error_mps": 0.022308528841354702,
+              "demand_over_rating": 0.0
+            },
+            "learning:s2r__translate_0.1_270deg": {
+              "pass": true,
+              "planar_error_mps": 0.018622221077688735,
+              "demand_over_rating": 0.0015432098765432098
+            },
+            "learning:s2r__translate_0.1_315deg": {
+              "pass": true,
+              "planar_error_mps": 0.02242884808939817,
+              "demand_over_rating": 0.0
+            }
+          }
+        }
+      }
+    },
+    "walked": {}
+  }
+}

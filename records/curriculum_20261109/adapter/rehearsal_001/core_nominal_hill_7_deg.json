@@ -1,0 +1,230 @@
+{
+ "schema": "hexapod_scene_v1",
+ "name": "hill 7 deg core_nominal",
+ "seconds": 40,
+ "terrain": {
+  "size_m": [
+   6.2,
+   2.4
+  ],
+  "center_m": [
+   2.3,
+   0
+  ],
+  "resolution_m": 0.02,
+  "features": [
+   {
+    "type": "ramp",
+    "center": [
+     1.1,
+     0
+    ],
+    "size": [
+     1.2,
+     1.6
+    ],
+    "rise": 0.1473
+   },
+   {
+    "type": "box",
+    "center": [
+     2.2,
+     0
+    ],
+    "size": [
+     1.0,
+     1.6
+    ],
+    "height": 0.1473
+   },
+   {
+    "type": "ramp",
+    "center": [
+     3.3,
+     0
+    ],
+    "size": [
+     1.2,
+     1.6
+    ],
+    "rise": -0.1473
+   },
+   {
+    "type": "box",
+    "center": [
+     3.3,
+     0
+    ],
+    "size": [
+     1.2,
+     1.6
+    ],
+    "height": 0.1473
+   }
+  ]
+ },
+ "robots": [
+  {
+   "name": "core_nominal 0",
+   "checkpoint": "/Users/new/Desktop/cupi/hexapod-surrogate/runs/native_eval/checkpoints/terrain_isaac_u600_002/checkpoint_update000600.pt",
+   "start": {
+    "forward_m": -0.1,
+    "left_m": -0.06,
+    "heading_deg": 0
+   },
+   "commands": [
+    {
+     "seconds": 2,
+     "command": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "seconds": 38,
+     "command": [
+      0.1,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "core_nominal 1",
+   "checkpoint": "/Users/new/Desktop/cupi/hexapod-surrogate/runs/native_eval/checkpoints/terrain_isaac_u600_002/checkpoint_update000600.pt",
+   "start": {
+    "forward_m": -0.05,
+    "left_m": 0.04,
+    "heading_deg": 0
+   },
+   "commands": [
+    {
+     "seconds": 2,
+     "command": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "seconds": 38,
+     "command": [
+      0.1,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "core_nominal 2",
+   "checkpoint": "/Users/new/Desktop/cupi/hexapod-surrogate/runs/native_eval/checkpoints/terrain_isaac_u600_002/checkpoint_update000600.pt",
+   "start": {
+    "forward_m": 0.0,
+    "left_m": 0.0,
+    "heading_deg": 0
+   },
+   "commands": [
+    {
+     "seconds": 2,
+     "command": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "seconds": 38,
+     "command": [
+      0.1,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "core_nominal 3",
+   "checkpoint": "/Users/new/Desktop/cupi/hexapod-surrogate/runs/native_eval/checkpoints/terrain_isaac_u600_002/checkpoint_update000600.pt",
+   "start": {
+    "forward_m": 0.05,
+    "left_m": -0.03,
+    "heading_deg": 0
+   },
+   "commands": [
+    {
+     "seconds": 2,
+     "command": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "seconds": 38,
+     "command": [
+      0.1,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "core_nominal 4",
+   "checkpoint": "/Users/new/Desktop/cupi/hexapod-surrogate/runs/native_eval/checkpoints/terrain_isaac_u600_002/checkpoint_update000600.pt",
+   "start": {
+    "forward_m": 0.1,
+    "left_m": 0.06,
+    "heading_deg": 0
+   },
+   "commands": [
+    {
+     "seconds": 2,
+     "command": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "seconds": 38,
+     "command": [
+      0.1,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "core_nominal 5",
+   "checkpoint": "/Users/new/Desktop/cupi/hexapod-surrogate/runs/native_eval/checkpoints/terrain_isaac_u600_002/checkpoint_update000600.pt",
+   "start": {
+    "forward_m": 0.15,
+    "left_m": -0.08,
+    "heading_deg": 0
+   },
+   "commands": [
+    {
+     "seconds": 2,
+     "command": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "seconds": 38,
+     "command": [
+      0.1,
+      0,
+      0
+     ]
+    }
+   ]
+  }
+ ]
+}

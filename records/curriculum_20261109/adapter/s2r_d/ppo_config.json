@@ -1,0 +1,103 @@
+{
+  "seed": 20260917,
+  "num_steps_per_env": 36,
+  "save_interval": 50,
+  "obs_groups": {
+    "actor": [
+      "policy"
+    ],
+    "critic": [
+      "critic"
+    ]
+  },
+  "actor": {
+    "class_name": "locomotion.rl.sim2real:CompensatedActor",
+    "hidden_dims": [
+      256,
+      256,
+      128
+    ],
+    "activation": "elu",
+    "obs_normalization": false,
+    "distribution_cfg": {
+      "class_name": "locomotion.rl.ppo:BoundedMeanGaussian",
+      "init_std": 0.05,
+      "std_type": "log"
+    },
+    "core": {
+      "checkpoint": "/Users/new/Desktop/cupi/hexapod-surrogate/runs/native_eval/checkpoints/terrain_isaac_u600_002/checkpoint_update000600.pt",
+      "checkpoint_sha256": "e29be0bcc7195e6c9a053e09de8ef5eb32ac990576ad188d11f94689e2508d17",
+      "actor": {
+        "class_name": "MLPModel",
+        "hidden_dims": [
+          256,
+          256,
+          128
+        ],
+        "activation": "elu",
+        "obs_normalization": false,
+        "distribution_cfg": {
+          "class_name": "locomotion.rl.ppo:BoundedMeanGaussian",
+          "init_std": 0.05,
+          "std_type": "log"
+        }
+      }
+    },
+    "encoder_hidden": [
+      128,
+      64
+    ],
+    "latent_dim": 8,
+    "observation_gain_limit": 0.2,
+    "observation_bias_limit": 0.25,
+    "action_delta_limit": 0.25,
+    "identification": true,
+    "condition_heads": true
+  },
+  "critic": {
+    "class_name": "locomotion.rl.sim2real:WarmStartedCritic",
+    "hidden_dims": [
+      256,
+      256,
+      128
+    ],
+    "activation": "elu",
+    "obs_normalization": false,
+    "core": {
+      "checkpoint": "/Users/new/Desktop/cupi/hexapod-surrogate/runs/native_eval/checkpoints/terrain_isaac_u600_002/checkpoint_update000600.pt",
+      "checkpoint_sha256": "e29be0bcc7195e6c9a053e09de8ef5eb32ac990576ad188d11f94689e2508d17"
+    }
+  },
+  "algorithm": {
+    "class_name": "locomotion.rl.ppo:CappedRatePPO",
+    "value_loss_coef": 1.0,
+    "use_clipped_value_loss": true,
+    "clip_param": 0.2,
+    "entropy_coef": 0.01,
+    "num_learning_epochs": 5,
+    "num_mini_batches": 6,
+    "learning_rate": 0.0001,
+    "schedule": "adaptive",
+    "gamma": 0.99,
+    "lam": 0.95,
+    "desired_kl": 0.01,
+    "max_grad_norm": 1.0,
+    "rnd_cfg": null,
+    "symmetry_cfg": null,
+    "learning_rate_max": 0.0001
+  },
+  "logger": "tensorboard",
+  "check_for_nan": true,
+  "exploration": {
+    "action_std_final": 0.05
+  },
+  "environment_wrapper": {
+    "observation_scaling": "fixed",
+    "command_segments": "bootstrap",
+    "gait_clock": 60,
+    "action_smoothing": "mean2",
+    "velocity_noise": 0.5,
+    "destination_input": "terrain_v2",
+    "gait_clock_scaling": "speed_v1"
+  }
+}
