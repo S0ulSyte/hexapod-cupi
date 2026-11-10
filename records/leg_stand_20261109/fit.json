@@ -1,0 +1,247 @@
+{
+ "schema": "hexapod_leg_sysid_fit_v3",
+ "recording": "leg_20261109T143508",
+ "recording_meta": {
+  "started": "20261109T143508",
+  "outcome": "complete",
+  "fake": false,
+  "bus": "vcan0 via rs_bridge (CH340 USB-CAN, 921600 baud)",
+  "rate_hz": 100.0,
+  "cycle_s_median": 0.010098200058564544,
+  "read_after_send_s_median": 0.00016894855070859194
+ },
+ "signs_given": [
+  1.0,
+  1.0,
+  -1.0
+ ],
+ "statics": {
+  "settled_samples": 18,
+  "torque_residual_rms_nm": 0.1110447780710162,
+  "residual_rms_nm_by_sign": {
+   "femur +1, tibia -1": 0.1110447780710162
+  },
+  "settled_torque_span_nm": {
+   "lf_coxa_yaw": 0.04540416598320007,
+   "lf_femur_pitch": 0.4712439775466919,
+   "lf_tibia_pitch": 0.05077558755874634
+  },
+  "loaded_warning": false,
+  "sign_note": "a sign is identified only when its hypothesis clearly beats the flipped one; the tibia's gravity torque is under 0.05 Nm, so friction can leave its sign ambiguous",
+  "coxa_mapping": "not identifiable from gravity on a level stand: sign +1, offset centres the measured range on the model range; verify by eye (a + move should swing the foot toward the model's +coxa_yaw, counter-clockwise seen from above)"
+ },
+ "dynamics": {
+  "lf_coxa_yaw": {
+   "delay_s": 0.017080674827385914,
+   "window_pos_rms_rad": 0.004227401859388088,
+   "window_torque_rms_nm": 0.06598499040830828,
+   "delay_grid_cost": {
+    "0ms": 0.01382,
+    "5ms": 0.01268,
+    "10ms": 0.01229,
+    "15ms": 0.01219,
+    "20ms": 0.01183,
+    "25ms": 0.0122,
+    "30ms": 0.01194,
+    "35ms": 0.01265,
+    "40ms": 0.01244,
+    "45ms": 0.01406,
+    "50ms": 0.01391,
+    "55ms": 0.01604,
+    "60ms": 0.01596,
+    "65ms": 0.01916,
+    "70ms": 0.01938,
+    "75ms": 0.02282,
+    "80ms": 0.02346,
+    "85ms": 0.02713,
+    "90ms": 0.02833,
+    "95ms": 0.03146,
+    "100ms": 0.03383
+   },
+   "evaluations": 1140
+  },
+  "lf_femur_pitch": {
+   "delay_s": 0.05012456367258114,
+   "window_pos_rms_rad": 0.012249004696740328,
+   "window_torque_rms_nm": 0.17007416179624954,
+   "delay_grid_cost": {
+    "0ms": 0.04024,
+    "5ms": 0.04008,
+    "10ms": 0.03932,
+    "15ms": 0.03933,
+    "20ms": 0.03837,
+    "25ms": 0.03897,
+    "30ms": 0.03798,
+    "35ms": 0.03868,
+    "40ms": 0.0374,
+    "45ms": 0.03847,
+    "50ms": 0.03747,
+    "55ms": 0.03876,
+    "60ms": 0.03759,
+    "65ms": 0.03941,
+    "70ms": 0.03863,
+    "75ms": 0.04082,
+    "80ms": 0.04034,
+    "85ms": 0.04326,
+    "90ms": 0.04309,
+    "95ms": 0.04627,
+    "100ms": 0.04624
+   },
+   "evaluations": 1140
+  },
+  "lf_tibia_pitch": {
+   "delay_s": 0.019085775274871007,
+   "window_pos_rms_rad": 0.0061393340783311755,
+   "window_torque_rms_nm": 0.03789610973838507,
+   "delay_grid_cost": {
+    "0ms": 0.01161,
+    "5ms": 0.01147,
+    "10ms": 0.01066,
+    "15ms": 0.01017,
+    "20ms": 0.01005,
+    "25ms": 0.01085,
+    "30ms": 0.0118,
+    "35ms": 0.01335,
+    "40ms": 0.01486,
+    "45ms": 0.01769,
+    "50ms": 0.01933,
+    "55ms": 0.02187,
+    "60ms": 0.02382,
+    "65ms": 0.02681,
+    "70ms": 0.02906,
+    "75ms": 0.03082,
+    "80ms": 0.03311,
+    "85ms": 0.03526,
+    "90ms": 0.03758,
+    "95ms": 0.03909,
+    "100ms": 0.04092
+   },
+   "evaluations": 1140
+  }
+ },
+ "rms_rad": {
+  "nominal": {
+   "lf_coxa_yaw": 0.006426577948596823,
+   "lf_femur_pitch": 0.016973810988677042,
+   "lf_tibia_pitch": 0.005961501883646222
+  },
+  "fitted": {
+   "lf_coxa_yaw": 0.002526674960453648,
+   "lf_femur_pitch": 0.012553889951812022,
+   "lf_tibia_pitch": 0.0038529534921624225
+  },
+  "fitted_after_carriage": {
+   "lf_coxa_yaw": 0.0025190105598554497,
+   "lf_femur_pitch": 0.01231962431992149,
+   "lf_tibia_pitch": 0.006080102899873902
+  }
+ },
+ "fitted": {
+  "delay_s": 0.019085775274871007,
+  "sign": [
+   1.0,
+   1.0,
+   -1.0
+  ],
+  "offset": [
+   1.0994187640026212,
+   5.146996038125151,
+   4.380190276040029
+  ],
+  "kp_scale": [
+   0.48702104630499976,
+   1.4518161882324714,
+   0.5299952991436229
+  ],
+  "kd_scale": [
+   0.365567398747021,
+   0.12831431912221603,
+   0.1637568650249363
+  ],
+  "tau_max": [
+   5.5,
+   5.5,
+   5.5
+  ],
+  "frictionloss": [
+   0.04782623787553387,
+   0.19815915623051794,
+   0.025745399603122932
+  ],
+  "damping": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "armature": [
+   1.1013544495581423e-09,
+   0.000289677262271754,
+   0.00024484767543186
+  ],
+  "carriage_mass": 1.0,
+  "rail_friction": 0.0,
+  "toe_friction": 0.5206673130530073,
+  "floor_height": -0.084120265593365
+ },
+ "delay_controls": 0.9542887637435503,
+ "training_mapping": {
+  "action_delay_controls": 1,
+  "note": "DynamicsRandomization.action_delay_controls draws whole 20 ms controls; the fitted delay includes the bus round trip and the feedback read, as the policy would see them"
+ },
+ "floor": {
+  "recordings": [
+   "leg_20261109T133352",
+   "leg_20261109T143334",
+   "leg_20261109T151630"
+  ],
+  "floor_height_below_mount_m": -0.084120265593365,
+  "toe_friction": 0.5206673130530073,
+  "tibia_offset_shift_rad": 1.4740003404788024e-05,
+  "start_toe_heights_m": [
+   -0.0824,
+   -0.0764,
+   -0.0824
+  ],
+  "cost": 0.06090075984792528,
+  "evaluations": 79,
+  "evidence": "camera height tracker: the carriage moved under 2 mm while the leg carried up to 0.9 Nm"
+ },
+ "floor_rms_rad": {
+  "leg_20261109T133352": {
+   "nominal": {
+    "lf_coxa_yaw": 0.004779773595295838,
+    "lf_femur_pitch": 0.01263023423189759,
+    "lf_tibia_pitch": 0.0109853647024178
+   },
+   "fitted": {
+    "lf_coxa_yaw": 0.007207549495565156,
+    "lf_femur_pitch": 0.008218690845488319,
+    "lf_tibia_pitch": 0.01776560878851788
+   }
+  },
+  "leg_20261109T143334": {
+   "nominal": {
+    "lf_coxa_yaw": 0.01131161230834165,
+    "lf_femur_pitch": 0.022835320822607443,
+    "lf_tibia_pitch": 0.015451148296126118
+   },
+   "fitted": {
+    "lf_coxa_yaw": 0.007535097538192363,
+    "lf_femur_pitch": 0.01712195194805311,
+    "lf_tibia_pitch": 0.013338092215514269
+   }
+  },
+  "leg_20261109T151630": {
+   "nominal": {
+    "lf_coxa_yaw": 0.00482146878786065,
+    "lf_femur_pitch": 0.014157905105475401,
+    "lf_tibia_pitch": 0.010280652672627037
+   },
+   "fitted": {
+    "lf_coxa_yaw": 0.00582496841214169,
+    "lf_femur_pitch": 0.0102485383123235,
+    "lf_tibia_pitch": 0.017903815027199153
+   }
+  }
+ }
+}

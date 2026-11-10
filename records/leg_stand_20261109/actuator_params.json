@@ -1,0 +1,109 @@
+{
+ "schema": "hexapod_actuator_fit_v1",
+ "what": "RS05 actuator and stand parameters fitted to the real lf leg on the single-leg stand (2026-11-09), against the training simulator's values",
+ "fit_file": "fit.json",
+ "fit_sha256": "22800906d7b1422bddcc5a2e64a6e343058aecd983268bcf5672b43f85e5a2e0",
+ "recordings": {
+  "leg_20261109T133352.npz": "90c2cf4cc354c52d1afdc8dfe4466493302873c9f15d3d222cd7451dfe467137",
+  "leg_20261109T143334.npz": "4a3d2ec5ac5e27a7d1f8e970a36df99c755bf8190377ffc798fc40f8154d3567",
+  "leg_20261109T143508.npz": "15aee4418285cc1595f2eee27d11754e6440c45be566ed36ae1cb06671789012",
+  "leg_20261109T151125.npz": "37059c7a233b8234332d6bc8bff1fda12ccf5e35d8e236eae563abcd22dcaf0d",
+  "leg_20261109T151630.npz": "715cebe5a0b47baec1e7d9fc2833d87b25fb8120f3ffddb60d0fb9fec4fc9f33"
+ },
+ "procedure": "docs/LEG_STAND_HARDWARE.md#actuator-calibration-simulator-against-the-stand",
+ "bus": "vcan0 via rs_bridge (CH340 USB-CAN, 921600 baud), RobStride MIT mode, commands at 100 Hz, targets at 50 Hz",
+ "joints": [
+  "lf_coxa_yaw",
+  "lf_femur_pitch",
+  "lf_tibia_pitch"
+ ],
+ "training_sim": {
+  "delay_s": 0.0,
+  "kp_nm_per_rad": 12.0,
+  "kd_nm_s_per_rad": [
+   0.44197696391810243,
+   0.2456657243160222,
+   0.10552064613953134
+  ],
+  "joint_frictionloss_nm": [
+   0,
+   0,
+   0
+  ],
+  "armature_kg_m2": [
+   0,
+   0,
+   0
+  ],
+  "torque_ceiling_nm": 1.6,
+  "toe_floor_friction": 1.0,
+  "source": "locomotion/robots/rs05.py, locomotion/robots/hexapod.py, locomotion/surrogate/env.py ContactModel"
+ },
+ "fitted_real": {
+  "delay_s": 0.019085775274871007,
+  "delay_per_joint_s": {
+   "lf_coxa_yaw": 0.017080674827385914,
+   "lf_femur_pitch": 0.05012456367258114,
+   "lf_tibia_pitch": 0.019085775274871007
+  },
+  "observed_delay_controls": "about 2 (actuation about 1 control plus feedback read up to 10 ms stale)",
+  "kp_scale_torque_check": [
+   0.81,
+   1.12,
+   1.07
+  ],
+  "kp_scale_position_fit": [
+   0.48702104630499976,
+   1.4518161882324714,
+   0.5299952991436229
+  ],
+  "kd_scale": [
+   0.365567398747021,
+   0.12831431912221603,
+   0.1637568650249363
+  ],
+  "joint_frictionloss_nm": [
+   0.04782623787553387,
+   0.19815915623051794,
+   0.025745399603122932
+  ],
+  "armature_kg_m2": [
+   1.1013544495581423e-09,
+   0.000289677262271754,
+   0.00024484767543186
+  ],
+  "toe_floor_friction": 0.5206673130530073,
+  "torque_ceiling_nm": "not identified: the stand peaked at 0.8-0.9 Nm",
+  "notes": "kp from the position fit trades off against damping and delay; the motors' own torque readings give kp 0.81-1.12x nominal, so treat stiffness as nominal"
+ },
+ "validation": {
+  "held_out": "leg_20261109T151125: RMS coxa 0.40->0.16, femur 1.02->0.74, tibia 0.47->0.46 deg (default -> fitted)",
+  "foot_down": "three recordings: femur improves on all; coxa and tibia worse than the default on two of three"
+ },
+ "surrogate_training": {
+  "flags": [
+   "--contact",
+   "touchdown_overshoot=False",
+   "--randomize",
+   "action_delay_controls=(1, 2)",
+   "--randomize",
+   "kd_scale=(0.5, 0.7)",
+   "--randomize",
+   "friction_scale=(0.45, 0.6)"
+  ],
+  "maps": {
+   "action_delay_controls": "the fitted delay: 1 control actuation, 2 with stale feedback",
+   "kd_scale": "fitted 0.13-0.37x lies below DynamicsRandomization's 0.5 bound: 0.5-0.7 is the closest the current trainer allows",
+   "friction_scale": "toe friction 0.52 against the training 1.0 (scales every contact's friction)",
+   "contact": "friction randomization needs touchdown_overshoot=False (the touchdown correction reads one shared contact friction); the sim2real adapter runs used it too"
+  },
+  "not_expressible_yet": [
+   "joint frictionloss (0.03-0.2 Nm)",
+   "rotor armature",
+   "kd below 0.5x"
+  ],
+  "usage": "append the flags to a locomotion.surrogate.train command; they draw per episode from these ranges",
+  "example": "uv run python -m locomotion.surrogate.train --output OUT --task \"locomotion.omniwalk.destination_task:experiment_task(destination_v70)\" --wrapper locomotion.rl.destination_wrapper:DestinationVecEnv --initialize-from records/curriculum_20261109/od1/checkpoint_update001200.pt --initialize-rate checkpoint --action-mean tanh --observation-normalization none --observation-scaling fixed --command-segments bootstrap --learning-rate-max 1e-4 --action-std 0.05 --action-std-final 0.05 --gait-clock 60 --action-smoothing mean2 --velocity-noise 0.5 --episode-seconds 32.0 --updates 2000 --seed SEED --threads 6 --anchor-weight 0.006 --contact \"touchdown_overshoot=False\" --randomize \"action_delay_controls=(1, 2)\" --randomize \"kd_scale=(0.5, 0.7)\" --randomize \"friction_scale=(0.45, 0.6)\" --ppo-config-overrides '{\"num_steps_per_env\": 36, \"algorithm\": {\"num_mini_batches\": 6}, \"environment_wrapper\": {\"destination_input\": \"terrain_v2_odom\", \"gait_clock_scaling\": \"speed_v1\"}}'",
+  "smoke_tested": "2026-11-10: a 2-update run from od1 u1200 with these flags completed and recorded the randomization in its checkpoint identity"
+ }
+}

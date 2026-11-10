@@ -161,6 +161,11 @@ as a three-panel video.
 - **For training:** the actuator delay is about 1 control; with stale feedback, the command-to-observed
   delay is about 2 controls. Training draws `action_delay_controls` of 0–1.
 
+The fitted values, their recordings and the surrogate training flags that apply them are in
+`records/leg_stand_20261109/actuator_params.json`. The trainer can apply the delay (1–2 controls), damping
+(0.5–0.7×, its lowest allowed scale; the fit says 0.13–0.37×) and toe friction (0.45–0.6×, which needs
+`--contact touchdown_overshoot=False`). It has no setting yet for joint friction or rotor inertia.
+
 Not yet calibrated: a carriage carried by the leg (`rail`), which needs the carriage mass and a
 recording with the carriage free, or contact stiffness and foot slip.
 

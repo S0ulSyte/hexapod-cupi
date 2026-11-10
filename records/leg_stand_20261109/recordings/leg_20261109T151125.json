@@ -1,0 +1,225 @@
+{
+ "schema": "hexapod_leg_sysid_recording_v1",
+ "started": "20261109T151125",
+ "outcome": "complete",
+ "fake": false,
+ "bus": "vcan0 via rs_bridge (CH340 USB-CAN, 921600 baud)",
+ "motor_ids": [
+  11,
+  12,
+  13
+ ],
+ "joint_names": {
+  "11": "lf_coxa_yaw",
+  "12": "lf_femur_pitch",
+  "13": "lf_tibia_pitch"
+ },
+ "frame": "RobStride motor frame (mechPos 0x7019), rad",
+ "gains": {
+  "kp": 12.0,
+  "kd": {
+   "11": 0.44197696391810243,
+   "12": 0.2456657243160222,
+   "13": 0.10552064613953134
+  },
+  "vel_target": 0.0,
+  "feedforward": 0.0
+ },
+ "control_dt_s": 0.02,
+ "slew_rad": 0.04,
+ "rate_hz": 100.0,
+ "start_pose": {
+  "11": 1.0726978778839111,
+  "12": 4.108396530151367,
+  "13": 2.205073356628418
+ },
+ "limits": {
+  "11": [
+   -0.02855180762708187,
+   2.227389335632324
+  ],
+  "12": [
+   3.062518358230591,
+   6.631894111633301
+  ],
+  "13": [
+   0.9645299911499023,
+   4.785871982574463
+  ]
+ },
+ "segments": [
+  {
+   "index": 0,
+   "name": "ramp in",
+   "joint": null,
+   "start_s": 0.0179102779366076,
+   "seconds": 0.5
+  },
+  {
+   "index": 1,
+   "name": "lf_coxa_yaw hold",
+   "joint": 11,
+   "start_s": 0.5244963329751045,
+   "seconds": 1.0
+  },
+  {
+   "index": 2,
+   "name": "lf_coxa_yaw step +8.6 deg",
+   "joint": 11,
+   "start_s": 1.528554195072502,
+   "seconds": 0.8
+  },
+  {
+   "index": 3,
+   "name": "lf_coxa_yaw step back",
+   "joint": 11,
+   "start_s": 2.3290877640247345,
+   "seconds": 0.8
+  },
+  {
+   "index": 4,
+   "name": "lf_coxa_yaw step -8.6 deg",
+   "joint": 11,
+   "start_s": 3.1305651979055256,
+   "seconds": 0.8
+  },
+  {
+   "index": 5,
+   "name": "lf_coxa_yaw step back",
+   "joint": 11,
+   "start_s": 3.940223831916228,
+   "seconds": 0.8
+  },
+  {
+   "index": 6,
+   "name": "lf_coxa_yaw chirp 4.6 deg 0.3-3 Hz",
+   "joint": 11,
+   "start_s": 4.740972833009437,
+   "seconds": 8.0
+  },
+  {
+   "index": 7,
+   "name": "lf_coxa_yaw hold",
+   "joint": 11,
+   "start_s": 12.744228374911472,
+   "seconds": 0.6
+  },
+  {
+   "index": 8,
+   "name": "lf_femur_pitch hold",
+   "joint": 12,
+   "start_s": 13.348018309101462,
+   "seconds": 1.0
+  },
+  {
+   "index": 9,
+   "name": "lf_femur_pitch step +8.6 deg",
+   "joint": 12,
+   "start_s": 14.348508960101753,
+   "seconds": 0.8
+  },
+  {
+   "index": 10,
+   "name": "lf_femur_pitch step back",
+   "joint": 12,
+   "start_s": 15.157187419012189,
+   "seconds": 0.8
+  },
+  {
+   "index": 11,
+   "name": "lf_femur_pitch step -8.6 deg",
+   "joint": 12,
+   "start_s": 15.957790347049013,
+   "seconds": 0.8
+  },
+  {
+   "index": 12,
+   "name": "lf_femur_pitch step back",
+   "joint": 12,
+   "start_s": 16.765061252051964,
+   "seconds": 0.8
+  },
+  {
+   "index": 13,
+   "name": "lf_femur_pitch chirp 4.6 deg 0.3-3 Hz",
+   "joint": 12,
+   "start_s": 17.565113926073536,
+   "seconds": 8.0
+  },
+  {
+   "index": 14,
+   "name": "lf_femur_pitch hold",
+   "joint": 12,
+   "start_s": 25.574512680992484,
+   "seconds": 0.6
+  },
+  {
+   "index": 15,
+   "name": "lf_tibia_pitch hold",
+   "joint": 13,
+   "start_s": 26.18160997191444,
+   "seconds": 1.0
+  },
+  {
+   "index": 16,
+   "name": "lf_tibia_pitch step +8.6 deg",
+   "joint": 13,
+   "start_s": 27.188130965922028,
+   "seconds": 0.8
+  },
+  {
+   "index": 17,
+   "name": "lf_tibia_pitch step back",
+   "joint": 13,
+   "start_s": 27.99054441298358,
+   "seconds": 0.8
+  },
+  {
+   "index": 18,
+   "name": "lf_tibia_pitch step -8.6 deg",
+   "joint": 13,
+   "start_s": 28.799103521974757,
+   "seconds": 0.8
+  },
+  {
+   "index": 19,
+   "name": "lf_tibia_pitch step back",
+   "joint": 13,
+   "start_s": 29.60798900690861,
+   "seconds": 0.8
+  },
+  {
+   "index": 20,
+   "name": "lf_tibia_pitch chirp 4.6 deg 0.3-3 Hz",
+   "joint": 13,
+   "start_s": 30.415706622879952,
+   "seconds": 8.0
+  },
+  {
+   "index": 21,
+   "name": "lf_tibia_pitch hold",
+   "joint": 13,
+   "start_s": 38.41738759703003,
+   "seconds": 0.6
+  }
+ ],
+ "wall_clock_at_t0": 1794255085.8368611,
+ "rows": 11562,
+ "fresh_fraction": 0.9910915066597474,
+ "cycle_s_median": 0.010099999839439988,
+ "read_after_send_s_median": 0.00016989198047667742,
+ "columns": [
+  "t_send",
+  "t_read",
+  "motor",
+  "segment",
+  "target",
+  "kp",
+  "kd",
+  "pos",
+  "vel",
+  "torque",
+  "t_mos",
+  "fresh"
+ ]
+}
